@@ -1,0 +1,1578 @@
+# 🚀 Claude Code — Premgiri-books
+### The Complete Roadmap: MCPs · Skills · Plugins · Phases · Prompts
+
+---
+
+> **Goal:** Build Premgiri-books (GST accounting app) using Claude Code with maximum output, minimum token waste.  
+> **Stack:** Next.js 16 · TypeScript · PostgreSQL · Prisma · Redis · Tailwind · shadcn/ui
+
+---
+
+## 📋 TABLE OF CONTENTS
+
+1. [How Claude Code Works — Mental Model](#1-how-claude-code-works--mental-model)
+2. [VS Code Plugins (Install First)](#2-vs-code-plugins-install-first)
+3. [MCPs — Model Context Protocol Servers](#3-mcps--model-context-protocol-servers)
+4. [Skills — Pre-built Instruction Sets](#4-skills--pre-built-instruction-sets)
+5. [Token Saving Strategies](#5-token-saving-strategies)
+6. [CLAUDE.md — Your Secret Weapon](#6-claudemd--your-secret-weapon)
+7. [Phase 0 → Production Roadmap](#7-phase-0--production-roadmap)
+8. [Phase-by-Phase Prompts](#8-phase-by-phase-prompts)
+9. [Advanced Prompt Patterns](#9-advanced-prompt-patterns)
+10. [SLASH Commands Cheatsheet](#10-slash-commands-cheatsheet)
+
+---
+
+## 1. How Claude Code Works — Mental Model
+
+```
+You (prompt) → Claude Code → Reads files → Writes code → Runs commands → Shows result
+                    ↑
+              CLAUDE.md (persistent context loaded every session)
+              MCPs     (give Claude tools: DB, GitHub, browser, APIs)
+              Skills   (pre-written instruction sets for complex tasks)
+```
+
+**The 3 levers for efficiency:**
+
+| Lever | What It Does | Token Impact |
+|---|---|---|
+| **CLAUDE.md** | Tells Claude your stack, rules, file structure — once | Saves 50-80% repeat context |
+| **MCPs** | Give Claude direct tool access (DB, GitHub, Figma) | Replaces manual copy-paste |
+| **Skills** | Pre-written expert instructions for specific tasks | Replaces explaining same thing 10x |
+
+---
+
+## 2. VS Code Plugins (Install First)
+
+Install these **before** starting. They enhance Claude Code's output quality.
+
+### 🔵 Core — Must Have
+
+```bash
+# Install via VS Code Extension Marketplace or CLI:
+code --install-extension anthropics.claude-code
+code --install-extension prisma.prisma
+code --install-extension bradlc.vscode-tailwindcss
+code --install-extension dbaeumer.vscode-eslint
+code --install-extension esbenp.prettier-vscode
+code --install-extension ms-azuretools.vscode-docker
+```
+
+| Plugin | Why You Need It |
+|---|---|
+| **Claude Code** (Anthropic) | The main extension — gives Claude terminal + file access |
+| **Prisma** | Schema autocomplete, formatting, migration hints |
+| **Tailwind CSS IntelliSense** | Claude generates Tailwind — this validates it in real-time |
+| **ESLint + Prettier** | Claude Code runs lint after generation to auto-fix |
+| **Docker** | For local Postgres + Redis containers |
+
+### 🟡 Productivity Boosters
+
+```bash
+code --install-extension eamodio.gitlens
+code --install-extension humao.rest-client
+code --install-extension rangav.vscode-thunder-client
+code --install-extension ms-vscode.vscode-typescript-next
+code --install-extension formulahendry.auto-rename-tag
+```
+
+| Plugin | Why You Need It |
+|---|---|
+| **GitLens** | Claude commits code — GitLens shows what changed |
+| **REST Client / Thunder Client** | Test API endpoints Claude builds without leaving VS Code |
+| **TypeScript Nightly** | Catch type errors Claude might miss |
+| **Auto Rename Tag** | Claude writes JSX — this keeps tags in sync |
+
+### 🟢 Database & Quality
+
+```bash
+code --install-extension ckolkman.vscode-postgres
+code --install-extension ms-vscode.test-adapter-converter
+code --install-extension usernamehw.errorlens
+```
+
+| Plugin | Why You Need It |
+|---|---|
+| **PostgreSQL** | Browse your DB tables from VS Code — verify Claude's schema |
+| **Error Lens** | Inline error display — catch Claude's type errors instantly |
+| **Test Adapter** | Run Vitest/Jest tests Claude writes directly in VS Code |
+
+---
+
+## 3. MCPs — Model Context Protocol Servers
+
+MCPs give Claude Code **direct tool access** — it can read your DB, push to GitHub, search docs — without you copy-pasting anything.
+
+### 🔧 Setup — Global MCP Config
+
+Create this file: `~/.claude/mcp_config.json`
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/Premgiri-books"],
+      "description": "Read/write project files"
+    },
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://user:pass@localhost:5432/Premgiri-books"],
+      "description": "Direct PostgreSQL access — read schema, run queries, verify data"
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "your_github_pat" },
+      "description": "Create PRs, read issues, manage branches"
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "description": "Persistent key-value memory across Claude sessions"
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": { "BRAVE_API_KEY": "your_brave_key" },
+      "description": "Search docs, GST API docs, npm packages"
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+      "description": "Screenshot UI, test flows, scrape GST portal structure"
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "description": "Force Claude to plan before coding complex features"
+    }
+  }
+}
+```
+
+### 📦 Install All MCPs
+
+```bash
+# Run once to cache all MCP packages
+npx -y @modelcontextprotocol/server-filesystem --version
+npx -y @modelcontextprotocol/server-postgres --version
+npx -y @modelcontextprotocol/server-github --version
+npx -y @modelcontextprotocol/server-memory --version
+npx -y @modelcontextprotocol/server-brave-search --version
+npx -y @modelcontextprotocol/server-puppeteer --version
+npx -y @modelcontextprotocol/server-sequential-thinking --version
+```
+
+### 🗺️ MCP Usage Map — When to Use Each
+
+| MCP | Use During | Example Prompt |
+|---|---|---|
+| **filesystem** | Every phase | "Read all files in lib/services/ and refactor" |
+| **postgres** | Phase 1+ | "Check the ledgers table schema and verify the balance calculation" |
+| **github** | Phase 2+ | "Create a branch feature/sales-voucher and commit the new voucher form" |
+| **memory** | Every phase | "Remember: we use Indian number format (₹ lakhs/crores) everywhere" |
+| **brave-search** | When stuck | "Search for how to calculate GSTR-1 B2B JSON structure 2024" |
+| **puppeteer** | Phase 5+ | "Screenshot the invoice PDF and check if layout is correct" |
+| **sequential-thinking** | Complex features | "Plan the GST reconciliation algorithm before writing any code" |
+
+### 🌐 Recommended Third-Party MCPs
+
+```bash
+# Vercel MCP — deploy and check build status from Claude
+npm install -g @vercel/mcp-server
+
+# Neon MCP — serverless Postgres branch management
+npm install -g @neondatabase/mcp-server-neon
+
+# Sentry MCP — Claude reads your errors and fixes them
+npm install -g @sentry/mcp-server
+
+# Resend MCP — Claude sets up email sending for invoices
+npm install -g resend-mcp
+```
+
+Add to your `mcp_config.json`:
+
+```json
+{
+  "vercel": {
+    "command": "vercel-mcp",
+    "env": { "VERCEL_TOKEN": "your_token" }
+  },
+  "neon": {
+    "command": "neon-mcp",
+    "env": { "NEON_API_KEY": "your_key" }
+  },
+  "sentry": {
+    "command": "sentry-mcp",
+    "env": { "SENTRY_TOKEN": "your_token", "SENTRY_ORG": "your_org" }
+  }
+}
+```
+
+---
+
+## 4. Skills — Pre-built Instruction Sets
+
+A **Skill** is a markdown file Claude reads before doing a task. It contains expert instructions so you don't re-explain the same thing every session.
+
+### 📂 Create Your Skills Folder
+
+```bash
+mkdir -p ~/.claude/skills
+# or inside your project:
+mkdir -p .claude/skills
+```
+
+### 📄 Skill 1: `gst-engine.md`
+
+Create at: `.claude/skills/gst-engine.md`
+
+````markdown
+# Skill: GST Calculator for India (2024)
+
+## Rules — Always Follow
+- CGST + SGST applies when seller state == buyer state (intra-state)
+- IGST applies when seller state != buyer state (inter-state)  
+- GST rates in India: 0%, 5%, 12%, 18%, 28%
+- Every invoice line must carry: hsn_code, qty, unit, taxable_value, gst_rate, cgst, sgst, igst
+- Round off GST to 2 decimal places (Indian standard)
+- Place of Supply (POS) determines CGST/SGST vs IGST
+- For B2C invoices above ₹2.5 lakh: treat as B2CL in GSTR-1
+- Reverse Charge Mechanism (RCM): buyer pays GST, not supplier
+
+## GSTR-1 JSON Structure (mandatory fields)
+```typescript
+interface GSTR1Payload {
+  gstin: string;
+  fp: string;       // filing period: "112024" = Nov 2024
+  b2b: B2BInvoice[];
+  b2cl: B2CLInvoice[];
+  b2cs: B2CSummary[];
+  nil: NilRatedSupply;
+  exp: ExportInvoice[];
+  hsn: HSNSummary[];
+}
+```
+
+## Tax Calculation Function Pattern
+```typescript
+function calculateGST(taxableValue: number, rate: number, isInterState: boolean) {
+  const total = parseFloat(((taxableValue * rate) / 100).toFixed(2));
+  if (isInterState) return { igst: total, cgst: 0, sgst: 0 };
+  const half = parseFloat((total / 2).toFixed(2));
+  return { igst: 0, cgst: half, sgst: total - half }; // handles rounding
+}
+```
+
+## HSN Codes for Common Items (reference)
+- 8471: Computers / Laptops → 18%
+- 6403: Footwear → 18%
+- 0901: Coffee → 5%
+- 2106: Food preparations → 12%
+- 9403: Furniture → 18%
+- 9999: Services (use SAC codes)
+````
+
+---
+
+### 📄 Skill 2: `voucher-engine.md`
+
+Create at: `.claude/skills/voucher-engine.md`
+
+````markdown
+# Skill: Double-Entry Voucher Engine
+
+## Core Rule — Non-Negotiable
+Every voucher MUST have: SUM(debit entries) == SUM(credit entries)
+If not balanced → reject with error, never save.
+
+## Voucher Number Format
+`{TYPE_CODE}/{FY}/{SEQUENCE}`
+Example: `INV/2024-25/00001`, `PUR/2024-25/00034`, `REC/2024-25/00012`
+- FY: if date >= April 1 → current year, else current year - 1
+- Sequence: zero-padded 5 digits, resets each FY, per voucher type
+
+## Accounting Rules
+| Voucher | Debit | Credit |
+|---|---|---|
+| Sales Invoice | Debtor/Cash | Sales + GST Payable |
+| Purchase Invoice | Purchase + Input GST | Creditor/Cash |
+| Receipt | Cash/Bank | Debtor |
+| Payment | Creditor | Cash/Bank |
+| Credit Note | Sales Return | Debtor |
+| Debit Note | Creditor | Purchase Return |
+
+## Status Machine
+draft → posted → (cancelled)
+- Draft: saved but not in books
+- Posted: affects ledger balances, stock, GST
+- Cancelled: reversed, audit logged, never deleted
+
+## Prisma Transaction Pattern (always use this)
+```typescript
+const result = await prisma.$transaction(async (tx) => {
+  const voucher = await tx.vouchers.create({ data: voucherData });
+  await tx.voucherEntries.createMany({ data: entries });
+  await tx.voucherItems.createMany({ data: items });
+  await tx.gstTransactions.create({ data: gstData });
+  await tx.auditLogs.create({ data: auditEntry });
+  return voucher;
+});
+```
+````
+
+---
+
+### 📄 Skill 3: `report-engine.md`
+
+Create at: `.claude/skills/report-engine.md`
+
+````markdown
+# Skill: Financial Report Engine
+
+## Balance Sheet Structure (Indian Format)
+```
+EQUITY & LIABILITIES          |  ASSETS
+Capital Account               |  Fixed Assets
+  Add: Net Profit             |  Current Assets
+  Less: Drawings              |    Cash & Bank
+Loans (Liability)             |    Sundry Debtors
+Current Liabilities           |    Closing Stock
+  Sundry Creditors            |  Loans (Asset)
+  GST Payable                 |  Misc Expenditure
+```
+
+## P&L Structure (Indian Format)
+```
+INCOME                        |  EXPENSES
+Gross Sales                   |  Opening Stock
+  Less: Returns               |  + Purchases
+= Net Sales                   |  - Closing Stock
+Other Income                  |  = Cost of Goods Sold
+                              |  Operating Expenses
+                              |  Depreciation
+= NET PROFIT / LOSS
+```
+
+## Key SQL Pattern: Running Balance for Ledger Statement
+```sql
+SELECT 
+  v.date,
+  v.voucher_no,
+  v.narration,
+  CASE WHEN ve.dr_cr = 'dr' THEN ve.amount ELSE 0 END as debit,
+  CASE WHEN ve.dr_cr = 'cr' THEN ve.amount ELSE 0 END as credit,
+  SUM(CASE WHEN ve.dr_cr = 'dr' THEN ve.amount ELSE -ve.amount END) 
+    OVER (ORDER BY v.date, v.created_at) as running_balance
+FROM voucher_entries ve
+JOIN vouchers v ON v.id = ve.voucher_id
+WHERE ve.ledger_id = $1
+  AND v.date BETWEEN $2 AND $3
+  AND v.company_id = $4
+  AND v.status = 'posted'
+ORDER BY v.date, v.created_at;
+```
+
+## Number Formatting — Indian System
+- Use: ₹1,23,45,678.00 (not ₹12,345,678.00)
+- Lakhs = 1,00,000 | Crores = 1,00,00,000
+- Always show Dr/Cr suffix on ledger balances
+````
+
+---
+
+### 📄 Skill 4: `nextjs-conventions.md`
+
+Create at: `.claude/skills/nextjs-conventions.md`
+
+````markdown
+# Skill: Next.js 16 Conventions for Premgiri-books
+
+## File Naming
+- Pages: `page.tsx` (React Server Component by default)
+- Layouts: `layout.tsx`
+- Loading: `loading.tsx` (Suspense boundary)
+- Error: `error.tsx` (Error boundary, must be 'use client')
+- API routes: `route.ts`
+
+## Server vs Client Components
+- DEFAULT to Server Components — add 'use client' only when needed
+- Use 'use client' for: forms, keyboard shortcuts, modals, charts, real-time data
+- Data fetching in Server Components: direct async/await, no useEffect
+- Data fetching in Client Components: React Query (TanStack Query)
+
+## API Route Pattern (always use this structure)
+```typescript
+// app/api/v1/vouchers/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { z } from 'zod';
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    const body = await req.json();
+    const validated = VoucherSchema.parse(body); // Zod validation
+    
+    const result = await VoucherEngine.postVoucher(validated, session.companyId);
+    return NextResponse.json(result, { status: 201 });
+  } catch (e) {
+    if (e instanceof z.ZodError) return NextResponse.json({ errors: e.errors }, { status: 400 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+```
+
+## Multi-tenancy Rule
+EVERY Prisma query must include `where: { companyId: session.companyId }`
+Never skip this. Add it even on single-record lookups.
+
+## shadcn/ui Components to Use
+- Forms: Form, Input, Select, DatePicker, Textarea
+- Layout: Sheet (side panel), Dialog (modal), Tabs
+- Data: Table, DataTable (with TanStack)
+- Feedback: Toast (Sonner), Alert, Badge
+- Navigation: Sidebar (use shadcn sidebar component)
+````
+
+---
+
+### 📄 Skill 5: `prisma-patterns.md`
+
+Create at: `.claude/skills/prisma-patterns.md`
+
+````markdown
+# Skill: Prisma ORM Patterns for Accounting App
+
+## Always Use Decimal for Money
+```prisma
+amount      Decimal  @db.Decimal(15, 2)
+gst_rate    Decimal  @db.Decimal(5, 2)
+```
+NEVER use Float for money. Float causes rounding errors in accounting.
+
+## Soft Delete Pattern (never hard delete financial records)
+```prisma
+model vouchers {
+  id         String   @id @default(uuid())
+  status     Status   @default(DRAFT)  // DRAFT | POSTED | CANCELLED
+  deleted_at DateTime?
+  // Add to every WHERE: { deleted_at: null }
+}
+```
+
+## Audit Log — Add to Every Mutation
+```typescript
+await tx.auditLogs.create({
+  data: {
+    companyId,
+    userId: session.userId,
+    entity: 'voucher',
+    entityId: voucher.id,
+    action: 'CREATE', // CREATE | UPDATE | DELETE | CANCEL
+    oldValue: null,
+    newValue: JSON.stringify(voucher),
+    ipAddress: req.headers.get('x-forwarded-for') ?? 'unknown',
+  }
+});
+```
+
+## Financial Year Helper
+```typescript
+export function getFY(date: Date): string {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1; // 1-indexed
+  return month >= 4 ? `${year}-${String(year + 1).slice(2)}` 
+                    : `${year - 1}-${String(year).slice(2)}`;
+  // April 2024 → "2024-25", January 2024 → "2023-24"
+}
+```
+````
+
+---
+
+## 5. Token Saving Strategies
+
+### 🎯 The Golden Rules
+
+```
+1. WRITE CLAUDE.md → saves 50-80% context tokens
+2. USE /compact regularly → compresses conversation history  
+3. SCOPE your prompts → "only edit lib/services/GSTCalculator.ts"
+4. USE MCP postgres → Claude reads DB directly, no copy-paste schema
+5. BREAK big features → 1 prompt = 1 function, not 1 prompt = 1 module
+6. USE --resume → continue session without re-explaining context
+```
+
+### 📊 Token Cost by Task Type
+
+| Task Type | Token Cost | Strategy |
+|---|---|---|
+| Generate new file from scratch | Low | Good — Claude has full control |
+| Edit existing large file | High | Scope with line numbers: "edit lines 45-90" |
+| Explain the whole codebase | Very High | Use MCP filesystem instead |
+| Debug with full error stack | Medium | Paste only the relevant error + file |
+| Write tests | Low | "Write tests for this function: [paste function]" |
+| Review entire PR | Very High | Use GitHub MCP instead |
+
+### 🗜️ Context Compression Commands
+
+```bash
+# In Claude Code terminal:
+/compact                    # Compress history, keep context
+/clear                      # Full reset — use when switching phases
+/resume                     # Resume last session
+claude --continue           # Continue from last checkpoint
+```
+
+---
+
+## 6. CLAUDE.md — Your Secret Weapon
+
+This file is **automatically loaded every session**. Put everything Claude must always know here.
+
+Create at: `CLAUDE.md` (project root)
+
+```markdown
+# Premgiri-books — Claude Code Context
+
+## Project
+- Name: Premgiri-books (GST Accounting App for India)
+- Stack: Next.js 16 (App Router), TypeScript strict, PostgreSQL, Prisma ORM, Redis, NextAuth.js v5
+- UI: Tailwind CSS + shadcn/ui components only (no other CSS libraries)
+- State: React Query (TanStack Query v5) for server state, Zustand for UI state
+- Validation: Zod everywhere — schemas in lib/validations/
+- Testing: Vitest + React Testing Library
+
+## Critical Business Rules
+1. ALL money values use Decimal (15,2) — never Float
+2. ALL DB queries MUST filter by companyId (multi-tenant)
+3. Voucher double-entry: debit sum MUST equal credit sum
+4. GST: CGST+SGST for intra-state, IGST for inter-state
+5. Financial year: April 1 to March 31 (Indian standard)
+6. Number format: Indian system (lakhs/crores): ₹1,23,456
+7. Never hard-delete vouchers — use status: 'cancelled'
+8. Every mutation needs an audit log entry
+
+## File Structure
+- app/(auth)/ — Login, register, company select
+- app/(app)/ — Protected pages with sidebar layout
+- app/api/v1/ — All REST API routes
+- lib/services/ — Business logic (GSTCalculator, VoucherEngine, ReportEngine)
+- lib/validations/ — Zod schemas
+- components/ui/ — shadcn/ui components
+- components/voucher/ — Voucher-specific components
+- components/reports/ — Report components
+- prisma/schema.prisma — Database schema
+
+## Skills to Load for Specific Tasks
+- GST calculation → load .claude/skills/gst-engine.md
+- Voucher creation → load .claude/skills/voucher-engine.md  
+- Reports → load .claude/skills/report-engine.md
+- New pages → load .claude/skills/nextjs-conventions.md
+- DB changes → load .claude/skills/prisma-patterns.md
+
+## MCP Tools Available
+- postgres: Direct DB access — use to verify schema before writing queries
+- github: Commit and branch management
+- memory: Store decisions across sessions
+- brave-search: Look up GST API docs, npm packages
+
+## Code Style
+- Use named exports (not default exports) for components
+- Type everything — no `any` types
+- Use async/await (not .then())
+- Error handling: try/catch in every API route
+- Comments: only for complex business logic (not obvious code)
+
+## Current Phase
+<!-- UPDATE THIS EVERY SESSION -->
+Phase: 1 — Foundation (Auth + Masters)
+Last completed: Company creation page
+Next task: Ledger list page with pagination
+
+## Environment
+- Local DB: postgresql://postgres:password@localhost:5432/Premgiri-books
+- Node: v20+
+- Package manager: pnpm
+```
+
+---
+
+## 7. Phase 0 → Production Roadmap
+
+```
+PHASE 0 ─── Project Setup & Tooling         (1-2 days)
+   │
+PHASE 1 ─── Foundation: Auth + Masters       (2-3 weeks)
+   │
+PHASE 2 ─── Vouchers (Transactions)          (3-4 weeks)
+   │
+PHASE 3 ─── GST Engine                       (2-3 weeks)
+   │
+PHASE 4 ─── Inventory                        (2 weeks)
+   │
+PHASE 5 ─── Financial Reports                (2-3 weeks)
+   │
+PHASE 6 ─── Payroll                          (2 weeks)
+   │
+PHASE 7 ─── Banking & Reconciliation         (1-2 weeks)
+   │
+PHASE 8 ─── GST Filing (e-Invoice, e-Way)    (2 weeks)
+   │
+PHASE 9 ─── Security, Roles, Audit           (1-2 weeks)
+   │
+PHASE 10 ── Polish, PDF, Email, Deploy       (1-2 weeks)
+   │
+PRODUCTION ─ Monitoring + Feedback loop       (ongoing)
+```
+
+---
+
+## 8. Phase-by-Phase Prompts
+
+> 💡 **How to use these prompts:**  
+> Copy the prompt block → paste into Claude Code terminal → Claude executes.  
+> Each prompt is self-contained. CLAUDE.md handles persistent context.
+
+---
+
+### 🔶 PHASE 0 — Project Setup (Day 1-2)
+
+**Prompt 0.1 — Initialize Project**
+```
+Initialize a new Next.js 16 project called "Premgiri-books" with:
+- TypeScript strict mode
+- Tailwind CSS
+- App Router (not Pages Router)
+- ESLint + Prettier
+- pnpm as package manager
+
+After creating, install these packages:
+- @prisma/client prisma
+- next-auth@beta
+- @tanstack/react-query @tanstack/react-table
+- react-hook-form @hookform/resolvers zod
+- ioredis
+- date-fns
+- lucide-react
+- recharts
+- jspdf jspdf-autotable
+- exceljs
+- qrcode
+- @types/qrcode
+
+Then run: pnpm dlx shadcn-ui@latest init
+
+Select: Default style, CSS variables, src/ directory: No
+```
+
+**Prompt 0.2 — Prisma Schema**
+```
+Read .claude/skills/prisma-patterns.md first.
+
+Create the complete Prisma schema at prisma/schema.prisma with these tables:
+1. companies (id, name, gstin, pan, state_code, address, fy_start, logo_url, created_at)
+2. users (id, company_id FK, name, email, password, role_id FK, is_active, created_at)
+3. roles (id, company_id FK, name, permissions JSONB)
+4. account_groups (id, company_id FK, name, parent_id self-ref FK, nature ENUM assets/liabilities/income/expense, affects_gp Boolean)
+5. ledgers (id, company_id FK, name, group_id FK, gstin, pan, opening_balance Decimal(15,2), dr_cr ENUM, gst_reg_type ENUM, credit_limit, credit_days, is_active)
+6. stock_groups (id, company_id FK, name, parent_id self-ref)
+7. stock_items (id, company_id FK, name, group_id FK, uom_id FK, hsn_code, gst_rate Decimal(5,2), opening_qty Decimal(12,3), opening_rate Decimal(12,4), is_active)
+8. units_of_measure (id, company_id FK, name, symbol, is_compound Boolean)
+9. godowns (id, company_id FK, name, address, is_main Boolean)
+10. vouchers (id, company_id FK, voucher_type ENUM, voucher_no, date, ref_no, narration, party_ledger_id FK, total_amount Decimal(15,2), cgst_amount, sgst_amount, igst_amount, status ENUM draft/posted/cancelled, irn, eway_bill_no, created_by FK, created_at, updated_at)
+11. voucher_entries (id, voucher_id FK, ledger_id FK, amount Decimal(15,2), dr_cr ENUM, narration, bill_ref)
+12. voucher_items (id, voucher_id FK, item_id FK, godown_id FK, qty Decimal(12,3), rate Decimal(12,4), amount Decimal(15,2), cgst_rate, cgst_amt, sgst_rate, sgst_amt, igst_rate, igst_amt, hsn_code)
+13. gst_transactions (id, company_id FK, voucher_id FK, gstin_supplier, gstin_recipient, supply_type ENUM, return_period, invoice_no, invoice_date, taxable_value Decimal, cgst, sgst, igst, place_of_supply, reverse_charge Boolean, gstr1_status ENUM)
+14. gst_returns (id, company_id FK, gstin, return_type ENUM, return_period, status ENUM, filed_date, arn)
+15. audit_logs (id, company_id FK, user_id FK, entity, entity_id, action ENUM, old_value JSONB, new_value JSONB, ip_address, created_at)
+
+Use: uuid() for all IDs, @default(now()) for timestamps, proper indexes on company_id + date fields.
+Generate and run: pnpm prisma migrate dev --name init
+```
+
+**Prompt 0.3 — Folder Structure + CLAUDE.md**
+```
+Create this exact folder structure (empty files/folders):
+- app/(auth)/login/page.tsx
+- app/(auth)/register/page.tsx  
+- app/(auth)/company-select/page.tsx
+- app/(app)/layout.tsx
+- app/(app)/dashboard/page.tsx
+- app/(app)/masters/ledgers/page.tsx
+- app/(app)/masters/ledgers/new/page.tsx
+- app/(app)/vouchers/sales/new/page.tsx
+- app/(app)/vouchers/purchase/new/page.tsx
+- app/(app)/gst/gstr1/page.tsx
+- app/(app)/reports/balance-sheet/page.tsx
+- app/api/v1/auth/route.ts
+- lib/services/GSTCalculator.ts (empty class)
+- lib/services/VoucherEngine.ts (empty class)
+- lib/services/ReportEngine.ts (empty class)
+- lib/validations/voucher.schema.ts
+- lib/validations/master.schema.ts
+- lib/utils/indian-format.ts
+- components/layout/Sidebar.tsx
+- components/layout/Header.tsx
+- components/voucher/VoucherForm.tsx
+- .claude/skills/ (directory)
+- CLAUDE.md (with project context)
+
+Also install shadcn components: pnpm dlx shadcn-ui@latest add button input label select table dialog sheet form toast sidebar tabs badge
+```
+
+**Prompt 0.4 — Docker Dev Environment**
+```
+Create docker-compose.yml for local development with:
+- PostgreSQL 16 (port 5432, db: Premgiri-books, user: postgres, pass: postgres123)
+- Redis 7 Alpine (port 6379)
+- pgAdmin 4 (port 5050, for DB browsing)
+
+Also create:
+- .env.local with all required environment variables:
+  DATABASE_URL, REDIS_URL, NEXTAUTH_SECRET, NEXTAUTH_URL, 
+  GST_PORTAL_API_KEY (placeholder), EWAYBILL_API_KEY (placeholder)
+- .env.example (same but with placeholder values)
+- .gitignore (include .env.local, node_modules, .next, prisma/dev.db)
+
+Start the containers: docker-compose up -d
+```
+
+---
+
+### 🔶 PHASE 1 — Auth + Masters (Week 1-3)
+
+**Prompt 1.1 — NextAuth Setup**
+```
+Read CLAUDE.md for project context.
+
+Set up NextAuth.js v5 (next-auth@beta) with:
+1. Credentials provider (email + password login)
+2. JWT strategy with companyId in token
+3. Session includes: userId, name, email, companyId, companyName, role, permissions
+4. Middleware at middleware.ts: protect all /app/* routes, redirect to /login if unauthenticated
+5. Custom login page at app/(auth)/login/page.tsx with:
+   - Company GSTIN or email field
+   - Password field  
+   - "Remember me" checkbox
+   - Form validation with react-hook-form + zod
+
+Create the DB auth logic: hash passwords with bcrypt, verify on login.
+Handle: wrong password, inactive user, company not found errors.
+```
+
+**Prompt 1.2 — Sidebar Layout**
+```
+Read .claude/skills/nextjs-conventions.md
+
+Create app/(app)/layout.tsx with:
+- Collapsible left sidebar using shadcn Sidebar component
+- Sidebar menu items grouped by module:
+  DASHBOARD: Dashboard
+  MASTERS: Ledgers, Stock Items, Parties, Employees, Units, Godowns
+  TRANSACTIONS: Sales, Purchase, Receipt, Payment, Journal, Contra
+  GST: GSTR-1, GSTR-3B, e-Invoice, e-Way Bill, ITC Reconciliation
+  INVENTORY: Stock Summary, Stock Ledger, Ageing
+  PAYROLL: Employees, Salary, Attendance, Pay Run
+  BANKING: Reconciliation, Cheque Register
+  REPORTS: Balance Sheet, P&L, Trial Balance, Day Book, Outstanding
+  SETTINGS: Company, Users, Roles, Backup
+
+- Top header: company name, financial year badge, user avatar with dropdown (profile, switch company, logout)
+- Global search bar (Cmd+K) — placeholder for now
+- Keyboard shortcut: Alt+F1 = Dashboard, Alt+F2 = Sales, etc.
+- Active route highlighting
+- Mobile responsive (hamburger menu on mobile)
+```
+
+**Prompt 1.3 — Ledger Master (Full CRUD)**
+```
+Read .claude/skills/nextjs-conventions.md and .claude/skills/prisma-patterns.md
+
+Build the complete Ledger Master feature:
+
+1. API Routes (app/api/v1/masters/ledgers/):
+   - GET route.ts: paginated list with search, filter by group
+   - POST route.ts: create ledger (Zod validation)
+   - GET [id]/route.ts: single ledger
+   - PUT [id]/route.ts: update ledger
+   - DELETE [id]/route.ts: soft deactivate (is_active = false)
+   
+2. Ledger List Page (app/(app)/masters/ledgers/page.tsx) — Server Component:
+   - DataTable with TanStack: columns = Name, Group, Opening Balance, GSTIN, Status
+   - Search by name, filter by group dropdown
+   - Pagination (25 per page)
+   - Actions column: Edit, View Statement, Toggle Active
+   - "New Ledger" button → /masters/ledgers/new
+   
+3. Ledger Form (app/(app)/masters/ledgers/new/page.tsx) — Client Component:
+   - Fields: Name*, Group* (dropdown from account_groups), Opening Balance, Dr/Cr toggle
+   - GST section (conditional): GSTIN, PAN, Registration Type (Regular/Composition/Unregistered)
+   - Banking section: Bank Name, Account No, IFSC, Branch
+   - Credit terms: Credit Limit, Credit Days
+   - Auto-fetch party details by GSTIN from GST portal API (stub for now)
+   - Zod validation on all fields, inline error messages
+   - Save + New button, Save + Close button
+   
+4. Pre-populate default account groups as seed data:
+   Assets: Fixed Assets, Current Assets, Cash-in-hand, Bank Accounts, Sundry Debtors, Stock-in-hand, Loans & Advances (Asset)
+   Liabilities: Capital Account, Reserves & Surplus, Loans (Liability), Current Liabilities, Sundry Creditors, Duties & Taxes
+   Income: Sales Accounts, Direct Income, Indirect Income
+   Expenses: Purchase Accounts, Direct Expenses, Indirect Expenses
+```
+
+**Prompt 1.4 — Stock Items Master**
+```
+Read .claude/skills/gst-engine.md for HSN code context.
+
+Build Stock Items Master (same pattern as Ledger Master):
+
+API: GET/POST /api/v1/masters/stock-items, GET/PUT /api/v1/masters/stock-items/[id]
+
+List page: Name, Group, HSN Code, GST Rate, Opening Qty, Unit, Status
+Filter by: group, GST rate, active status
+
+Form fields:
+- Name* (unique within company)
+- Stock Group (dropdown)
+- Unit of Measure* (dropdown from UOM table)
+- HSN Code* (8-digit, validate format)
+- GST Rate* (dropdown: 0/5/12/18/28%)
+- GST Applicability (Applicable / Nil Rated / Exempt / Non-GST)
+- Opening Qty (Decimal, 3 places)
+- Opening Rate (Decimal, 4 places — cost price)
+- Opening Value (auto-calculated = qty × rate)
+- Reorder Level, Minimum Qty, Maximum Qty
+- Enable Batches/Expiry toggle
+
+Also create Units of Measure (UOM) seed data:
+Nos, Kgs, Grams, Litres, Metres, Boxes, Dozens, Pieces, Packets, Sets, Pairs
+```
+
+---
+
+### 🔶 PHASE 2 — Vouchers (Week 4-7)
+
+**Prompt 2.1 — Voucher Engine Service**
+```
+Read .claude/skills/voucher-engine.md
+
+Create lib/services/VoucherEngine.ts with these methods:
+
+1. generateVoucherNo(companyId, type, date, tx) → string
+   - Format: INV/2024-25/00001
+   - Use SELECT FOR UPDATE to prevent duplicate numbers
+   - Maintain sequence in a voucher_sequences table (add to schema)
+
+2. validateBalance(entries) → { valid: boolean, error?: string }
+   - Check sum(debit) === sum(credit) with 0.01 tolerance
+
+3. determineGSTType(sellerStateCode, buyerStateCode) → 'intra' | 'inter'
+
+4. buildGSTEntry(voucherData) → GSTTransactionCreateInput
+   - Extract all GST amounts from voucher items
+   - Determine B2B/B2C/export supply type
+   - Set return_period as "MMYYYY"
+
+5. postVoucher(data, session) → Promise<Voucher>
+   - Full Prisma $transaction:
+     a. Validate balance
+     b. Generate voucher number
+     c. Create voucher record
+     d. Create voucher_entries (all debit/credit lines)
+     e. Create voucher_items (inventory lines)
+     f. Create gst_transaction
+     g. Create audit_log entry
+   - Return complete voucher with all relations
+
+6. cancelVoucher(voucherId, userId) → Promise<void>
+   - Mark as cancelled
+   - Add audit log entry
+   - Do NOT delete or reverse — just status change
+
+Write Vitest unit tests for validateBalance and determineGSTType.
+```
+
+**Prompt 2.2 — GST Calculator Service**
+```
+Read .claude/skills/gst-engine.md
+
+Create lib/services/GSTCalculator.ts with:
+
+1. calculateLineTax(taxableValue, gstRate, isInterState) → { cgst, sgst, igst }
+   - Round to 2 decimal places using banker's rounding
+   - Handle 0% rate (return all zeros)
+
+2. calculateVoucherTotals(items, isInterState) → VoucherTotals
+   - Sum all line taxes
+   - Calculate round off (to nearest rupee, max ±0.99)
+   - Return: subtotal, totalCGST, totalSGST, totalIGST, totalGST, roundOff, grandTotal
+
+3. buildGSTR1Payload(vouchers, period, gstin) → GSTR1Payload
+   - Segregate into: b2b, b2cl (B2C > 2.5L), b2cs (B2C ≤ 2.5L), nil, exports
+   - Build HSN summary
+   - Return JSON matching GST portal schema
+
+4. buildGSTR3BSummary(gstTransactions, period) → GSTR3BSummary
+   - Table 3.1: outward taxable supplies
+   - Table 4: ITC available
+   - Table 5: Values exempt/nil/non-GST
+   - Return section-wise summary
+
+5. reconcileITC(bookEntries, portal2BEntries) → ReconciliationResult[]
+   - Match by: supplier GSTIN + invoice number + date
+   - Status: 'matched' | 'amount_mismatch' | 'missing_in_portal' | 'missing_in_books'
+
+Write Vitest tests with real Indian GST scenarios:
+- Intra-state: ₹10,000 × 18% → CGST ₹900 + SGST ₹900
+- Inter-state: ₹10,000 × 18% → IGST ₹1,800
+- Mixed invoice with multiple rates
+```
+
+**Prompt 2.3 — Sales Invoice Form (Main Voucher)**
+```
+Read .claude/skills/nextjs-conventions.md and .claude/skills/voucher-engine.md
+
+Build the Sales Invoice entry form at app/(app)/vouchers/sales/new/page.tsx
+
+This is a 'use client' component. Build it with react-hook-form + zod.
+
+Header section:
+- Party (ledger dropdown, search-as-you-type, show GSTIN below)
+- Invoice Date (date picker, default today)
+- Invoice Number (auto-generated, shown as readonly after first entry)
+- Ref/PO No (optional)
+- Place of Supply (state dropdown, auto-filled from party GSTIN)
+- GST Type display: "Intra-state (CGST+SGST)" or "Inter-state (IGST)" — computed
+
+Line items table (dynamic rows, add/remove):
+| Item | Qty | Unit | Rate | Disc% | Taxable | HSN | GST% | CGST | SGST | IGST | Amount |
+- Item search dropdown (search stock items, auto-fill HSN + GST%)
+- Qty and Rate → auto-calculate Taxable Value
+- GST% auto-filled from item master, can override
+- CGST/SGST/IGST auto-calculated from GSTCalculator service
+- Keyboard: Tab moves across fields, Enter adds new row, Del removes row
+
+Summary panel (right side, live update):
+- Subtotal
+- Total CGST / SGST / IGST
+- Total GST
+- Round Off
+- Grand Total (large, bold)
+- Amount in words (Indian format: "Rupees One Lakh Twenty Thousand Only")
+
+Accounting entries panel (collapsible, below items):
+- Auto-generated debit/credit lines shown:
+  Dr: Party Ledger → Grand Total
+  Cr: Sales Account → Subtotal
+  Cr: GST Payable (CGST) → CGST amount
+  Cr: GST Payable (SGST) → SGST amount
+- User can override/add entries
+
+Action buttons:
+- Save & Print (post + open PDF)
+- Save & New (post + clear form)
+- Save & Close (post + go back to list)
+- Save as Draft
+
+After save: show success toast with invoice number, offer to print/email.
+```
+
+**Prompt 2.4 — Purchase, Receipt, Payment Vouchers**
+```
+Using the Sales Invoice form as a template (read app/(app)/vouchers/sales/new/page.tsx):
+
+1. Build Purchase Invoice form (app/(app)/vouchers/purchase/new/page.tsx):
+   - Same structure but party is vendor/supplier
+   - "Supplier Invoice No" and "Supplier Invoice Date" fields
+   - ITC section: show eligible ITC amount, auto-book to Input CGST/SGST/IGST ledgers
+   - Reverse Charge toggle: if enabled, buyer pays GST (change accounting entries)
+
+2. Build Receipt Voucher form (app/(app)/vouchers/receipt/new/page.tsx):
+   - Simple form: Cash/Bank (Dr) ← Party (Cr)
+   - Party dropdown (debtors only)
+   - Amount field
+   - Bill-wise allocation: show outstanding bills, allocate receipt to specific bills
+   - Narration, cheque number/date (if bank), instrument date
+
+3. Build Payment Voucher form (app/(app)/vouchers/payment/new/page.tsx):
+   - Cash/Bank (Cr) → Party/Expense (Dr)
+   - Party dropdown (creditors + expense ledgers)
+   - Bill-wise allocation for creditors
+   - Cheque details for bank payments
+
+4. Build Journal Voucher (app/(app)/vouchers/journal/new/page.tsx):
+   - Free-form debit/credit entries
+   - Add row → select any ledger, enter amount, Dr or Cr
+   - Running balance shown (must equal zero to save)
+   - Common uses: provisions, depreciation, adjustments
+
+Create API routes for each: POST /api/v1/vouchers/purchase, /receipt, /payment, /journal
+All call VoucherEngine.postVoucher() with the correct type.
+```
+
+---
+
+### 🔶 PHASE 3 — GST Engine (Week 8-10)
+
+**Prompt 3.1 — GSTR-1 Report Page**
+```
+Read .claude/skills/gst-engine.md
+
+Build GSTR-1 report at app/(app)/gst/gstr1/page.tsx (Server Component):
+
+1. Period selector: month-year dropdown (shows all months of current FY)
+2. GSTIN selector: dropdown (if multi-GSTIN company)
+
+Show tabbed sections:
+- Tab "B2B": Table with columns — GSTIN, Invoice No, Date, Invoice Value, Taxable Value, CGST, SGST, IGST, CESS
+- Tab "B2C Large" (>₹2.5L): Invoice-wise like B2B but no buyer GSTIN
+- Tab "B2C Small" (≤₹2.5L): Rate-wise consolidated summary
+- Tab "Nil/Exempt": Nil rated and exempt supplies summary
+- Tab "Exports": Export invoices
+- Tab "HSN Summary": HSN-wise: HSN code, Description, UQC, Total Qty, Total Value, CGST, SGST, IGST
+
+Summary bar at bottom: Total taxable value, Total CGST, Total SGST, Total IGST
+
+Action buttons:
+- "Download JSON" → downloads GSTR-1 JSON (ready to upload to portal)
+- "Download Excel" → GSTR-1 in Excel format (using exceljs)
+- "Mark as Filed" → prompts for ARN number, saves gst_returns record
+- "Upload to Portal" → placeholder (stub API call)
+
+Use GSTCalculator.buildGSTR1Payload() to generate the data.
+```
+
+**Prompt 3.2 — e-Invoice PDF Generation**
+```
+Build invoice PDF generation using jsPDF + jspdf-autotable.
+
+Create lib/services/InvoicePDFService.ts with method:
+generateInvoicePDF(voucherId: string): Promise<Buffer>
+
+PDF layout (A4):
+HEADER:
+- Company logo (left), Company name + address + GSTIN (center/right)
+- "TAX INVOICE" label (large, center)
+- Box: Invoice No | Date | Due Date | Place of Supply
+
+PARTY DETAILS (two columns):
+- Bill To: Party name, address, GSTIN, State, Phone
+- Ship To: (same or different delivery address)
+
+LINE ITEMS TABLE:
+- Sr | Description | HSN/SAC | Qty | Unit | Rate | Disc | Taxable Value | GST% | CGST | SGST | IGST | Amount
+
+TOTALS SECTION:
+- Sub Total
+- CGST / SGST / IGST breakdown
+- Round Off
+- GRAND TOTAL (bold, large)
+- Amount in Words (Indian system)
+
+FOOTER:
+- Bank details for payment
+- Terms & conditions
+- Authorized signatory box
+- "This is a computer generated invoice"
+- QR code (if e-invoice IRN available)
+
+API route: GET /api/v1/vouchers/[id]/pdf → streams PDF
+Also: POST /api/v1/vouchers/[id]/email → email PDF to party
+```
+
+**Prompt 3.3 — ITC Reconciliation Page**
+```
+Build ITC Reconciliation at app/(app)/gst/itc-reconciliation/page.tsx
+
+This compares our purchase book (GSTR-2B what we have) vs what suppliers filed (GSTR-2A from portal).
+
+UI:
+1. Period selector + "Download GSTR-2B" button (stub API to GST portal)
+2. Reconciliation summary cards:
+   - Matched: X invoices (₹XX)
+   - Amount Mismatch: X invoices
+   - Missing in Portal: X invoices (supplier not filed)
+   - Missing in Our Books: X invoices
+3. Filterable table with columns: Supplier GSTIN | Supplier Name | Invoice No | Invoice Date | Our IGST | Portal IGST | Status (color-coded badge) | Action
+
+Actions:
+- "Accept Mismatch" → mark as accepted, claim our amount
+- "Update Our Entry" → open voucher for correction
+- "Pending with Supplier" → tag and track
+
+Status colors: Green=Matched, Yellow=Mismatch, Red=Missing, Blue=Accepted
+
+Use GSTCalculator.reconcileITC() for the matching logic.
+Show total ITC available vs total ITC in GSTR-3B to claim.
+```
+
+---
+
+### 🔶 PHASE 4 — Inventory (Week 11-12)
+
+**Prompt 4.1 — Stock Summary & Ledger**
+```
+Read .claude/skills/report-engine.md
+
+Build Stock Summary at app/(app)/inventory/stock-summary/page.tsx (Server Component):
+
+Display: hierarchical tree (Stock Group → Stock Items)
+Columns: Item Name | Opening | Inward | Outward | Closing Qty | Closing Rate | Closing Value
+- Expandable groups showing sum of items in group
+- Click item → navigates to Stock Ledger for that item
+
+Filters: As-of date, Godown, Stock Group
+
+Stock Ledger page (app/(app)/inventory/stock-ledger/[itemId]/page.tsx):
+Columns: Date | Voucher No | Party | Inward Qty | Inward Rate | Outward Qty | Outward Rate | Closing Balance Qty | Closing Value
+- Running balance calculated using FIFO method
+- Click voucher number → open voucher detail
+
+API: GET /api/v1/inventory/stock-summary?asOf=&godown=&group=
+SQL query: Join voucher_items + stock_items, sum inward/outward quantities
+```
+
+---
+
+### 🔶 PHASE 5 — Financial Reports (Week 13-15)
+
+**Prompt 5.1 — Balance Sheet**
+```
+Read .claude/skills/report-engine.md
+
+Build Balance Sheet at app/(app)/reports/balance-sheet/page.tsx (Server Component).
+
+Use this SQL query pattern with recursive CTE to build the account group hierarchy.
+(Reference the full SQL from report-engine.md skill)
+
+Display: Two-column Indian format layout
+Left column: Equity & Liabilities (Capital, Loans, Current Liabilities)
+Right column: Assets (Fixed Assets, Current Assets, Loans as Asset)
+
+Each group shows:
+- Group name (bold)
+- Indented sub-groups and ledgers
+- Group total
+- Ledger amounts shown on click (drill-down via URL param ?ledger=id)
+
+Features:
+- As-of-date selector (default: today)
+- Compare with previous year toggle
+- Export to PDF (use InvoicePDFService pattern)
+- Export to Excel
+
+API: GET /api/v1/reports/balance-sheet?asOf=2024-03-31
+Use ReportEngine.getBalanceSheet() — build this method using the recursive CTE from the skill file.
+Validate: Total Assets must equal Total Liabilities + Equity (show mismatch warning if not)
+```
+
+**Prompt 5.2 — P&L, Trial Balance, Day Book**
+```
+Using the Balance Sheet page as a reference pattern:
+
+1. P&L Statement (app/(app)/reports/profit-loss/page.tsx):
+   - Date range selector (from/to)
+   - Show: Gross Profit section (Sales - Cost of Goods) and Net Profit section
+   - Drill-down: click any ledger → ledger statement
+   - Monthly comparison option: show column per month
+   API: GET /api/v1/reports/profit-loss?from=&to=
+
+2. Trial Balance (app/(app)/reports/trial-balance/page.tsx):
+   - All ledgers with: Opening Dr/Cr | Transactions Dr/Cr | Closing Dr/Cr
+   - Filter: show only non-zero balances
+   - Totals row: must balance (Dr total = Cr total)
+   - Group ledgers under account groups, collapsible
+   API: GET /api/v1/reports/trial-balance?asOf=
+
+3. Day Book (app/(app)/reports/daybook/page.tsx):
+   - Date selector (default: today)
+   - List all vouchers for that date: Type | No | Party | Narration | Amount
+   - Click voucher → view full voucher
+   - Filter by voucher type
+   API: GET /api/v1/reports/daybook?date=
+
+4. Outstanding Receivables (app/(app)/reports/outstanding/receivables/page.tsx):
+   - All debtors with outstanding bills
+   - Bill-wise: Party | Bill No | Bill Date | Due Date | Amount | Days Overdue
+   - Ageing buckets: 0-30 | 31-60 | 61-90 | 90+ days
+   - Sort by overdue amount
+   API: GET /api/v1/reports/outstanding?type=receivable
+```
+
+---
+
+### 🔶 PHASE 6 — Payroll (Week 16-17)
+
+**Prompt 6.1 — Payroll Engine**
+```
+Build complete payroll module:
+
+1. Salary Structure at app/(app)/payroll/salary-structures/page.tsx:
+   - Create structures with earnings and deductions components
+   - Components: Basic, HRA (40% of basic), DA, Conveyance, Medical, Special
+   - Deductions: PF Employee (12% of basic), ESI Employee (0.75% if gross ≤ ₹21,000), PT, TDS
+   - Formula support: "40% of Basic", "12% of Basic", fixed amount
+
+2. Pay Run at app/(app)/payroll/pay-run/page.tsx:
+   - Select month + year
+   - "Process Payroll" button → calls PayrollEngine.runPayroll()
+   - Show result: employee-wise salary breakdown
+   - Download pay sheet as Excel
+   - Generate payslips as PDFs
+
+3. Create lib/services/PayrollEngine.ts:
+   - computeSalary(employeeId, month, year) → PaySlip
+     * Fetch attendance for the month
+     * Calculate payable days (present + paid leave)
+     * Apply salary structure formulas
+     * Compute PF: Employee 12% + Employer 12% (on basic ≤ ₹15,000)
+     * Compute ESI: Employee 0.75% + Employer 3.25% (if gross ≤ ₹21,000)
+     * Compute PT: State-wise slab (Maharashtra example: ₹200/month if salary > ₹10,000)
+     * Round all to nearest rupee
+   - runPayroll(companyId, month, year) → PayrollRun
+     * Run computeSalary for all active employees
+     * Create a payroll voucher (type: payroll) posting salary expense entries
+     * Generate PF and ESI ledger entries
+
+4. Pay Slip PDF: Employee name, month, all components, net pay, employer contributions
+```
+
+---
+
+### 🔶 PHASE 7 — Banking (Week 18-19)
+
+**Prompt 7.1 — Bank Reconciliation**
+```
+Build Bank Reconciliation at app/(app)/banking/reconciliation/page.tsx:
+
+1. Bank account selector (from ledgers where group = "Bank Accounts")
+2. Statement date selector
+
+Three-panel view:
+LEFT: "In Books, Not in Bank Statement" — entries posted in Premgiri-books not yet in bank statement
+CENTER: Reconciliation summary:
+  - Balance as per Bank Statement (user enters this)
+  - Add: Deposits not yet credited
+  - Less: Cheques not yet presented  
+  = Balance as per Books ← must match book balance
+  Status: ✅ Reconciled / ❌ Difference of ₹XX
+RIGHT: "In Bank Statement, Not in Books" — upload bank CSV/OFX to find
+
+2. "Upload Bank Statement" → accept CSV (HDFC/ICICI/SBI format) → parse and show unmatched entries
+3. Click to match: select a book entry ↔ bank statement entry → mark as reconciled
+
+API: GET /api/v1/banking/reconciliation?ledgerId=&upToDate=
+Create: BankReconciliationService.ts with matchEntries() algorithm
+```
+
+---
+
+### 🔶 PHASE 8 — GST Filing (Week 20-21)
+
+**Prompt 8.1 — e-Invoice & e-Way Bill**
+```
+Build e-Invoice and e-Way Bill integration stubs:
+
+1. e-Invoice Service (lib/services/EInvoiceService.ts):
+   - buildIRPPayload(voucherId) → IRPRequestPayload (JSON matching IRP schema)
+   - generateIRN(voucherId) → { irn, ackNo, ackDate, signedQR }
+     * Real: POST to https://einvoice1.gst.gov.in/irest/ei/api/invoice
+     * Stub: return mock IRN for development
+   - updateVoucherWithIRN(voucherId, irnData) → update voucher record
+   - cancelIRN(irn, reason) → void
+
+2. e-Way Bill Service (lib/services/EWayBillService.ts):
+   - buildEWBPayload(voucherId, transportDetails) → EWBRequestPayload
+   - generateEWB(voucherId) → { ewbNo, ewbDate, validTill }
+     * Stub: return mock EWB for development
+   - updateVoucherWithEWB(voucherId, ewbNo) → void
+
+3. UI: Add "Generate IRN" button on posted sales invoices (show in voucher detail)
+   - After generation: show IRN, QR code preview, download signed e-invoice JSON
+   - Add "Generate e-Way Bill" button: show transport details modal (vehicle no, LR no, distance)
+
+4. GSTR-3B page (app/(app)/gst/gstr3b/page.tsx):
+   - Show computed sections from GSTCalculator.buildGSTR3BSummary()
+   - Section 3.1: Outward supplies table
+   - Section 4: ITC claimed table
+   - Editable amounts (user can adjust before filing)
+   - "Download JSON" button
+   - "Mark as Filed" with ARN input
+```
+
+---
+
+### 🔶 PHASE 9 — Security & Roles (Week 22-23)
+
+**Prompt 9.1 — RBAC System**
+```
+Build complete Role-Based Access Control:
+
+1. Default roles seed data (create with migration):
+   OWNER: all permissions
+   ADMIN: all except delete company, manage billing
+   ACCOUNTANT: create/edit all vouchers, view all reports, no delete
+   VIEWER: view-only access (reports, vouchers — no create/edit)
+
+2. Permissions structure in roles.permissions JSONB:
+{
+  "vouchers": { "create": true, "edit": true, "delete": false, "cancel": true },
+  "masters": { "create": true, "edit": true, "delete": false },
+  "reports": { "view": true, "export": true },
+  "gst": { "view": true, "file": false },
+  "payroll": { "view": false, "run": false },
+  "settings": { "view": false, "edit": false },
+  "audit": { "view": false }
+}
+
+3. Middleware permission check:
+   - Create checkPermission(permission: string) function
+   - Use in every API route: checkPermission('vouchers.create')
+   - Return 403 if permission denied
+
+4. UI: Hide/disable buttons based on user permissions
+   - usePermissions() hook returns permissions from session
+   - <PermissionGate permission="vouchers.create"> wrapper component
+
+5. Users Management page (app/(app)/settings/users/page.tsx):
+   - List users, invite by email, assign role, activate/deactivate
+   - Invite sends email with setup link (stub for now)
+```
+
+---
+
+### 🔶 PHASE 10 — Polish & Deploy (Week 24-26)
+
+**Prompt 10.1 — Global Search**
+```
+Build global search (Cmd+K) across all entities:
+
+1. Search API: GET /api/v1/search?q=term&types=vouchers,ledgers,items
+   - Search ledgers by name
+   - Search vouchers by number, party name, amount
+   - Search stock items by name or HSN code
+   - Return max 5 results per type, fast (< 200ms)
+   - Use PostgreSQL full-text search (tsvector)
+
+2. Command palette UI (shadcn Dialog + cmdk library):
+   - Trigger: Cmd+K or Ctrl+K
+   - Shows recent vouchers on open (no search)
+   - Type to search → grouped results: Ledgers | Vouchers | Items | Reports
+   - Arrow keys navigate, Enter opens
+   - Show keyboard shortcut hints: "F8 → New Sales Invoice"
+
+3. Add keyboard shortcuts throughout app:
+   - F8: New Sales Invoice
+   - F9: New Purchase Invoice  
+   - F6: New Receipt
+   - F5: New Payment
+   - Ctrl+S: Save current form
+   - Escape: Close modal/go back
+   Use a useKeyboardShortcuts() hook that's registered globally.
+```
+
+**Prompt 10.2 — Production Deploy**
+```
+Prepare the app for production deployment on Vercel + Neon:
+
+1. Database:
+   - Set up Neon PostgreSQL account
+   - Run: pnpm prisma migrate deploy (on Neon connection string)
+   - Run seed file for default data: account groups, roles, UOM
+
+2. Environment variables for Vercel:
+   DATABASE_URL (Neon connection string with connection pooling)
+   REDIS_URL (Upstash Redis URL)
+   NEXTAUTH_SECRET (generate: openssl rand -base64 32)
+   NEXTAUTH_URL (https://your-app.vercel.app)
+   
+3. next.config.js optimizations:
+   - Enable: images.domains, experimental.serverActions
+   - Add Content Security Policy headers
+   - Enable compression
+
+4. Performance:
+   - Add loading.tsx skeletons for all report pages
+   - Add error.tsx boundaries for all major sections
+   - Add Suspense boundaries around data-fetching components
+   - Implement ISR (revalidate: 60) for dashboard stats
+
+5. Monitoring setup:
+   - Install and configure Sentry: pnpm add @sentry/nextjs
+   - Add Vercel Analytics: pnpm add @vercel/analytics
+   - Add health check API: GET /api/health → { status, db, redis }
+
+6. Pre-production checklist verification:
+   - Run: pnpm tsc --noEmit (zero TypeScript errors)
+   - Run: pnpm eslint . (zero lint errors)
+   - Run: pnpm vitest run (all tests pass)
+   - Test: create a company, add ledgers, post sales invoice, generate GSTR-1
+   - Deploy: vercel --prod
+```
+
+---
+
+## 9. Advanced Prompt Patterns
+
+### 🧠 Pattern 1: Plan Before Code (for complex features)
+
+```
+Use the sequential-thinking MCP.
+
+Before writing any code for [FEATURE], create a detailed plan:
+1. What files will be created or modified?
+2. What DB tables/columns are needed?
+3. What is the data flow from user action to DB?
+4. What are the edge cases to handle?
+5. What tests are needed?
+
+Show me the plan. Wait for my approval before writing any code.
+```
+
+### 🔍 Pattern 2: Debug with MCP
+
+```
+The [FEATURE] is not working correctly. Error: [paste error]
+
+Use the postgres MCP to:
+1. Check what data exists in the relevant tables
+2. Run the query that's failing manually
+3. Identify the root cause
+
+Then fix the code in [specific file].
+```
+
+### ♻️ Pattern 3: Refactor for Performance
+
+```
+Read app/api/v1/reports/balance-sheet/route.ts
+
+The Balance Sheet API is slow (>2 seconds). 
+Use the postgres MCP to EXPLAIN ANALYZE the query.
+Then:
+1. Add appropriate indexes (show me the ALTER TABLE statements)
+2. Optimize the recursive CTE if needed
+3. Add Redis caching (5-minute TTL) for this endpoint
+4. Add a cache invalidation call when any voucher is posted
+```
+
+### 🧪 Pattern 4: Test Generation
+
+```
+Read lib/services/GSTCalculator.ts
+
+Generate comprehensive Vitest tests for all methods in GSTCalculator.ts.
+Cover:
+- Intra-state supply (CGST + SGST)
+- Inter-state supply (IGST only)
+- Zero-rated supply
+- Reverse charge mechanism
+- Mixed-rate invoice (items with different GST rates)
+- Rounding edge cases (where half-percent causes .005 rounding)
+- GSTR-1 JSON structure validation
+
+Place tests in: lib/services/__tests__/GSTCalculator.test.ts
+Run them: pnpm vitest run GSTCalculator
+```
+
+### 📖 Pattern 5: Documentation
+
+```
+Read these files:
+- lib/services/VoucherEngine.ts
+- lib/services/GSTCalculator.ts
+- prisma/schema.prisma (the vouchers model section)
+
+Generate comprehensive JSDoc comments for all public methods.
+Then create docs/DEVELOPER_GUIDE.md explaining:
+1. How to add a new voucher type
+2. How GST calculation works end-to-end
+3. How to add a new financial report
+4. The audit trail system
+```
+
+---
+
+## 10. SLASH Commands Cheatsheet
+
+Use these directly in Claude Code terminal:
+
+| Command | When to Use |
+|---|---|
+| `/compact` | Every 30-40 messages — compress history |
+| `/clear` | When switching to a new phase |
+| `/resume` | Restart VS Code — continue where you left off |
+| `claude --continue` | CLI: resume last session |
+| `claude --model claude-sonnet-4-5` | Use Sonnet for simpler tasks (cheaper) |
+| `claude --model claude-opus-4-5` | Use Opus for complex architecture decisions |
+| `/help` | Show all available commands |
+
+### ⚡ Claude Code CLI Tricks
+
+```bash
+# Feed a file directly into Claude
+cat lib/services/GSTCalculator.ts | claude "Add Redis caching to the expensive methods"
+
+# Run Claude on multiple files
+claude "Review these files for security issues" --file app/api/v1/ --file middleware.ts
+
+# Headless mode (for CI)
+claude --headless "Run all tests and fix any failures" 
+
+# With specific MCP
+claude --mcp postgres "Check if all voucher balances are valid (debit = credit)"
+```
+
+---
+
+## 📅 Quick-Reference Timeline
+
+| Week | Phase | Deliverable |
+|---|---|---|
+| 1 | Phase 0 | Project setup, Prisma schema, Docker env |
+| 2-3 | Phase 1 | Auth, Sidebar, Ledger master, Stock items |
+| 4-5 | Phase 2a | VoucherEngine, GSTCalculator, Sales Invoice |
+| 6-7 | Phase 2b | Purchase, Receipt, Payment, Journal |
+| 8-10 | Phase 3 | GSTR-1, GSTR-3B, ITC Reconciliation, Invoice PDF |
+| 11-12 | Phase 4 | Inventory: Stock summary, Stock ledger |
+| 13-15 | Phase 5 | Balance Sheet, P&L, Trial Balance, Outstanding |
+| 16-17 | Phase 6 | Payroll engine, Pay run, Pay slip PDF |
+| 18-19 | Phase 7 | Bank reconciliation, Cheque register |
+| 20-21 | Phase 8 | e-Invoice, e-Way Bill, GSTR-3B filing |
+| 22-23 | Phase 9 | RBAC, Audit trail, Settings |
+| 24-26 | Phase 10 | Search, Keyboard shortcuts, Vercel deploy |
+
+---
+
+## 🏁 Before Each Claude Code Session
+
+**5-minute ritual to save 50% tokens:**
+
+```bash
+# 1. Start Claude Code
+claude
+
+# 2. First message every session:
+"Read CLAUDE.md. Current phase: [X]. Last completed: [Y]. Today's goal: [Z]."
+
+# 3. Load the relevant skill before the task:
+"Read .claude/skills/gst-engine.md before we work on GSTR-1."
+
+# 4. Scope each task clearly:
+"Only edit lib/services/GSTCalculator.ts — don't touch any other files."
+
+# 5. At end of session — update CLAUDE.md:
+"Update the 'Current Phase' and 'Last completed' section of CLAUDE.md"
+```
+
+---
+
+*Built for: Premgiri-books in Next.js 16* 
+*Last updated: 2026*

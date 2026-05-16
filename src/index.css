@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* PremGiri Books design system. All colors HSL. */
+
+@layer base {
+  :root {
+    /* Page canvas = gray-50 */
+    --background: 220 14% 96%;
+    --foreground: 222 47% 11%;
+
+    --surface: 0 0% 100%;
+    --surface-foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Brand purple #7C3AED */
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 263 70% 50%;
+    --primary-soft: 250 91% 95%;
+    --primary-soft-foreground: 262 83% 58%;
+
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 250 91% 95%;
+    --accent-foreground: 262 83% 58%;
+
+    --success: 142 71% 36%;
+    --success-foreground: 0 0% 100%;
+    --success-soft: 142 76% 93%;
+
+    --warning: 32 81% 41%;
+    --warning-foreground: 0 0% 100%;
+    --warning-soft: 48 96% 89%;
+
+    --info: 217 91% 50%;
+    --info-foreground: 0 0% 100%;
+    --info-soft: 214 95% 93%;
+
+    --destructive: 0 84% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-soft: 0 93% 94%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 262 83% 58%;
+
+    --radius: 0.5rem;
+
+    --shadow-card: 0 1px 3px hsl(0 0% 0% / 0.06);
+    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.08);
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 9% 35%;
+    --sidebar-primary: 262 83% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 250 91% 95%;
+    --sidebar-accent-foreground: 262 83% 58%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 262 83% 58%;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+    --surface: 222 40% 10%;
+    --surface-foreground: 210 40% 98%;
+    --card: 222 40% 10%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 40% 10%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 262 83% 65%;
+    --primary-foreground: 222 47% 6%;
+    --primary-hover: 262 83% 58%;
+    --primary-soft: 262 40% 20%;
+    --primary-soft-foreground: 262 83% 75%;
+    --secondary: 217 33% 18%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 262 40% 20%;
+    --accent-foreground: 262 83% 75%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --success-soft: 142 40% 18%;
+    --warning: 32 81% 50%;
+    --warning-foreground: 0 0% 100%;
+    --warning-soft: 32 40% 18%;
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+    --info-soft: 217 40% 20%;
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-soft: 0 40% 20%;
+    --border: 217 33% 18%;
+    --input: 217 33% 18%;
+    --ring: 262 83% 65%;
+    --sidebar-background: 222 40% 10%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 262 83% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 262 40% 20%;
+    --sidebar-accent-foreground: 262 83% 75%;
+    --sidebar-border: 217 33% 18%;
+    --sidebar-ring: 262 83% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .bg-dot-grid {
+    background-image: radial-gradient(hsl(var(--border)) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+}

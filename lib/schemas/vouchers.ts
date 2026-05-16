@@ -1,0 +1,213 @@
+import { z } from 'zod'
+import { Decimal } from 'decimal.js'
+
+// ─── Shared Sub-schemas ───────────────────────────────────────────────────────
+
+// Voucher date: YYYY-MM-DD string (validated before DB write)
+const voucherDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Please enter a valid date (YYYY-MM-DD)')
+
+// Decimal string refine helpers
+const positiveDecimalString = (msg: string) =>
+  z.string().refine(
+    (v) => {
+      try {
+        return new Decimal(v).gt(0)
+      } catch {
+        return false
+      }
+    },
+    msg
+  )
+
+const nonNegativeDecimalString = (msg: string) =>
+  z.string().refine(
+    (v) => {
+      try {
+        return new Decimal(v).gte(0)
+      } catch {
+        return false
+      }
+    },
+    msg
+  )
+
+// Helper: string field with a required_error so missing fields show our message, not Zod's default
+const requiredString = (msg: string) =>
+  z.string({ required_error: msg, invalid_type_error: msg })
+
+// Line item for invoices with stock items (Sales, Purchase, Credit Note, Debit Note)
+// NOTE: companyId is NOT here — it is always injected from session.user.companyId
+const lineItemSchema = z.object({
+  itemId: requiredString('Please select a product').cuid('Please select a product'),
+  godownId: z.string().cuid().optional(),
+  qty: positiveDecimalString('Quantity must be more than 0'),
+  rate: nonNegativeDecimalString('Price cannot be negative'),
+  discountPct: z.string().optional().default('0'),
+  hsnCode: z.string().max(8).optional(),
+  // VOUCH-02: ITC eligibility is tracked per line item for purchase invoices
+  itcEligible: z.boolean().default(true),
+  // Advanced Mode only — override GST rate per line (D-18)
+  gstRateOverride: z.number().optional(),
+})
+
+// Manual entry for Journal/Contra (ledger + amount + DR/CR direction)
+const manualEntrySchema = z.object({
+  ledgerId: requiredString('Please select a ledger account').cuid('Please select a ledger account'),
+  amount: positiveDecimalString('Amount must be greater than 0'),
+  drCr: z.enum(['DR', 'CR'], {
+    errorMap: () => ({ message: 'Please specify Debit or Credit' }),
+  }),
+  narration: z.string().max(500).optional(),
+})
+
+// Settlement entry for Receipt/Payment bill-wise settlement (D-08, D-09, D-10)
+// billRefId points to a BillRef record — server always verifies { id, companyId } ownership
+const settlementSchema = z.object({
+  billRefId: requiredString('Invalid bill reference').cuid('Invalid bill reference'),
+  amount: positiveDecimalString('Settlement amount must be greater than 0'),
+})
+
+// Payment modes for Receipt/Payment vouchers
+const paymentModeSchema = z.enum(['CASH', 'BANK', 'CHEQUE', 'UPI', 'NEFT', 'RTGS']).default('BANK')
+
+// ─── Sales Invoice Schema (VOUCH-01) ─────────────────────────────────────────
+// DR: Party Ledger (AR) | CR: Sales Income + GST Payable
+// companyId: NEVER in schema — always from session.user.companyId (T-02-06)
+export const salesInvoiceSchema = z.object({
+  voucherType: z.literal('SALES'),
+  partyLedgerId: requiredString('Please select a customer').cuid('Please select a customer'),
+  date: voucherDateSchema,
+  narration: z.string().max(500).optional(),
+  items: z.array(lineItemSchema).min(1, 'Add at least one item'),
+  // costCentreId: optional — visible in Advanced Mode only (ROADMAP SC #2)
+  costCentreId: z.string().cuid().optional(),
+  // status: client may submit DRAFT or POSTED only; CANCELLED is a separate cancel action (T-02-08)
+  status: z.enum(['DRAFT', 'POSTED']).default('POSTED'),
+})
+
+// ─── Purchase Invoice Schema ──────────────────────────────────────────────────
+// DR: Purchase Account + GST Input | CR: Party Ledger (AP)
+// itcEligible per line item (VOUCH-02) — determines ITC claim in GSTR-3B
+export const purchaseInvoiceSchema = z.object({
+  voucherType: z.literal('PURCHASE'),
+  partyLedgerId: requiredString('Please select a supplier').cuid('Please select a supplier'),
+  date: voucherDateSchema,
+  narration: z.string().max(500).optional(),
+  // lineItemSchema includes itcEligible: z.boolean().default(true) per item
+  items: z.array(lineItemSchema).min(1, 'Add at least one item'),
+  status: z.enum(['DRAFT', 'POSTED']).default('POSTED'),
+})
+
+// ─── Receipt Schema ───────────────────────────────────────────────────────────
+// DR: Bank/Cash | CR: Party Ledger (clears AR)
+// settlements: bill-wise application of receipt amount (D-08, D-09, D-10)
+// billRefId ownership verified server-side with { id, companyId } check (T-02-09)
+export const receiptSchema = z.object({
+  voucherType: z.literal('RECEIPT'),
+  partyLedgerId: requiredString('Please select a customer').cuid('Please select a customer'),
+  bankLedgerId: requiredString('Please select a bank or cash account').cuid('Please select a bank or cash account'),
+  date: voucherDateSchema,
+  amount: positiveDecimalString('Amount must be greater than 0'),
+  narration: z.string().max(500).optional(),
+  paymentMode: paymentModeSchema,
+  reference: z.string().max(100).optional(),
+  settlements: z.array(settlementSchema).default([]),
+})
+
+// ─── Payment Schema ───────────────────────────────────────────────────────────
+// DR: Party Ledger (clears AP) | CR: Bank/Cash
+// With optional TDS deduction (D-05): DR Party | CR Bank (net) + CR TDS Payable
+export const paymentSchema = z.object({
+  voucherType: z.literal('PAYMENT'),
+  partyLedgerId: requiredString('Please select a supplier').cuid('Please select a supplier'),
+  bankLedgerId: requiredString('Please select a bank or cash account').cuid('Please select a bank or cash account'),
+  date: voucherDateSchema,
+  amount: positiveDecimalString('Amount must be greater than 0'),
+  narration: z.string().max(500).optional(),
+  paymentMode: paymentModeSchema,
+  reference: z.string().max(100).optional(),
+  settlements: z.array(settlementSchema).default([]),
+  // TDS deduction fields (Phase 3, D-05) — optional; undefined means no TDS on this payment
+  tdsSection: z.enum(['194C', '194J']).optional(),
+  tdsRate: z.string().optional(),    // e.g. '2' or '10' — decimal string
+  tdsAmount: z.string().optional(),  // computed: grossAmount × tdsRate / 100
+})
+
+// ─── Journal Schema ───────────────────────────────────────────────────────────
+// Free-form double-entry: any ledger to any ledger
+// entries minimum 2 lines enforces double-entry by structure
+export const journalSchema = z.object({
+  voucherType: z.literal('JOURNAL'),
+  date: voucherDateSchema,
+  narration: z.string().max(500).optional(),
+  entries: z
+    .array(manualEntrySchema)
+    .min(2, 'A journal entry needs at least two lines'),
+})
+
+// ─── Contra Schema ────────────────────────────────────────────────────────────
+// Bank-to-bank or bank-to-cash transfer
+// DR: Destination (toLedgerId) | CR: Source (fromLedgerId)
+export const contraSchema = z.object({
+  voucherType: z.literal('CONTRA'),
+  date: voucherDateSchema,
+  narration: z.string().max(500).optional(),
+  fromLedgerId: requiredString('Please select the source account').cuid('Please select the source account'),
+  toLedgerId: requiredString('Please select the destination account').cuid('Please select the destination account'),
+  amount: positiveDecimalString('Amount must be greater than 0'),
+})
+
+// ─── Credit Note Schema ───────────────────────────────────────────────────────
+// Sales return: DR Sales Income + GST Payable | CR Party Ledger (reduces AR)
+// linkedVoucherId: optional link to original Sales Invoice (orphaned notes allowed but discouraged)
+export const creditNoteSchema = z.object({
+  voucherType: z.literal('CREDIT_NOTE'),
+  partyLedgerId: requiredString('Please select a customer').cuid('Please select a customer'),
+  date: voucherDateSchema,
+  narration: z.string().max(500).optional(),
+  items: z.array(lineItemSchema).min(1, 'Add at least one item'),
+  linkedVoucherId: z.string().cuid('Original invoice reference is required').optional(),
+  status: z.enum(['DRAFT', 'POSTED']).default('POSTED'),
+})
+
+// ─── Debit Note Schema ────────────────────────────────────────────────────────
+// Purchase return: DR Party Ledger (reduces AP) | CR Purchase Account + GST Input
+// linkedVoucherId: optional link to original Purchase Invoice
+export const debitNoteSchema = z.object({
+  voucherType: z.literal('DEBIT_NOTE'),
+  partyLedgerId: requiredString('Please select a supplier').cuid('Please select a supplier'),
+  date: voucherDateSchema,
+  narration: z.string().max(500).optional(),
+  items: z.array(lineItemSchema).min(1, 'Add at least one item'),
+  linkedVoucherId: z.string().cuid('Original purchase bill reference is required').optional(),
+  status: z.enum(['DRAFT', 'POSTED']).default('POSTED'),
+})
+
+// ─── Discriminated Union ──────────────────────────────────────────────────────
+// Used at the POST /api/v1/vouchers endpoint for request body validation.
+// Discriminated by voucherType — Zod selects the correct schema automatically.
+// SECURITY: companyId is absent from ALL schemas by design (T-02-06).
+//           The API route always injects companyId from session.user.companyId.
+export const createVoucherSchema = z.discriminatedUnion('voucherType', [
+  salesInvoiceSchema,
+  purchaseInvoiceSchema,
+  receiptSchema,
+  paymentSchema,
+  journalSchema,
+  contraSchema,
+  creditNoteSchema,
+  debitNoteSchema,
+])
+
+// ─── TypeScript Inferred Types ────────────────────────────────────────────────
+export type SalesInvoiceInput = z.infer<typeof salesInvoiceSchema>
+export type PurchaseInvoiceInput = z.infer<typeof purchaseInvoiceSchema>
+export type ReceiptInput = z.infer<typeof receiptSchema>
+export type PaymentInput = z.infer<typeof paymentSchema>
+export type JournalInput = z.infer<typeof journalSchema>
+export type ContraInput = z.infer<typeof contraSchema>
+export type CreditNoteInput = z.infer<typeof creditNoteSchema>
+export type DebitNoteInput = z.infer<typeof debitNoteSchema>
+export type CreateVoucherInput = z.infer<typeof createVoucherSchema>

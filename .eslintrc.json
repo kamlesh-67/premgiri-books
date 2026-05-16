@@ -1,0 +1,25 @@
+{
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "rules": {
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "CallExpression[callee.name='parseFloat']",
+        "message": "Use decimal.js for financial arithmetic — parseFloat loses precision on money values"
+      },
+      {
+        "selector": "CallExpression[callee.object.name='Number'][callee.property.name='parseFloat']",
+        "message": "Use decimal.js for financial arithmetic — Number.parseFloat loses precision on money values"
+      },
+      {
+        "selector": "NewExpression[callee.name='Number']",
+        "message": "Use decimal.js Decimal constructor for financial arithmetic — new Number() loses precision"
+      },
+      {
+        "selector": "CallExpression[callee.name='Number']",
+        "message": "Use decimal.js Decimal constructor for financial arithmetic — Number() loses precision on money values"
+      }
+    ]
+  },
+  "ignorePatterns": ["src/**", "node_modules/**", ".next/**"]
+}

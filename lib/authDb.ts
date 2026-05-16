@@ -1,0 +1,30 @@
+/**
+ * authDb — unextended PrismaClient for authentication queries ONLY.
+ *
+ * WHY THIS EXISTS: The main prisma client in lib/prisma.ts uses a Prisma extension
+ * that enforces multi-tenant companyId on every query (TenantScopeError if missing).
+ * During login, we need to find a User by email WITHOUT knowing companyId yet.
+ * Using authDb bypasses the tenant extension — use ONLY for auth operations.
+ *
+ * DO NOT use authDb for any other purpose. All other DB access must use lib/prisma.ts.
+ */
+import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { Pool } from 'pg'
+
+const globalForAuthDb = globalThis as unknown as { __authDb?: PrismaClient }
+
+function createAuthDb() {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  const adapter = new PrismaPg(pool)
+  return new PrismaClient({
+    adapter,
+    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+  })
+}
+
+export const authDb = globalForAuthDb.__authDb ?? createAuthDb()
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForAuthDb.__authDb = authDb
+}
