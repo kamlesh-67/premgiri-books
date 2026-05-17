@@ -43,13 +43,26 @@ const lineItemSchema = z.object({
   itemId: requiredString('Please select a product').cuid('Please select a product'),
   godownId: z.union([z.string().cuid(), z.literal('')]).optional().transform(v => v === '' ? undefined : v),
   qty: positiveDecimalString('Quantity must be more than 0'),
+  // CR-002: Unit of measurement per line (LTR, KG, TIN, PCS, etc.)
+  unit: z.string().max(15).optional().default(''),
   rate: nonNegativeDecimalString('Price cannot be negative'),
+  // CR-003: Discount type per line — NONE / PERCENT / FLAT_INR
+  discountType: z.enum(['NONE', 'PERCENT', 'FLAT_INR']).default('PERCENT'),
   discountPct: z.string().optional().default('0'),
+  discountAmt: z.string().optional().default('0'), // used when discountType === 'FLAT_INR'
   hsnCode: z.string().max(12).optional(),
   // VOUCH-02: ITC eligibility is tracked per line item for purchase invoices
   itcEligible: z.boolean().default(true),
   // Advanced Mode only — override GST rate per line (D-18)
   gstRateOverride: z.number().optional(),
+  // CR-010: Pack size and volume
+  packSize: z.string().optional().default(''),
+  packUnit: z.string().max(10).optional().default(''),
+  // CR-011: DPL / list price reference (display only, no calc effect)
+  listPrice: z.string().optional().default(''),
+  // CR-012: Batch number and material / supplier code
+  batchNo: z.string().max(50).optional(),
+  materialCode: z.string().max(50).optional(),
 })
 
 // Manual entry for Journal/Contra (ledger + amount + DR/CR direction)
@@ -94,9 +107,71 @@ export const purchaseInvoiceSchema = z.object({
   voucherType: z.literal('PURCHASE'),
   partyLedgerId: requiredString('Please select a supplier').cuid('Please select a supplier'),
   date: voucherDateSchema,
+
+  // CR-001: Invoice type (Tax Invoice is default for most suppliers)
+  invoiceType: z.enum(['TAX_INVOICE', 'CREDIT_MEMO', 'DEBIT_NOTE', 'BILL_OF_SUPPLY', 'RCM_INVOICE']).default('TAX_INVOICE'),
+
+  // CR-017: Place of supply — 2-digit GST state code; defaults to party state
+  placeOfSupply: z.string().max(3).optional(),
+  // CR-013: Tax mode override — AUTO uses state codes; IGST_OVERRIDE / CGST_SGST_OVERRIDE force the direction
+  taxMode: z.enum(['AUTO', 'IGST_OVERRIDE', 'CGST_SGST_OVERRIDE']).default('AUTO'),
+
   supplierInvoiceNo: z.string().max(50).optional(),
   supplierInvoiceDate: z.string().optional(),
   narration: z.string().max(500).optional(),
+
+  // CR-009: Payment terms and due date
+  paymentTerms: z.enum(['IMMEDIATE', 'NET_7', 'NET_15', 'NET_30', 'NET_45', 'NET_60']).optional(),
+  dueDate: z.string().optional(),
+
+  // CR-004: Header-level cascading discounts (up to 5 rows)
+  headerDiscounts: z.array(z.object({
+    label: z.string().max(50).default('Discount'),
+    type: z.enum(['PERCENT', 'FLAT_INR']).default('PERCENT'),
+    value: z.string().default('0'),
+  })).max(5).default([]),
+
+  // CR-014: Freight charges (separate from goods; GST at freightGstRate)
+  freightAmount: z.string().optional().default('0'),
+  freightGstRate: z.number().default(18),
+
+  // CR-015: TCS (Tax Collected at Source) — rate applied on (taxable + GST + freight)
+  tcsRate: z.string().optional().default('0'),
+
+  // CR-016: Round off — AUTO rounds to nearest rupee; MANUAL lets user enter exact value
+  roundOffMode: z.enum(['AUTO', 'MANUAL']).default('AUTO'),
+  roundOffManual: z.string().optional().default('0'),
+
+  // CR-006: Transport / dispatch details
+  transporterName: z.string().max(100).optional(),
+  lrNo: z.string().max(50).optional(),
+  vehicleNo: z.string().max(20).optional(),
+  destination: z.string().max(100).optional(),
+  dispatchWeight: z.string().optional(),
+
+  // CR-007: e-Invoice fields (IRN + ACK already partial in DB; ackNo/ackDate are new)
+  ackNo: z.string().max(20).optional(),
+  ackDate: z.string().optional(),
+
+  // CR-008: Order reference fields
+  buyerPoNo: z.string().max(50).optional(),
+  buyerPoDate: z.string().optional(),
+  supplierSoNo: z.string().max(50).optional(),
+  dispatchDocNo: z.string().max(50).optional(),
+  deliveryNoteNo: z.string().max(50).optional(),
+
+  // CR-018: Supplier running balance (reference display only)
+  previousBalance: z.string().optional(),
+  currentBalance: z.string().optional(),
+
+  // CR-020: Package / dispatch summary
+  packageCartons: z.number().optional(),
+  packageDrums: z.number().optional(),
+  packageBags: z.number().optional(),
+  packageTins: z.number().optional(),
+  packageWeight: z.string().optional(),
+  packageVolume: z.string().optional(),
+
   // lineItemSchema includes itcEligible: z.boolean().default(true) per item
   items: z.array(lineItemSchema).min(1, 'Add at least one item'),
   status: z.enum(['DRAFT', 'POSTED']).default('POSTED'),
