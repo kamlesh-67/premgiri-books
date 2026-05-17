@@ -1,7 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
-import { neon } from '@neondatabase/serverless'
 import { PrismaNeon } from '@prisma/adapter-neon'
 
 // --- TenantScopeError -------------------------------------------------------
@@ -52,7 +51,7 @@ export function guardTenantScope(
 function createPrismaClient() {
   // Use Neon serverless adapter in production (Vercel), pg adapter locally.
   const adapter = process.env.NODE_ENV === 'production'
-    ? new PrismaNeon(neon(process.env.DATABASE_URL!))
+    ? new PrismaNeon({ connectionString: process.env.DATABASE_URL! })
     : new PrismaPg(new Pool({ connectionString: process.env.DATABASE_URL }))
   return new PrismaClient({
     adapter,

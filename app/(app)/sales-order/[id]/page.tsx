@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, use } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm, useFieldArray } from "react-hook-form"
@@ -66,16 +66,17 @@ interface LedgerOption {
 // Page
 // ---------------------------------------------------------------------------
 
-export default function SalesOrderDetailPage({ params }: { params: { id: string } }) {
+export default function SalesOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const router = useRouter()
   const queryClient = useQueryClient()
   const { uiMode } = useUiStore()
   const [showDispatchPanel, setShowDispatchPanel] = useState(false)
 
   const { data: order, isLoading } = useQuery<OrderDetail>({
-    queryKey: ['sales-order', params.id],
+    queryKey: ['sales-order', id],
     queryFn: async () => {
-      const r = await fetch(`/api/v1/orders/${params.id}`)
+      const r = await fetch(`/api/v1/orders/${id}`)
       if (!r.ok) throw new Error('Failed to load order')
       return r.json() as Promise<OrderDetail>
     },
@@ -95,7 +96,7 @@ export default function SalesOrderDetailPage({ params }: { params: { id: string 
   // Cancel mutation
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/v1/orders/${params.id}`, {
+      const res = await fetch(`/api/v1/orders/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'cancel' }),
@@ -107,7 +108,7 @@ export default function SalesOrderDetailPage({ params }: { params: { id: string 
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales-order', params.id] })
+      queryClient.invalidateQueries({ queryKey: ['sales-order', id] })
       queryClient.invalidateQueries({ queryKey: ['sales-orders'] })
       toast.success('Order cancelled')
     },
@@ -117,7 +118,7 @@ export default function SalesOrderDetailPage({ params }: { params: { id: string 
   // Close mutation
   const closeMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/v1/orders/${params.id}`, {
+      const res = await fetch(`/api/v1/orders/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'close' }),
@@ -129,7 +130,7 @@ export default function SalesOrderDetailPage({ params }: { params: { id: string 
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales-order', params.id] })
+      queryClient.invalidateQueries({ queryKey: ['sales-order', id] })
       queryClient.invalidateQueries({ queryKey: ['sales-orders'] })
       toast.success('Order closed')
     },
@@ -160,7 +161,7 @@ export default function SalesOrderDetailPage({ params }: { params: { id: string 
 
   const convertMutation = useMutation({
     mutationFn: async (data: ConvertFormValues) => {
-      const res = await fetch(`/api/v1/orders/${params.id}/convert`, {
+      const res = await fetch(`/api/v1/orders/${id}/convert`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -172,7 +173,7 @@ export default function SalesOrderDetailPage({ params }: { params: { id: string 
       return res.json() as Promise<{ voucherId: string; voucherNo: string; orderStatus: string }>
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['sales-order', params.id] })
+      queryClient.invalidateQueries({ queryKey: ['sales-order', id] })
       queryClient.invalidateQueries({ queryKey: ['sales-orders'] })
       toast.success(
         uiMode === 'simple'

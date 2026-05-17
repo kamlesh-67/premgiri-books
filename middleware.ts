@@ -1,6 +1,11 @@
-import { auth } from '@/lib/auth'
+import NextAuth from 'next-auth'
+import { authConfig } from '@/lib/auth.config'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+
+// Edge-safe auth instance — uses authConfig (no ioredis/Prisma/pg imports).
+// The full Node.js auth (with blocklist + CredentialsProvider) lives in lib/auth.ts.
+const { auth } = NextAuth(authConfig)
 
 export async function middleware(request: NextRequest) {
   const session = await auth()
@@ -27,13 +32,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // Inject session data into headers for Server Components
-  // (RSCs can read these without calling auth() again)
   const response = NextResponse.next()
   if (session?.user) {
     response.headers.set('x-company-id', session.user.companyId ?? '')
     response.headers.set('x-user-id', session.user.id ?? '')
-    // Prefer the ui-mode cookie (set by /api/v1/user/preferences) over the JWT value,
-    // since the JWT may be stale until the next sign-in.
+    // Prefer the ui-mode cookie (set by /api/v1/user/preferences) over the JWT value
     const uiModeCookie = request.cookies.get('ui-mode')?.value
     const uiMode = (uiModeCookie === 'simple' || uiModeCookie === 'advanced')
       ? uiModeCookie

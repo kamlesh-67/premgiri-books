@@ -24,7 +24,8 @@ export async function GET(request: Request) {
   const data = await getProfitLoss(companyId, fy)
   const buffer = await exportToExcel(data, 'profit-loss')
 
-  return new Response(buffer, {
+  const ab = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer
+  return new Response(ab, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': `attachment; filename="profit-loss-${fy}.xlsx"`,

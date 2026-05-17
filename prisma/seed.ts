@@ -137,6 +137,106 @@ async function main() {
   console.log('  Users: owner@demo.com (simple), accountant@demo.com (advanced) -- password: demo123')
   console.log('  Users: viewer@demo.com added (Viewer role)')
 
+  // --- 3b. PremGiri Books production users (premgiribooks.com domain) ----------
+  const prodCompany = await prisma.company.upsert({
+    where: { id: 'premgiri-books-prod' },
+    update: {},
+    create: {
+      id: 'premgiri-books-prod',
+      name: 'PremGiri Books',
+      gstin: '08AABCP1234A1Z5',
+      pan: 'AABCP1234A',
+      stateCode: '08', // Rajasthan
+      address: 'PremGiri Books, Rajasthan, India',
+      fyStart: 4,
+      annualTurnover: new Decimal('0'),
+    },
+  })
+
+  // Roles for prod company
+  const prodAdminRole = await prisma.role.upsert({
+    where: { companyId_name: { companyId: prodCompany.id, name: 'Admin' } },
+    update: { permissions: adminPermissions },
+    create: { companyId: prodCompany.id, name: 'Admin', permissions: adminPermissions },
+  })
+  const prodAccountantRole = await prisma.role.upsert({
+    where: { companyId_name: { companyId: prodCompany.id, name: 'Accountant' } },
+    update: { permissions: accountantPermissions },
+    create: { companyId: prodCompany.id, name: 'Accountant', permissions: accountantPermissions },
+  })
+  await prisma.role.upsert({
+    where: { companyId_name: { companyId: prodCompany.id, name: 'Viewer' } },
+    update: { permissions: viewerPermissions },
+    create: { companyId: prodCompany.id, name: 'Viewer', permissions: viewerPermissions },
+  })
+
+  const prodPasswordHash = await bcrypt.hash('Premgiri@123', 10)
+
+  await prisma.user.upsert({
+    where: { companyId_email: { companyId: prodCompany.id, email: 'subhash@premgiribooks.com' } },
+    update: { roleId: prodAdminRole.id, isActive: true },
+    create: {
+      companyId: prodCompany.id,
+      name: 'Subhash',
+      email: 'subhash@premgiribooks.com',
+      passwordHash: prodPasswordHash,
+      roleId: prodAdminRole.id,
+      uiMode: 'advanced',
+      isActive: true,
+    },
+  })
+  await prisma.user.upsert({
+    where: { companyId_email: { companyId: prodCompany.id, email: 'kamlesh@premgiribooks.com' } },
+    update: { roleId: prodAccountantRole.id, isActive: true },
+    create: {
+      companyId: prodCompany.id,
+      name: 'Kamlesh',
+      email: 'kamlesh@premgiribooks.com',
+      passwordHash: prodPasswordHash,
+      roleId: prodAccountantRole.id,
+      uiMode: 'advanced',
+      isActive: true,
+    },
+  })
+  await prisma.user.upsert({
+    where: { companyId_email: { companyId: prodCompany.id, email: 'renu@premgiribooks.com' } },
+    update: { roleId: prodAccountantRole.id, isActive: true },
+    create: {
+      companyId: prodCompany.id,
+      name: 'Renu',
+      email: 'renu@premgiribooks.com',
+      passwordHash: prodPasswordHash,
+      roleId: prodAccountantRole.id,
+      uiMode: 'advanced',
+      isActive: true,
+    },
+  })
+
+  // Seed voucher sequences for prod company
+  for (const vtype of ['SALES', 'PURCHASE', 'RECEIPT', 'PAYMENT', 'JOURNAL', 'CONTRA', 'CREDIT_NOTE', 'DEBIT_NOTE']) {
+    await prisma.voucherSequence.upsert({
+      where: {
+        companyId_voucherType_financialYear: {
+          companyId: prodCompany.id,
+          voucherType: vtype as VoucherType,
+          financialYear: '2024-25',
+        },
+      },
+      update: {},
+      create: {
+        companyId: prodCompany.id,
+        voucherType: vtype as VoucherType,
+        financialYear: '2024-25',
+        lastSequence: 0,
+      },
+    })
+  }
+
+  console.log('  PremGiri Books prod company + 3 users seeded:')
+  console.log('    subhash@premgiribooks.com  / Premgiri@123  (Owner/Admin)')
+  console.log('    kamlesh@premgiribooks.com  / Premgiri@123  (Accountant)')
+  console.log('    renu@premgiribooks.com     / Premgiri@123  (Accountant)')
+
   // --- 4. Default Account Group Tree (MAST-05) -------------------------------
   const groups: Array<{
     id: string

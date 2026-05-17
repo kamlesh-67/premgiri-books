@@ -307,7 +307,7 @@ export default function Gstr3bPage() {
       <PageHeader
         title={pageTitle}
         subtitle={pageSubtitle}
-        actions={
+        action={
           <div className="flex items-center gap-2">
             <Select value={period} onValueChange={setPeriod}>
               <SelectTrigger className="w-[140px]">

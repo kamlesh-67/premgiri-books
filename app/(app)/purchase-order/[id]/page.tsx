@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, use } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
@@ -68,8 +68,9 @@ interface ConvertResult {
 export default function PurchaseOrderDetailPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
+  const { id } = use(params)
   const router = useRouter()
   const queryClient = useQueryClient()
   const { data: session } = useSession()
@@ -81,9 +82,9 @@ export default function PurchaseOrderDetailPage({
     isLoading,
     isError,
   } = useQuery<OrderDetail>({
-    queryKey: ["purchase-order", params.id],
+    queryKey: ["purchase-order", id],
     queryFn: async () => {
-      const r = await fetch(`/api/v1/orders/${params.id}`)
+      const r = await fetch(`/api/v1/orders/${id}`)
       if (!r.ok) throw new Error("Failed to load order")
       return r.json() as Promise<OrderDetail>
     },
@@ -117,7 +118,7 @@ export default function PurchaseOrderDetailPage({
   // ── Approve mutation ─────────────────────────────────────────────────────
   const approveMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/v1/orders/${params.id}`, {
+      const res = await fetch(`/api/v1/orders/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "approve" }),
@@ -129,7 +130,7 @@ export default function PurchaseOrderDetailPage({
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["purchase-order", params.id] })
+      queryClient.invalidateQueries({ queryKey: ["purchase-order", id] })
       toast.success("Order approved")
     },
     onError: (err: Error) => toast.error(err.message),
@@ -138,7 +139,7 @@ export default function PurchaseOrderDetailPage({
   // ── Cancel mutation ──────────────────────────────────────────────────────
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/v1/orders/${params.id}`, {
+      const res = await fetch(`/api/v1/orders/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "cancel" }),
@@ -150,7 +151,7 @@ export default function PurchaseOrderDetailPage({
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["purchase-order", params.id] })
+      queryClient.invalidateQueries({ queryKey: ["purchase-order", id] })
       toast.success("Order cancelled")
     },
     onError: (err: Error) => toast.error(err.message),
@@ -159,7 +160,7 @@ export default function PurchaseOrderDetailPage({
   // ── Close mutation ───────────────────────────────────────────────────────
   const closeMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/v1/orders/${params.id}`, {
+      const res = await fetch(`/api/v1/orders/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "close" }),
@@ -171,7 +172,7 @@ export default function PurchaseOrderDetailPage({
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["purchase-order", params.id] })
+      queryClient.invalidateQueries({ queryKey: ["purchase-order", id] })
       toast.success("Order closed")
     },
     onError: (err: Error) => toast.error(err.message),
@@ -200,7 +201,7 @@ export default function PurchaseOrderDetailPage({
   // ── Convert (receive goods) mutation ─────────────────────────────────────
   const convertMutation = useMutation({
     mutationFn: async (data: ConvertFormValues) => {
-      const res = await fetch(`/api/v1/orders/${params.id}/convert`, {
+      const res = await fetch(`/api/v1/orders/${id}/convert`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -212,7 +213,7 @@ export default function PurchaseOrderDetailPage({
       return res.json() as Promise<ConvertResult>
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["purchase-order", params.id] })
+      queryClient.invalidateQueries({ queryKey: ["purchase-order", id] })
       toast.success(`Purchase Invoice ${data.voucherNo} created`)
       router.push(`/vouchers/purchase/${data.voucherId}`)
     },
