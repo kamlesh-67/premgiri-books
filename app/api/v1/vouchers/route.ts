@@ -213,7 +213,9 @@ export async function POST(request: NextRequest) {
     if (err instanceof ValidationError) {
       return NextResponse.json({ error: err.message }, { status: 422 })
     }
-    throw err
+    const message = err instanceof Error ? err.message : 'Internal server error'
+    console.error('[POST /api/v1/vouchers]', err)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
