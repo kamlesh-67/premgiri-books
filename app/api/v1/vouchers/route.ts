@@ -83,13 +83,81 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Entry builder for PURCHASE and SALES — calculate totals from items and build entries
+  // Entry builder for PURCHASE and SALES — auto-resolve standard ledgers, compute GST server-side
   if ((parsedData.voucherType === 'PURCHASE' || parsedData.voucherType === 'SALES') && (parsedData.items as Array<Record<string, unknown>>).length > 0) {
+    const companyId = session.user.companyId
+    const isPurchase = parsedData.voucherType === 'PURCHASE'
+
+    // Resolve (or auto-create) the standard trading ledgers
+    const [purchaseGroup, salesGroup, gstGroup] = await Promise.all([
+      prisma.accountGroup.findFirst({ where: { companyId, name: 'Purchase Accounts' } }),
+      prisma.accountGroup.findFirst({ where: { companyId, name: 'Direct Income' } }),
+      prisma.accountGroup.findFirst({ where: { companyId, name: 'Duties & Taxes' } }),
+    ])
+
+    const [tradingLedger, gstLedger] = await Promise.all([
+      // Purchase Account or Sales Income — upsert so it always exists
+      isPurchase
+        ? prisma.ledger.upsert({
+            where: { companyId_name: { companyId, name: 'Purchase Account' } },
+            update: {},
+            create: {
+              companyId, name: 'Purchase Account',
+              groupId: purchaseGroup!.id,
+              openingBalance: '0', drCr: 'DR',
+              gstRegType: 'UNREGISTERED', isActive: true,
+            },
+          })
+        : prisma.ledger.upsert({
+            where: { companyId_name: { companyId, name: 'Sales Income' } },
+            update: {},
+            create: {
+              companyId, name: 'Sales Income',
+              groupId: salesGroup!.id,
+              openingBalance: '0', drCr: 'CR',
+              gstRegType: 'UNREGISTERED', isActive: true,
+            },
+          }),
+      // Single GST Payable ledger for all GST (input and output)
+      prisma.ledger.upsert({
+        where: { companyId_name: { companyId, name: 'GST Payable' } },
+        update: {},
+        create: {
+          companyId, name: 'GST Payable',
+          groupId: gstGroup!.id,
+          openingBalance: '0', drCr: 'CR',
+          gstRegType: 'UNREGISTERED', isActive: true,
+        },
+      }),
+    ])
+
+    if (!purchaseGroup || !salesGroup || !gstGroup) {
+      return NextResponse.json(
+        { error: 'Standard account groups (Purchase Accounts / Direct Income / Duties & Taxes) not found. Please run the database seed for this company.' },
+        { status: 422 }
+      )
+    }
+
+    // Compute totals from items — GST rate is per-item gstRateOverride or looked up from stock master
     const items = parsedData.items as Array<Record<string, unknown>>
+    const itemIds = items.map((i) => i.itemId as string)
+    const stockItems = await prisma.stockItem.findMany({
+      where: { companyId, id: { in: itemIds } },
+      select: { id: true, gstRate: true },
+    })
+    const rateByItemId = Object.fromEntries(stockItems.map((s) => [s.id, Number(s.gstRate)]))
+
+    // Determine intra vs inter-state using company and party state codes
+    const [company, partyLedger] = await Promise.all([
+      prisma.company.findUnique({ where: { id: companyId }, select: { stateCode: true } }),
+      prisma.ledger.findUnique({ where: { id: parsedData.partyLedgerId as string }, select: { gstin: true } }),
+    ])
+    const companyState = company?.stateCode ?? ''
+    const partyState = partyLedger?.gstin ? partyLedger.gstin.substring(0, 2) : companyState
+    const isInterState = companyState !== '' && partyState !== '' && companyState !== partyState
+
     let taxableTotal = new Decimal(0)
-    let cgstTotal = new Decimal(0)
-    let sgstTotal = new Decimal(0)
-    let igstTotal = new Decimal(0)
+    let gstTotal = new Decimal(0)
 
     for (const item of items) {
       const qty = new Decimal(String(item.qty || 0))
@@ -98,71 +166,38 @@ export async function POST(request: NextRequest) {
       const itemTaxable = qty.times(rate).times(new Decimal(1).minus(discPct.dividedBy(100)))
       taxableTotal = taxableTotal.plus(itemTaxable)
 
-      cgstTotal = cgstTotal.plus(new Decimal(String(item.cgstAmt || 0)))
-      sgstTotal = sgstTotal.plus(new Decimal(String(item.sgstAmt || 0)))
-      igstTotal = igstTotal.plus(new Decimal(String(item.igstAmt || 0)))
-    }
-
-    const grandTotal = taxableTotal.plus(cgstTotal).plus(sgstTotal).plus(igstTotal)
-
-    // Resolve standard ledgers for Purchase/CGST/SGST/IGST accounts
-    // These must exist in the chart of accounts (seeded with company)
-    const [purchaseLedger, cgstLedger, sgstLedger, igstLedger] = await Promise.all([
-      prisma.ledger.findFirst({
-        where: { companyId: session.user.companyId, name: { in: ['Purchase', 'Purchases'] } },
-      }),
-      prisma.ledger.findFirst({
-        where: { companyId: session.user.companyId, name: { in: ['CGST Input', 'CGST Input Tax'] } },
-      }),
-      prisma.ledger.findFirst({
-        where: { companyId: session.user.companyId, name: { in: ['SGST Input', 'SGST Input Tax'] } },
-      }),
-      prisma.ledger.findFirst({
-        where: { companyId: session.user.companyId, name: { in: ['IGST Input', 'IGST Input Tax'] } },
-      }),
-    ])
-
-    if (!purchaseLedger) {
-      return NextResponse.json(
-        { error: 'Purchase account not found in chart of accounts. Please ensure company master data is properly seeded.' },
-        { status: 422 }
+      const gstRate = new Decimal(
+        String(item.gstRateOverride ?? rateByItemId[item.itemId as string] ?? 0)
       )
+      gstTotal = gstTotal.plus(itemTaxable.times(gstRate).dividedBy(100))
     }
 
-    // Build entries: DR purchases/sales, taxes | CR party
+    const grandTotal = taxableTotal.plus(gstTotal)
+
+    // Double-entry: trading side + GST side + party side
     const entries: Array<Record<string, unknown>> = []
-    if (taxableTotal.gt(0) && purchaseLedger) {
+
+    if (taxableTotal.gt(0)) {
       entries.push({
-        ledgerId: purchaseLedger.id,
-        drCr: 'DR',
+        ledgerId: tradingLedger.id,
+        drCr: isPurchase ? 'DR' : 'CR',
         amount: taxableTotal.toDecimalPlaces(2).toString(),
+        narration: isPurchase ? 'Purchases' : 'Sales',
       })
     }
-    if (cgstTotal.gt(0) && cgstLedger) {
+    if (gstTotal.gt(0)) {
       entries.push({
-        ledgerId: cgstLedger.id,
-        drCr: parsedData.voucherType === 'PURCHASE' ? 'DR' : 'CR',
-        amount: cgstTotal.toDecimalPlaces(2).toString(),
-      })
-    }
-    if (sgstTotal.gt(0) && sgstLedger) {
-      entries.push({
-        ledgerId: sgstLedger.id,
-        drCr: parsedData.voucherType === 'PURCHASE' ? 'DR' : 'CR',
-        amount: sgstTotal.toDecimalPlaces(2).toString(),
-      })
-    }
-    if (igstTotal.gt(0) && igstLedger) {
-      entries.push({
-        ledgerId: igstLedger.id,
-        drCr: parsedData.voucherType === 'PURCHASE' ? 'DR' : 'CR',
-        amount: igstTotal.toDecimalPlaces(2).toString(),
+        ledgerId: gstLedger.id,
+        // Purchase: DR (input tax, reduces liability) | Sales: CR (output tax, increases liability)
+        drCr: isPurchase ? 'DR' : 'CR',
+        amount: gstTotal.toDecimalPlaces(2).toString(),
+        narration: isInterState ? 'IGST' : 'CGST + SGST',
       })
     }
     if (grandTotal.gt(0)) {
       entries.push({
         ledgerId: parsedData.partyLedgerId,
-        drCr: parsedData.voucherType === 'PURCHASE' ? 'CR' : 'DR',
+        drCr: isPurchase ? 'CR' : 'DR',
         amount: grandTotal.toDecimalPlaces(2).toString(),
       })
     }
