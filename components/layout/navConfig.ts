@@ -119,7 +119,7 @@ export const navGroups: NavGroup[] = [
     label: 'TRANSACTIONS',
     items: [
       {
-        href: '/sales-invoice/new',
+        href: '/sales-invoice',
         simpleLabel: 'Sell to Customer',
         advancedLabel: 'Sales Invoice',
         icon: ArrowUpRight,
@@ -127,7 +127,7 @@ export const navGroups: NavGroup[] = [
         visibleIn: ['simple', 'advanced'],
       },
       {
-        href: '/purchase-invoice/new',
+        href: '/purchase-invoice',
         simpleLabel: 'Buy from Supplier',
         advancedLabel: 'Purchase Invoice',
         icon: ShoppingCart,
