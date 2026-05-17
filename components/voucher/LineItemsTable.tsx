@@ -23,6 +23,9 @@ import {
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
+// Indian GST slab rates
+const GST_RATES = ['0', '0.1', '0.25', '1', '1.5', '3', '5', '6', '7.5', '12', '18', '28']
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface StockItemOption {
@@ -371,29 +374,29 @@ export function LineItemsTable({
                     />
                   </td>
 
-                  {/* GST % */}
+                  {/* GST % — dropdown with fixed Indian slab rates */}
                   <td className="px-3 py-2">
-                    {isAdvanced ? (
-                      <Controller
-                        control={control}
-                        name={`items.${index}.gstRateOverride`}
-                        render={({ field: f }) => (
-                          <Input
-                            {...f}
-                            value={f.value ?? gstDisplay}
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            className="text-right text-sm w-full"
-                          />
-                        )}
-                      />
-                    ) : (
-                      <span className="text-sm text-gray-600 tabular-nums block text-right pr-1">
-                        {gstDisplay}%
-                      </span>
-                    )}
+                    <Controller
+                      control={control}
+                      name={`items.${index}.gstRateOverride`}
+                      render={({ field: f }) => {
+                        const effectiveRate = String(f.value ?? gstDisplay)
+                        const ratesWithCurrent = GST_RATES.includes(effectiveRate)
+                          ? GST_RATES
+                          : [effectiveRate, ...GST_RATES]
+                        return (
+                          <select
+                            value={effectiveRate}
+                            onChange={(e) => f.onChange(parseFloat(e.target.value))}
+                            className="w-full min-w-[68px] border border-gray-200 rounded-md px-1.5 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-purple-600"
+                          >
+                            {ratesWithCurrent.map((r) => (
+                              <option key={r} value={r}>{r}%</option>
+                            ))}
+                          </select>
+                        )
+                      }}
+                    />
                   </td>
 
                   {/* CGST ₹ */}

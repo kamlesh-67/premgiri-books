@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2, Ruler } from 'lucide-react'
@@ -123,7 +123,7 @@ export default function UomClient() {
 
   return (
     <TooltipProvider>
-      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
         <PageHeader
           title="Units of Measure"
           subtitle="Define measurement units for products"

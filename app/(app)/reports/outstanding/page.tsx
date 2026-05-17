@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -134,7 +134,7 @@ export default function OutstandingPage() {
     .reduce((sum, r) => sum.plus(new Decimal(r.outstandingAmount)), new Decimal(0))
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title={activeTab === 'receivable' ? 'Outstanding Receivables' : 'Outstanding Payables'}
         subtitle={

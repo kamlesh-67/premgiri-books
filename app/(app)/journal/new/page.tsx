@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -22,7 +22,7 @@ export default function JournalNew() {
   if (uiMode === "simple") return null;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="New Journal Entry"
         subtitle="Manual accounting adjustment — debit and credit any ledger accounts"

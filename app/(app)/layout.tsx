@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { Topbar } from '@/components/layout/Topbar'
 import { AppSidebar } from '@/components/layout/AppSidebar'
 import { AppShellClient } from '@/components/layout/AppShellClient'
+import { AutoBreadcrumb } from '@/components/layout/AutoBreadcrumb'
 import { UiModeProvider } from '@/components/layout/UiModeProvider'
 import type { UiMode } from '@/lib/stores/uiStore'
 
@@ -44,7 +45,9 @@ export default async function AppLayout({
 
       <AppShellClient />
 
-      <main className="ml-[240px] pt-14 min-h-screen bg-gray-50">
+      {/* ml-0 on mobile (sidebar is a drawer); ml-[240px] on md+ (sidebar is fixed) */}
+      <main className="ml-0 md:ml-[240px] pt-14 min-h-screen bg-gray-50">
+        <AutoBreadcrumb />
         {children}
       </main>
     </>

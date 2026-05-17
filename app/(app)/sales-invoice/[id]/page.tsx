@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -151,7 +151,7 @@ export default function SalesInvoiceDetailPage({
   // ── Loading / error states ───────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-3 sm:p-4 md:p-6 max-w-7xl mx-auto">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-100 rounded w-1/3" />
           <div className="h-40 bg-gray-100 rounded" />
@@ -163,7 +163,7 @@ export default function SalesInvoiceDetailPage({
 
   if (isError || !voucher) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-3 sm:p-4 md:p-6 max-w-7xl mx-auto">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <p className="text-red-700 font-medium">Invoice not found</p>
           <p className="text-sm text-red-500 mt-1">
@@ -224,7 +224,7 @@ export default function SalesInvoiceDetailPage({
   const isBalanced = drTotal.equals(crTotal) && accountingEntries.length > 0;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       {/* ── Page Header ── */}
       <PageHeader
         title={voucher.voucherNo}

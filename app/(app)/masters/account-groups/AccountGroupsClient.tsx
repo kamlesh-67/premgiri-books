@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useQuery } from '@tanstack/react-query'
 import { Lock, ChevronRight, Info } from 'lucide-react'
@@ -148,7 +148,7 @@ export default function AccountGroupsClient() {
   const defaultValues = topLevelGroups.map(g => g.id)
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       {/* Page header — no action button (read-only per D-22) */}
       <PageHeader
         title="Account Groups"

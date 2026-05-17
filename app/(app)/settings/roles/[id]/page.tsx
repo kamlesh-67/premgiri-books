@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { use, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -140,7 +140,7 @@ export default function EditRolePage({ params }: PageProps) {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title={role?.name ?? 'Edit Role'}
         subtitle="Update role name and permissions"

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -113,7 +113,7 @@ export default function StockLedgerPage() {
   })
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Stock Ledger"
         subtitle="Item-level inflow and outflow history with running balance"

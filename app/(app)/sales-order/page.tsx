@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -96,7 +96,7 @@ export default function SalesOrdersPage() {
     .reduce((sum, o) => sum.plus(new Decimal(o.totalAmount || '0')), new Decimal(0))
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title={pageTitle}
         subtitle={

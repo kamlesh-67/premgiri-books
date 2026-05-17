@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+﻿import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { Download, CheckCircle2, XCircle } from 'lucide-react'
 import { PageHeader } from '@/components/primitives/PageHeader'
@@ -69,7 +69,7 @@ export default async function BalanceSheetPage({
   })
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       {/* Schedule III — Balance Sheet */}
       <PageHeader
         title="Balance Sheet"

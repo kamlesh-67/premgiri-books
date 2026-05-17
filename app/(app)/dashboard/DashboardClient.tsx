@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -50,7 +50,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
   const fyLabel = `${fyYear}-${String(fyYear + 1).slice(2)}`
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       {/* Page header with view toggle in action slot — D-06 */}
       <PageHeader
         title="Dashboard"

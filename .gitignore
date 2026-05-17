@@ -2,6 +2,9 @@
 .env
 .env.local
 .env.*.local
+
+# MCP config — contains API tokens, never commit
+.mcp.json
 # DO NOT gitignore .env.example — it is committed intentionally
 
 # Next.js

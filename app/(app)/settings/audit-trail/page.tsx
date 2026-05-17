@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { Fragment, useState } from 'react'
 import { ShieldOff, ChevronDown } from 'lucide-react'
@@ -198,7 +198,7 @@ export default function AuditTrailPage() {
   // ── Permission gate ──────────────────────────────────────────────────────────
   if (!isAdmin) {
     return (
-      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <ShieldOff className="h-12 w-12 text-gray-300 mb-4" />
           <h2 className="text-lg font-semibold text-gray-700 mb-2">
@@ -276,7 +276,7 @@ export default function AuditTrailPage() {
   const isEmpty = !isLoading && rows.length === 0
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Audit Trail"
         subtitle="All changes made to your company data"
