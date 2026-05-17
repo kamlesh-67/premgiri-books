@@ -83,6 +83,86 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Entry builder for PURCHASE and SALES — calculate totals from items and build entries
+  if ((parsedData.voucherType === 'PURCHASE' || parsedData.voucherType === 'SALES') && (parsedData.items as Array<Record<string, unknown>>).length > 0) {
+    const items = parsedData.items as Array<Record<string, unknown>>
+    let taxableTotal = new Decimal(0)
+    let cgstTotal = new Decimal(0)
+    let sgstTotal = new Decimal(0)
+    let igstTotal = new Decimal(0)
+
+    for (const item of items) {
+      const qty = new Decimal(String(item.qty || 0))
+      const rate = new Decimal(String(item.rate || 0))
+      const discPct = new Decimal(String(item.discountPct || 0))
+      const itemTaxable = qty.times(rate).times(new Decimal(1).minus(discPct.dividedBy(100)))
+      taxableTotal = taxableTotal.plus(itemTaxable)
+
+      cgstTotal = cgstTotal.plus(new Decimal(String(item.cgstAmt || 0)))
+      sgstTotal = sgstTotal.plus(new Decimal(String(item.sgstAmt || 0)))
+      igstTotal = igstTotal.plus(new Decimal(String(item.igstAmt || 0)))
+    }
+
+    const grandTotal = taxableTotal.plus(cgstTotal).plus(sgstTotal).plus(igstTotal)
+
+    // Resolve standard ledgers for Purchase/CGST/SGST/IGST accounts
+    // These must exist in the chart of accounts (seeded with company)
+    const [purchaseLedger, cgstLedger, sgstLedger, igstLedger] = await Promise.all([
+      prisma.ledger.findFirst({
+        where: { companyId: session.user.companyId, name: { in: ['Purchase', 'Purchases'] } },
+      }),
+      prisma.ledger.findFirst({
+        where: { companyId: session.user.companyId, name: { in: ['CGST Input', 'CGST Input Tax'] } },
+      }),
+      prisma.ledger.findFirst({
+        where: { companyId: session.user.companyId, name: { in: ['SGST Input', 'SGST Input Tax'] } },
+      }),
+      prisma.ledger.findFirst({
+        where: { companyId: session.user.companyId, name: { in: ['IGST Input', 'IGST Input Tax'] } },
+      }),
+    ])
+
+    // Build entries: DR purchases/sales, taxes | CR party
+    const entries: Array<Record<string, unknown>> = []
+    if (taxableTotal.gt(0) && purchaseLedger) {
+      entries.push({
+        ledgerId: purchaseLedger.id,
+        drCr: 'DR',
+        amount: taxableTotal.toDecimalPlaces(2).toString(),
+      })
+    }
+    if (cgstTotal.gt(0) && cgstLedger) {
+      entries.push({
+        ledgerId: cgstLedger.id,
+        drCr: parsedData.voucherType === 'PURCHASE' ? 'DR' : 'CR',
+        amount: cgstTotal.toDecimalPlaces(2).toString(),
+      })
+    }
+    if (sgstTotal.gt(0) && sgstLedger) {
+      entries.push({
+        ledgerId: sgstLedger.id,
+        drCr: parsedData.voucherType === 'PURCHASE' ? 'DR' : 'CR',
+        amount: sgstTotal.toDecimalPlaces(2).toString(),
+      })
+    }
+    if (igstTotal.gt(0) && igstLedger) {
+      entries.push({
+        ledgerId: igstLedger.id,
+        drCr: parsedData.voucherType === 'PURCHASE' ? 'DR' : 'CR',
+        amount: igstTotal.toDecimalPlaces(2).toString(),
+      })
+    }
+    if (grandTotal.gt(0)) {
+      entries.push({
+        ledgerId: parsedData.partyLedgerId,
+        drCr: parsedData.voucherType === 'PURCHASE' ? 'CR' : 'DR',
+        amount: grandTotal.toDecimalPlaces(2).toString(),
+      })
+    }
+
+    parsedData.entries = entries
+  }
+
   try {
     // companyId is injected from session inside createVoucher — never from parsed.data (T-02-12)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
