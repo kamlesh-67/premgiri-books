@@ -2,26 +2,51 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { stockItemSchema } from '@/lib/schemas/masters'
+import { Decimal } from 'decimal.js'
 
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const companyId = session.user.companyId
-  const items = await prisma.stockItem.findMany({
-    where: { companyId, isActive: true },
-    include: { uom: { select: { name: true, symbol: true } } },
-    orderBy: { name: 'asc' },
-  })
+
+  const [items, inwardRows, outwardRows] = await Promise.all([
+    prisma.stockItem.findMany({
+      where: { companyId, isActive: true },
+      include: { uom: { select: { name: true, symbol: true } } },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.voucherItem.groupBy({
+      by: ['itemId'],
+      where: { voucher: { companyId, voucherType: 'PURCHASE', status: 'POSTED' } },
+      _sum: { qty: true },
+    }),
+    prisma.voucherItem.groupBy({
+      by: ['itemId'],
+      where: { voucher: { companyId, voucherType: 'SALES', status: 'POSTED' } },
+      _sum: { qty: true },
+    }),
+  ])
+
+  const inwardMap = new Map(inwardRows.map((r) => [r.itemId, r._sum.qty?.toString() ?? '0']))
+  const outwardMap = new Map(outwardRows.map((r) => [r.itemId, r._sum.qty?.toString() ?? '0']))
 
   return NextResponse.json(
-    items.map((i) => ({
-      ...i,
-      gstRate: i.gstRate.toString(),
-      openingRate: i.openingRate.toString(),
-      openingQty: i.openingQty.toString(),
-      reorderQty: i.reorderQty?.toString() ?? '0',
-    }))
+    items.map((i) => {
+      const opening = new Decimal(i.openingQty.toString())
+      const inward = new Decimal(inwardMap.get(i.id) ?? '0')
+      const outward = new Decimal(outwardMap.get(i.id) ?? '0')
+      const currentQty = Decimal.max(opening.plus(inward).minus(outward), new Decimal(0))
+
+      return {
+        ...i,
+        gstRate: i.gstRate.toString(),
+        openingRate: i.openingRate.toString(),
+        openingQty: i.openingQty.toString(),
+        reorderQty: i.reorderQty?.toString() ?? '0',
+        currentQty: currentQty.toString(),
+      }
+    })
   )
 }
 

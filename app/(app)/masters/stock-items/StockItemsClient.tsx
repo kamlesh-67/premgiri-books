@@ -37,6 +37,7 @@ interface StockItem {
   uomName: string
   openingRate: string
   openingQty: string
+  currentQty: string
   reorderQty: string
   isActive: boolean
 }
@@ -146,7 +147,7 @@ export function StockItemsClient({ initialItems, uiMode, uoms }: StockItemsClien
                       Unit
                     </th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-28">
-                      Opening Stock
+                      Current Stock
                     </th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide w-28">
                       Price
@@ -173,7 +174,7 @@ export function StockItemsClient({ initialItems, uiMode, uoms }: StockItemsClien
                         {item.uomSymbol}
                       </td>
                       <td className="px-4 py-3 text-right text-sm text-gray-700 tabular-nums">
-                        {item.openingQty} {item.uomSymbol}
+                        {item.currentQty} {item.uomSymbol}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <AmountDisplay amount={item.openingRate} size="sm" />
