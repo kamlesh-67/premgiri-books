@@ -779,6 +779,8 @@ enum GstRegType {
 enum SupplyType {
   B2B
   B2C
+  B2CS
+  B2CL
   EXPORT
   SEZ
 }
