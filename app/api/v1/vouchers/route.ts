@@ -122,6 +122,13 @@ export async function POST(request: NextRequest) {
       }),
     ])
 
+    if (!purchaseLedger) {
+      return NextResponse.json(
+        { error: 'Purchase account not found in chart of accounts. Please ensure company master data is properly seeded.' },
+        { status: 422 }
+      )
+    }
+
     // Build entries: DR purchases/sales, taxes | CR party
     const entries: Array<Record<string, unknown>> = []
     if (taxableTotal.gt(0) && purchaseLedger) {

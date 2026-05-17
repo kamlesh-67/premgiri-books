@@ -248,23 +248,40 @@ async function postVoucherAPI(data: PurchaseInvoiceInput): Promise<{ id: string;
     body: JSON.stringify(data),
     headers: { "Content-Type": "application/json" },
   });
-  if (!res.ok) {
-    const err = await res.json() as Record<string, unknown>;
-    let message = "Failed to save purchase invoice";
 
-    if (err.error) {
-      message = String(err.error);
-    }
-    if (err.issues && Array.isArray(err.issues)) {
-      const firstIssue = (err.issues[0] as Record<string, unknown>)?.message;
-      if (firstIssue) {
-        message = `Validation error: ${firstIssue}`;
+  let message = "Failed to save purchase invoice";
+
+  try {
+    if (!res.ok) {
+      const text = await res.text();
+      let err: Record<string, unknown> = {};
+      try {
+        err = JSON.parse(text);
+      } catch {
+        message = `Server error (${res.status}): ${text.substring(0, 200)}`;
+        throw new Error(message);
       }
+
+      if (err.error) {
+        message = String(err.error);
+      }
+      if (err.issues && Array.isArray(err.issues)) {
+        const firstIssue = (err.issues[0] as Record<string, unknown>)?.message;
+        if (firstIssue) {
+          message = `Validation error: ${firstIssue}`;
+        }
+      }
+
+      throw new Error(message);
     }
 
+    const text = await res.text();
+    const json = JSON.parse(text);
+    return json as Promise<{ id: string; voucherNo: string }>;
+  } catch (err) {
+    if (err instanceof Error) throw err;
     throw new Error(message);
   }
-  return res.json() as Promise<{ id: string; voucherNo: string }>;
 }
 
 // ---------------------------------------------------------------------------
