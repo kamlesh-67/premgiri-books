@@ -45,7 +45,7 @@ const lineItemSchema = z.object({
   qty: positiveDecimalString('Quantity must be more than 0'),
   rate: nonNegativeDecimalString('Price cannot be negative'),
   discountPct: z.string().optional().default('0'),
-  hsnCode: z.string().max(8).optional(),
+  hsnCode: z.string().max(12).optional(),
   // VOUCH-02: ITC eligibility is tracked per line item for purchase invoices
   itcEligible: z.boolean().default(true),
   // Advanced Mode only — override GST rate per line (D-18)

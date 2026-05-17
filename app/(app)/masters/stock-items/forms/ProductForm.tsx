@@ -179,7 +179,7 @@ export function ProductForm({ item, uoms, onClose, onSuccess }: ProductFormProps
                       value={field.value ?? ''}
                     />
                   </FormControl>
-                  <p className="text-xs text-gray-400 mt-1">Enter 4 or 6 digit HSN code</p>
+                  <p className="text-xs text-gray-400 mt-1">Enter 2, 4, 6, 8, or 12 digit HSN code</p>
                   <FormMessage />
                 </FormItem>
               )}

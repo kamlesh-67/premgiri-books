@@ -22,6 +22,24 @@ export async function GET(request: NextRequest) {
     const partyGroupIds = partyGroups.map((g) => g.id)
     const groupNameById = Object.fromEntries(partyGroups.map((g) => [g.id, g.name]))
 
+    // Auto-ensure the Walk-in Customer ledger exists (for one-time sales)
+    const sundryDebtors = partyGroups.find((g) => g.name === 'Sundry Debtors')
+    if (sundryDebtors) {
+      await prisma.ledger.upsert({
+        where: { companyId_name: { companyId, name: 'Walk-in Customer' } },
+        update: {},
+        create: {
+          name: 'Walk-in Customer',
+          companyId,
+          groupId: sundryDebtors.id,
+          openingBalance: '0',
+          drCr: 'DR',
+          gstRegType: 'CONSUMER',
+          isActive: true,
+        },
+      })
+    }
+
     const parties = await prisma.ledger.findMany({
       where: { companyId, groupId: { in: partyGroupIds } },
       include: { group: { select: { name: true } } },

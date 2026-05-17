@@ -15,11 +15,11 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
+  CommandEmpty,
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
@@ -39,14 +39,15 @@ export interface GodownOption {
 }
 
 export interface LineItemsTableProps {
-  control: Control<any>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  setValue: (name: string, value: any) => void
+  control: Control<any> // eslint-disable-line @typescript-eslint/no-explicit-any
+  setValue: (name: string, value: any) => void // eslint-disable-line @typescript-eslint/no-explicit-any
   voucherType: 'SALES' | 'PURCHASE' | 'CREDIT_NOTE' | 'DEBIT_NOTE'
   companyStateCode: string
   partyStateCode: string
   stockItems: StockItemOption[]
   godowns?: GodownOption[]
+  defaultGodownId?: string
+  onRequestCreate?: (name: string, rowIndex: number) => void
 }
 
 // ─── Product Combobox ─────────────────────────────────────────────────────────
@@ -55,21 +56,34 @@ interface ProductComboboxProps {
   value: string
   onChange: (itemId: string) => void
   onSelect: (item: StockItemOption) => void
+  onRequestCreate?: (name: string) => void
   stockItems: StockItemOption[]
 }
 
-function ProductCombobox({ value, onChange, onSelect, stockItems }: ProductComboboxProps) {
+function ProductCombobox({
+  value,
+  onChange,
+  onSelect,
+  onRequestCreate,
+  stockItems,
+}: ProductComboboxProps) {
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
   const selectedItem = stockItems.find((item) => item.id === value)
 
+  function handleClose(o: boolean) {
+    setOpen(o)
+    if (!o) setQuery('')
+  }
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleClose}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full min-w-[160px] justify-between text-sm font-normal text-gray-700 border-gray-200 hover:bg-gray-50"
+          className="w-full min-w-[150px] justify-between text-sm font-normal text-gray-700 border-gray-200 hover:bg-gray-50"
         >
           <span className="truncate">
             {selectedItem ? selectedItem.name : 'Select product...'}
@@ -79,7 +93,11 @@ function ProductCombobox({ value, onChange, onSelect, stockItems }: ProductCombo
       </PopoverTrigger>
       <PopoverContent className="w-[300px] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Search products..." />
+          <CommandInput
+            placeholder="Search products..."
+            value={query}
+            onValueChange={setQuery}
+          />
           <CommandList>
             <CommandEmpty>No product found.</CommandEmpty>
             <CommandGroup>
@@ -91,6 +109,7 @@ function ProductCombobox({ value, onChange, onSelect, stockItems }: ProductCombo
                     onChange(item.id)
                     onSelect(item)
                     setOpen(false)
+                    setQuery('')
                   }}
                 >
                   <Check
@@ -104,6 +123,24 @@ function ProductCombobox({ value, onChange, onSelect, stockItems }: ProductCombo
                 </CommandItem>
               ))}
             </CommandGroup>
+
+            {/* Quick create option — shown when user has typed something */}
+            {query.trim() && onRequestCreate && (
+              <CommandGroup>
+                <CommandItem
+                  value={`__create__${query}`}
+                  onSelect={() => {
+                    onRequestCreate(query.trim())
+                    setOpen(false)
+                    setQuery('')
+                  }}
+                  className="text-purple-600 font-medium"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create &quot;{query.trim()}&quot;
+                </CommandItem>
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>
@@ -120,7 +157,8 @@ export function LineItemsTable({
   companyStateCode,
   partyStateCode,
   stockItems,
-  godowns,
+  defaultGodownId,
+  onRequestCreate,
 }: LineItemsTableProps) {
   const { uiMode } = useUiStore()
   const isAdvanced = uiMode === 'advanced'
@@ -128,9 +166,10 @@ export function LineItemsTable({
   const showITC = isPurchase && isAdvanced
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
-  const watchedItems = useWatch({ control, name: 'items' }) as Array<Record<string, string | number | boolean | undefined>>
+  const watchedItems = useWatch({ control, name: 'items' }) as Array<
+    Record<string, string | number | boolean | undefined>
+  >
 
-  // Compute per-row GST amounts client-side
   const rowAmounts = (watchedItems ?? []).map((item) => {
     const qty = new Decimal(String(item?.qty ?? '0'))
     const rate = new Decimal(String(item?.rate ?? '0'))
@@ -151,6 +190,10 @@ export function LineItemsTable({
     return { taxable, cgst, sgst, igst, total, taxType }
   })
 
+  // Determine SGST vs IGST column label based on current rows
+  const anyInterState = rowAmounts.some((r) => r.taxType === 'INTER_STATE')
+  const sgstIgstHeader = anyInterState ? 'IGST (₹)' : 'SGST (₹)'
+
   function handleProductSelect(index: number, item: StockItemOption) {
     setValue(`items.${index}.itemId`, item.id)
     setValue(`items.${index}._gstRate`, item.gstRate)
@@ -168,65 +211,50 @@ export function LineItemsTable({
       _gstRate: 0,
       gstRateOverride: undefined,
       itcEligible: isPurchase,
+      godownId: defaultGodownId ?? '',
     })
   }
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-100">
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full min-w-[860px]">
           {/* ── Header ── */}
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide w-[180px]">
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide w-[180px]">
                 Product
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[80px]">
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[72px]">
                 Qty
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[100px]">
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[90px]">
                 Rate (₹)
               </th>
-              {isAdvanced && (
-                <>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[80px]">
-                    Disc %
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide w-[90px]">
-                    HSN
-                  </th>
-                </>
-              )}
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[80px]">
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[64px]">
+                Disc %
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide w-[82px]">
+                HSN
+              </th>
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[64px]">
                 GST %
               </th>
-              {isAdvanced && (
-                <>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[90px]">
-                    CGST (₹)
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[90px]">
-                    SGST (₹)
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[90px]">
-                    IGST (₹)
-                  </th>
-                </>
-              )}
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[82px]">
+                CGST (₹)
+              </th>
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[82px]">
+                {sgstIgstHeader}
+              </th>
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[100px]">
+                Amount (₹)
+              </th>
               {showITC && (
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wide w-[60px]">
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wide w-[50px]">
                   ITC
                 </th>
               )}
-              {isAdvanced && godowns && godowns.length > 0 && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide w-[110px]">
-                  Godown
-                </th>
-              )}
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[110px]">
-                Amount (₹)
-              </th>
-              <th className="px-4 py-3 w-[48px]" />
+              <th className="px-3 py-3 w-[40px]" />
             </tr>
           </thead>
 
@@ -235,11 +263,15 @@ export function LineItemsTable({
             {fields.map((field, index) => {
               const amounts = rowAmounts[index]
               const isIntra = amounts?.taxType === 'INTRA_STATE'
+              const gstDisplay = watchedItems?.[index]?._gstRate ?? 0
 
               return (
-                <tr key={field.id} className="hover:bg-gray-50 border-b border-gray-100">
+                <tr
+                  key={field.id}
+                  className="hover:bg-gray-50 border-b border-gray-100"
+                >
                   {/* Product */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <Controller
                       control={control}
                       name={`items.${index}.itemId`}
@@ -248,6 +280,11 @@ export function LineItemsTable({
                           value={f.value}
                           onChange={f.onChange}
                           onSelect={(item) => handleProductSelect(index, item)}
+                          onRequestCreate={
+                            onRequestCreate
+                              ? (name) => onRequestCreate(name, index)
+                              : undefined
+                          }
                           stockItems={stockItems}
                         />
                       )}
@@ -255,7 +292,7 @@ export function LineItemsTable({
                   </td>
 
                   {/* Qty */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <Controller
                       control={control}
                       name={`items.${index}.qty`}
@@ -272,7 +309,7 @@ export function LineItemsTable({
                   </td>
 
                   {/* Rate */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <Controller
                       control={control}
                       name={`items.${index}.rate`}
@@ -288,56 +325,51 @@ export function LineItemsTable({
                     />
                   </td>
 
-                  {/* Discount % — Advanced Mode only */}
-                  {isAdvanced && (
-                    <td className="px-4 py-3">
-                      <Controller
-                        control={control}
-                        name={`items.${index}.discountPct`}
-                        render={({ field: f }) => (
-                          <Input
-                            {...f}
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="any"
-                            className="text-right text-sm w-full"
-                          />
-                        )}
-                      />
-                    </td>
-                  )}
+                  {/* Disc % */}
+                  <td className="px-3 py-2">
+                    <Controller
+                      control={control}
+                      name={`items.${index}.discountPct`}
+                      render={({ field: f }) => (
+                        <Input
+                          {...f}
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="any"
+                          className="text-right text-sm w-full"
+                        />
+                      )}
+                    />
+                  </td>
 
-                  {/* HSN — Advanced Mode only */}
-                  {isAdvanced && (
-                    <td className="px-4 py-3">
-                      <Controller
-                        control={control}
-                        name={`items.${index}.hsnCode`}
-                        render={({ field: f }) => (
-                          <Input
-                            {...f}
-                            type="text"
-                            maxLength={8}
-                            placeholder="HSN"
-                            className="text-sm w-full"
-                          />
-                        )}
-                      />
-                    </td>
-                  )}
+                  {/* HSN */}
+                  <td className="px-3 py-2">
+                    <Controller
+                      control={control}
+                      name={`items.${index}.hsnCode`}
+                      render={({ field: f }) => (
+                        <Input
+                          {...f}
+                          type="text"
+                          maxLength={12}
+                          placeholder="HSN"
+                          className="text-sm w-full"
+                        />
+                      )}
+                    />
+                  </td>
 
                   {/* GST % */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     {isAdvanced ? (
-                      // Advanced Mode: editable gstRateOverride (D-18)
                       <Controller
                         control={control}
                         name={`items.${index}.gstRateOverride`}
                         render={({ field: f }) => (
                           <Input
                             {...f}
-                            value={f.value ?? watchedItems?.[index]?._gstRate ?? ''}
+                            value={f.value ?? gstDisplay}
                             type="number"
                             min="0"
                             max="100"
@@ -347,35 +379,48 @@ export function LineItemsTable({
                         )}
                       />
                     ) : (
-                      // Simple Mode: read-only, greyed
-                      <span className="text-sm text-gray-400 tabular-nums">
-                        {watchedItems?.[index]?._gstRate ?? 0}%
+                      <span className="text-sm text-gray-600 tabular-nums block text-right pr-1">
+                        {gstDisplay}%
                       </span>
                     )}
                   </td>
 
-                  {/* CGST / SGST / IGST columns — Advanced Mode only */}
-                  {isAdvanced && (
-                    <>
-                      <td className="px-4 py-3 text-right text-sm text-gray-700 tabular-nums">
-                        {amounts ? formatINR(amounts.cgst.toFixed(2)) : '₹0.00'}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm text-gray-700 tabular-nums">
-                        {amounts ? formatINR(amounts.sgst.toFixed(2)) : '₹0.00'}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm text-gray-700 tabular-nums">
-                        {amounts
-                          ? isIntra
-                            ? '₹0.00'
-                            : formatINR(amounts.igst.toFixed(2))
-                          : '₹0.00'}
-                      </td>
-                    </>
-                  )}
+                  {/* CGST ₹ */}
+                  <td className="px-3 py-2 text-right text-sm tabular-nums">
+                    {amounts && isIntra ? (
+                      <span className="text-gray-700">
+                        {formatINR(amounts.cgst.toFixed(2))}
+                      </span>
+                    ) : (
+                      <span className="text-gray-300">₹0.00</span>
+                    )}
+                  </td>
 
-                  {/* ITC Eligible — Purchase, Advanced Mode only */}
+                  {/* SGST / IGST ₹ */}
+                  <td className="px-3 py-2 text-right text-sm tabular-nums">
+                    {amounts ? (
+                      isIntra ? (
+                        <span className="text-gray-700">
+                          {formatINR(amounts.sgst.toFixed(2))}
+                        </span>
+                      ) : (
+                        <span className="text-gray-700">
+                          {formatINR(amounts.igst.toFixed(2))}
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-gray-300">₹0.00</span>
+                    )}
+                  </td>
+
+                  {/* Amount */}
+                  <td className="px-3 py-2 text-right text-sm text-gray-900 font-medium tabular-nums">
+                    {amounts ? formatINR(amounts.total.toFixed(2)) : '₹0.00'}
+                  </td>
+
+                  {/* ITC — purchase advanced only */}
                   {showITC && (
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-3 py-2 text-center">
                       <Controller
                         control={control}
                         name={`items.${index}.itcEligible`}
@@ -389,36 +434,8 @@ export function LineItemsTable({
                     </td>
                   )}
 
-                  {/* Godown — Advanced Mode only, when godowns provided */}
-                  {isAdvanced && godowns && godowns.length > 0 && (
-                    <td className="px-4 py-3">
-                      <Controller
-                        control={control}
-                        name={`items.${index}.godownId`}
-                        render={({ field: f }) => (
-                          <select
-                            {...f}
-                            className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-purple-600"
-                          >
-                            <option value="">Select godown</option>
-                            {godowns.map((g) => (
-                              <option key={g.id} value={g.id}>
-                                {g.name}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      />
-                    </td>
-                  )}
-
-                  {/* Amount */}
-                  <td className="px-4 py-3 text-right text-sm text-gray-900 font-medium tabular-nums">
-                    {amounts ? formatINR(amounts.total.toFixed(2)) : '₹0.00'}
-                  </td>
-
                   {/* Remove */}
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-3 py-2 text-center">
                     {fields.length > 1 && (
                       <button
                         type="button"
@@ -437,7 +454,7 @@ export function LineItemsTable({
         </table>
       </div>
 
-      {/* Add item button */}
+      {/* Add item */}
       <div className="px-4 py-3 border-t border-gray-100">
         <Button
           type="button"

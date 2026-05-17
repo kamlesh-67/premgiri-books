@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Decimal } from "decimal.js";
+import { Loader2 } from "lucide-react";
 
 import { useUiStore } from "@/lib/stores/uiStore";
 import { purchaseInvoiceSchema, type PurchaseInvoiceInput } from "@/lib/schemas/vouchers";
@@ -19,6 +20,22 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -29,7 +46,7 @@ interface PartyOption {
   name: string;
   stateCode?: string;
   gstin?: string;
-  partyType?: string; // 'Customer' | 'Supplier'
+  partyType?: string;
 }
 
 interface CompanySession {
@@ -40,9 +57,168 @@ interface CompanySession {
   };
 }
 
+interface UomOption {
+  id: string;
+  name: string;
+  symbol: string;
+}
+
 // ---------------------------------------------------------------------------
-// Helper — build accounting entries preview from Purchase totals
-// For Purchase: DR Purchase Account + GST Input | CR Party Ledger (AP)
+// Quick Item Create Dialog — inline, no separate file
+// ---------------------------------------------------------------------------
+
+const GST_RATES = ["0", "5", "12", "18", "28"] as const;
+
+interface QuickItemDialogProps {
+  open: boolean;
+  initialName: string;
+  uoms: UomOption[];
+  onClose: () => void;
+  onCreated: (item: StockItemOption) => void;
+}
+
+function QuickItemDialog({ open, initialName, uoms, onClose, onCreated }: QuickItemDialogProps) {
+  const [name, setName] = useState(initialName);
+  const [gstRate, setGstRate] = useState(18);
+  const [uomId, setUomId] = useState(uoms[0]?.id ?? "");
+  const [price, setPrice] = useState("0");
+  const [saving, setSaving] = useState(false);
+
+  // Reset when dialog opens with a new name
+  useMemo(() => {
+    setName(initialName);
+    setGstRate(18);
+    setUomId(uoms[0]?.id ?? "");
+    setPrice("0");
+  }, [initialName, uoms]);
+
+  async function handleSave() {
+    if (!name.trim() || !uomId) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/v1/masters/stock-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          gstRate,
+          uomId,
+          openingRate: price || "0",
+          openingQty: "0",
+          reorderQty: "0",
+          hsnCode: "",
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.issues?.[0]?.message ?? err?.error ?? "Failed to create item");
+        return;
+      }
+      const item = await res.json();
+      toast.success(`"${item.name}" created`);
+      onCreated({
+        id: item.id,
+        name: item.name,
+        gstRate: parseFloat(item.gstRate),
+        openingRate: item.openingRate,
+        hsnCode: item.hsnCode ?? "",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Create New Item</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label>Item Name <span className="text-red-500">*</span></Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Rice Bran Oil" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>GST Rate <span className="text-red-500">*</span></Label>
+            <ToggleGroup
+              type="single"
+              value={String(gstRate)}
+              onValueChange={(v) => { if (v) setGstRate(parseInt(v)); }}
+              className="flex gap-1.5 flex-wrap"
+            >
+              {GST_RATES.map((r) => (
+                <ToggleGroupItem
+                  key={r}
+                  value={r}
+                  className={cn(
+                    "border rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    String(gstRate) === r
+                      ? "border-purple-300 bg-purple-100 text-purple-700"
+                      : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  )}
+                >
+                  {r}%
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            {gstRate > 0 && (
+              <p className="text-xs text-gray-400">
+                CGST {gstRate / 2}% + SGST {gstRate / 2}% (intra-state) · IGST {gstRate}% (inter-state)
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Unit of Measure <span className="text-red-500">*</span></Label>
+            <Select value={uomId} onValueChange={setUomId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select unit..." />
+              </SelectTrigger>
+              <SelectContent>
+                {uoms.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name} ({u.symbol})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Purchase Price (per unit)</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">₹</span>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                className="pl-7"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+            onClick={handleSave}
+            disabled={saving || !name.trim() || !uomId}
+          >
+            {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</> : "Create Item"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Helper — build accounting entries
 // ---------------------------------------------------------------------------
 
 function buildPurchaseEntries(
@@ -54,67 +230,19 @@ function buildPurchaseEntries(
   grandTotal: Decimal
 ): AccountingEntryRow[] {
   const entries: AccountingEntryRow[] = [];
-
-  // DR: Purchase Account — taxable value
-  if (taxableTotal.gt(0)) {
-    entries.push({
-      ledgerId: "purchase",
-      ledgerName: "Purchase Account",
-      drCr: "DR",
-      amount: taxableTotal.toFixed(2),
-    });
-  }
-
-  // DR: CGST Input Tax (ITC)
-  if (cgstTotal.gt(0)) {
-    entries.push({
-      ledgerId: "cgst-input",
-      ledgerName: "CGST Input Tax",
-      drCr: "DR",
-      amount: cgstTotal.toFixed(2),
-    });
-  }
-
-  // DR: SGST Input Tax (ITC)
-  if (sgstTotal.gt(0)) {
-    entries.push({
-      ledgerId: "sgst-input",
-      ledgerName: "SGST Input Tax",
-      drCr: "DR",
-      amount: sgstTotal.toFixed(2),
-    });
-  }
-
-  // DR: IGST Input Tax (ITC)
-  if (igstTotal.gt(0)) {
-    entries.push({
-      ledgerId: "igst-input",
-      ledgerName: "IGST Input Tax",
-      drCr: "DR",
-      amount: igstTotal.toFixed(2),
-    });
-  }
-
-  // CR: Party Ledger (Sundry Creditor / AP) — full grand total
-  if (grandTotal.gt(0)) {
-    entries.push({
-      ledgerId: "party",
-      ledgerName: partyName || "Supplier",
-      drCr: "CR",
-      amount: grandTotal.toFixed(2),
-    });
-  }
-
+  if (taxableTotal.gt(0)) entries.push({ ledgerId: "purchase", ledgerName: "Purchase Account", drCr: "DR", amount: taxableTotal.toFixed(2) });
+  if (cgstTotal.gt(0)) entries.push({ ledgerId: "cgst-input", ledgerName: "CGST Input Tax", drCr: "DR", amount: cgstTotal.toFixed(2) });
+  if (sgstTotal.gt(0)) entries.push({ ledgerId: "sgst-input", ledgerName: "SGST Input Tax", drCr: "DR", amount: sgstTotal.toFixed(2) });
+  if (igstTotal.gt(0)) entries.push({ ledgerId: "igst-input", ledgerName: "IGST Input Tax", drCr: "DR", amount: igstTotal.toFixed(2) });
+  if (grandTotal.gt(0)) entries.push({ ledgerId: "party", ledgerName: partyName || "Supplier", drCr: "CR", amount: grandTotal.toFixed(2) });
   return entries;
 }
 
 // ---------------------------------------------------------------------------
-// API call helper
+// API helper
 // ---------------------------------------------------------------------------
 
-async function postVoucherAPI(
-  data: PurchaseInvoiceInput
-): Promise<{ id: string; voucherNo: string }> {
+async function postVoucherAPI(data: PurchaseInvoiceInput): Promise<{ id: string; voucherNo: string }> {
   const res = await fetch("/api/v1/vouchers", {
     method: "POST",
     body: JSON.stringify(data),
@@ -128,7 +256,7 @@ async function postVoucherAPI(
 }
 
 // ---------------------------------------------------------------------------
-// Page component — full-page form (not wizard, per D-04)
+// Page component
 // ---------------------------------------------------------------------------
 
 export default function PurchaseInvoiceNewPage() {
@@ -136,6 +264,14 @@ export default function PurchaseInvoiceNewPage() {
   const { uiMode } = useUiStore();
   const isSimple = uiMode === "simple";
   const queryClient = useQueryClient();
+
+  // Quick item creation state
+  const [quickItemOpen, setQuickItemOpen] = useState(false);
+  const [quickItemName, setQuickItemName] = useState("");
+  const [quickItemRowIndex, setQuickItemRowIndex] = useState(0);
+
+  // Default godown for new rows
+  const [defaultGodownId, setDefaultGodownId] = useState("");
 
   // ── Form ────────────────────────────────────────────────────────────────
   const form = useForm<PurchaseInvoiceInput>({
@@ -151,7 +287,7 @@ export default function PurchaseInvoiceNewPage() {
 
   const { register, handleSubmit, control, watch, setValue, formState: { errors } } = form;
 
-  // ── Session / company data ───────────────────────────────────────────────
+  // ── Session ──────────────────────────────────────────────────────────────
   const { data: sessionData } = useQuery<CompanySession>({
     queryKey: ["session"],
     queryFn: () => fetch("/api/auth/session").then((r) => r.json()),
@@ -161,31 +297,34 @@ export default function PurchaseInvoiceNewPage() {
   // ── Fetch parties (suppliers) ────────────────────────────────────────────
   const { data: parties = [] } = useQuery<PartyOption[]>({
     queryKey: ["parties"],
-    queryFn: () =>
-      fetch("/api/v1/masters/ledgers?type=party").then((r) => {
-        if (!r.ok) throw new Error("Failed to load suppliers");
-        return r.json();
-      }),
+    queryFn: () => fetch("/api/v1/masters/ledgers?type=party").then((r) => {
+      if (!r.ok) throw new Error("Failed to load suppliers");
+      return r.json();
+    }),
   });
 
   // ── Fetch stock items ────────────────────────────────────────────────────
-  const { data: stockItems = [] } = useQuery<StockItemOption[]>({
+  const { data: stockItems = [], refetch: refetchStockItems } = useQuery<StockItemOption[]>({
     queryKey: ["stock-items"],
-    queryFn: () =>
-      fetch("/api/v1/masters/stock-items").then((r) => {
-        if (!r.ok) throw new Error("Failed to load products");
-        return r.json();
-      }),
+    queryFn: () => fetch("/api/v1/masters/stock-items").then((r) => {
+      if (!r.ok) throw new Error("Failed to load products");
+      return r.json();
+    }),
   });
 
   // ── Fetch godowns ────────────────────────────────────────────────────────
   const { data: godowns = [] } = useQuery<GodownOption[]>({
     queryKey: ["godowns"],
-    queryFn: () =>
-      fetch("/api/v1/masters/godowns").then((r) => {
-        if (!r.ok) return [];
-        return r.json();
-      }),
+    queryFn: () => fetch("/api/v1/masters/godowns").then((r) => {
+      if (!r.ok) return [];
+      return r.json();
+    }),
+  });
+
+  // ── Fetch UoMs (for quick item creation) ────────────────────────────────
+  const { data: uoms = [] } = useQuery<UomOption[]>({
+    queryKey: ["uoms"],
+    queryFn: () => fetch("/api/v1/masters/uom").then((r) => r.json()),
   });
 
   // ── Watched values ───────────────────────────────────────────────────────
@@ -194,137 +333,99 @@ export default function PurchaseInvoiceNewPage() {
   const selectedParty = parties.find((p) => p.id === watchedPartyId);
   const partyStateCode = selectedParty?.stateCode ?? "";
 
-  // ── Compute GST totals ───────────────────────────────────────────────────
+  // ── GST totals ───────────────────────────────────────────────────────────
   const totals = useMemo(() => {
     let taxable = new Decimal(0);
     let cgst = new Decimal(0);
     let sgst = new Decimal(0);
     let igst = new Decimal(0);
-
     for (const item of watchedItems ?? []) {
       const qty = new Decimal(String(item?.qty || "0"));
       const rate = new Decimal(String(item?.rate || "0"));
       const discPct = new Decimal(String(item?.discountPct || "0"));
-      const taxableValue = qty
-        .times(rate)
-        .times(new Decimal(1).minus(discPct.dividedBy(100)));
+      const taxableValue = qty.times(rate).times(new Decimal(1).minus(discPct.dividedBy(100)));
       taxable = taxable.plus(taxableValue);
-
-      const gstRate = new Decimal(
-        String(
-          (item as Record<string, unknown>)?.gstRateOverride ??
-            (item as Record<string, unknown>)?._gstRate ??
-            0
-        )
-      );
-      const result = calculateGST({
-        taxableValue,
-        gstRate,
-        companyStateCode,
-        partyStateCode,
-      });
+      const gstRate = new Decimal(String((item as Record<string, unknown>)?.gstRateOverride ?? (item as Record<string, unknown>)?._gstRate ?? 0));
+      const result = calculateGST({ taxableValue, gstRate, companyStateCode, partyStateCode });
       cgst = cgst.plus(result.cgst);
       sgst = sgst.plus(result.sgst);
       igst = igst.plus(result.igst);
     }
-
     const grandRaw = taxable.plus(cgst).plus(sgst).plus(igst);
     const grandRounded = grandRaw.toDecimalPlaces(0, Decimal.ROUND_HALF_UP);
     return {
-      taxable,
-      cgst,
-      sgst,
-      igst,
+      taxable, cgst, sgst, igst,
       roundOff: grandRounded.minus(grandRaw),
       grand: grandRounded,
-      taxType: (cgst.gt(0)
-        ? "INTRA_STATE"
-        : igst.gt(0)
-        ? "INTER_STATE"
-        : "EXEMPT") as GSTTaxType,
+      taxType: (cgst.gt(0) ? "INTRA_STATE" : igst.gt(0) ? "INTER_STATE" : "EXEMPT") as GSTTaxType,
     };
   }, [watchedItems, companyStateCode, partyStateCode]);
 
-  // ── Accounting entries preview (D-06, Advanced Mode only) ─────────────────
-  const accountingEntries = useMemo(() => {
-    return buildPurchaseEntries(
-      selectedParty?.name ?? "",
-      totals.taxable,
-      totals.cgst,
-      totals.sgst,
-      totals.igst,
-      totals.grand
-    );
-  }, [selectedParty, totals]);
+  // ── Accounting entries ───────────────────────────────────────────────────
+  const accountingEntries = useMemo(() => buildPurchaseEntries(
+    selectedParty?.name ?? "", totals.taxable, totals.cgst, totals.sgst, totals.igst, totals.grand
+  ), [selectedParty, totals]);
 
-  const drTotal = accountingEntries
-    .filter((e) => e.drCr === "DR")
-    .reduce((s, e) => s.plus(e.amount), new Decimal(0));
-  const crTotal = accountingEntries
-    .filter((e) => e.drCr === "CR")
-    .reduce((s, e) => s.plus(e.amount), new Decimal(0));
+  const drTotal = accountingEntries.filter((e) => e.drCr === "DR").reduce((s, e) => s.plus(e.amount), new Decimal(0));
+  const crTotal = accountingEntries.filter((e) => e.drCr === "CR").reduce((s, e) => s.plus(e.amount), new Decimal(0));
   const isBalanced = drTotal.equals(crTotal) && accountingEntries.length > 0;
 
   // ── Mutations ─────────────────────────────────────────────────────────────
   const draftMutation = useMutation({
-    mutationFn: (data: PurchaseInvoiceInput) =>
-      postVoucherAPI({ ...data, status: "DRAFT" }),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["vouchers"] });
-      toast.success(`Draft ${data.voucherNo} saved`);
-      router.push(`/purchase-invoice/${data.id}`);
-    },
+    mutationFn: (data: PurchaseInvoiceInput) => postVoucherAPI({ ...data, status: "DRAFT" }),
+    onSuccess: (data) => { queryClient.invalidateQueries({ queryKey: ["vouchers"] }); toast.success(`Draft ${data.voucherNo} saved`); router.push(`/purchase-invoice/${data.id}`); },
     onError: (err: Error) => toast.error(err.message),
   });
 
   const postMutation = useMutation({
-    mutationFn: (data: PurchaseInvoiceInput) =>
-      postVoucherAPI({ ...data, status: "POSTED" }),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["vouchers"] });
-      toast.success(`Purchase bill ${data.voucherNo} posted successfully`);
-      router.push(`/purchase-invoice/${data.id}`);
-    },
+    mutationFn: (data: PurchaseInvoiceInput) => postVoucherAPI({ ...data, status: "POSTED" }),
+    onSuccess: (data) => { queryClient.invalidateQueries({ queryKey: ["vouchers"] }); toast.success(`Purchase bill ${data.voucherNo} posted`); router.push(`/purchase-invoice/${data.id}`); },
     onError: (err: Error) => toast.error(err.message),
   });
 
   const isSaving = draftMutation.isPending || postMutation.isPending;
-
-  // ── Submit handlers ──────────────────────────────────────────────────────
   const onSaveDraft = handleSubmit((data) => draftMutation.mutate(data));
   const onPost = handleSubmit((data) => postMutation.mutate(data));
+
+  // ── Quick item create handler ────────────────────────────────────────────
+  function handleRequestCreate(name: string, rowIndex: number) {
+    setQuickItemName(name);
+    setQuickItemRowIndex(rowIndex);
+    setQuickItemOpen(true);
+  }
+
+  function handleItemCreated(newItem: StockItemOption) {
+    // Add to local stock items cache
+    queryClient.setQueryData<StockItemOption[]>(["stock-items"], (old = []) => [...old, newItem]);
+    refetchStockItems();
+    // Auto-select in the target row
+    setValue(`items.${quickItemRowIndex}.itemId`, newItem.id);
+    setValue(`items.${quickItemRowIndex}._gstRate`, newItem.gstRate);
+    setValue(`items.${quickItemRowIndex}.rate`, newItem.openingRate);
+    setValue(`items.${quickItemRowIndex}.hsnCode`, newItem.hsnCode ?? "");
+    setQuickItemOpen(false);
+  }
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title={isSimple ? "Buy from Supplier" : "Purchase Invoice"}
-        subtitle={
-          isSimple
-            ? "Record a bill from a supplier"
-            : "Record an inward GST purchase"
-        }
+        subtitle={isSimple ? "Record a bill from a supplier" : "Record an inward GST purchase"}
         action={
-          <Button
-            variant="outline"
-            onClick={() => router.push("/purchase-invoice")}
-          >
+          <Button variant="outline" onClick={() => router.push("/purchase-invoice")}>
             Cancel
           </Button>
         }
       />
 
-      {/* ── Header row: Party, Date, Voucher #, Narration ── */}
+      {/* ── Invoice Details ── */}
       <SectionCard title={isSimple ? "Supplier Details" : "Invoice Details"}>
         <div className="grid grid-cols-4 gap-4">
           {/* Party picker */}
           <div className="space-y-2">
-            <Label
-              htmlFor="partyLedgerId"
-              className="text-sm font-medium text-gray-700"
-            >
-              {isSimple ? "Supplier" : "Party"}{" "}
-              <span className="text-red-500">*</span>
+            <Label htmlFor="partyLedgerId" className="text-sm font-medium text-gray-700">
+              {isSimple ? "Supplier" : "Party"} <span className="text-red-500">*</span>
             </Label>
             <select
               id="partyLedgerId"
@@ -335,15 +436,11 @@ export default function PurchaseInvoiceNewPage() {
               {parties
                 .filter((p) => p.partyType === "Supplier")
                 .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
+                  <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
             </select>
             {errors.partyLedgerId && (
-              <p className="text-xs text-red-500">
-                {errors.partyLedgerId.message}
-              </p>
+              <p className="text-xs text-red-500">{errors.partyLedgerId.message}</p>
             )}
           </div>
 
@@ -353,60 +450,57 @@ export default function PurchaseInvoiceNewPage() {
               Date <span className="text-red-500">*</span>
             </Label>
             <Input id="date" type="date" {...register("date")} className="text-sm" />
-            {errors.date && (
-              <p className="text-xs text-red-500">{errors.date.message}</p>
-            )}
+            {errors.date && <p className="text-xs text-red-500">{errors.date.message}</p>}
           </div>
 
-          {/* Voucher # — auto-assigned, read-only */}
+          {/* Voucher # */}
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">Voucher #</Label>
-            <Input
-              type="text"
-              value=""
-              placeholder="Auto-assigned"
-              readOnly
-              disabled
-              className="text-sm bg-gray-50 text-gray-400 cursor-not-allowed"
-            />
+            <Input type="text" value="" placeholder="Auto-assigned" readOnly disabled className="text-sm bg-gray-50 text-gray-400 cursor-not-allowed" />
           </div>
 
-          {/* Narration — hidden in Simple Mode */}
-          {!isSimple && (
+          {/* Default Godown */}
+          {godowns.length > 0 && (
             <div className="space-y-2">
-              <Label
-                htmlFor="narration"
-                className="text-sm font-medium text-gray-700"
+              <Label className="text-sm font-medium text-gray-700">Godown</Label>
+              <select
+                value={defaultGodownId}
+                onChange={(e) => setDefaultGodownId(e.target.value)}
+                className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-purple-600"
               >
-                Narration
-              </Label>
-              <Input
-                id="narration"
-                type="text"
-                placeholder="Optional note"
-                {...register("narration")}
-                className="text-sm"
-              />
+                <option value="">All / Default</option>
+                {godowns.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
             </div>
           )}
         </div>
+
+        {/* Narration — advanced mode, second row */}
+        {!isSimple && (
+          <div className="mt-4">
+            <Label htmlFor="narration" className="text-sm font-medium text-gray-700">Narration</Label>
+            <Input id="narration" type="text" placeholder="Optional note" {...register("narration")} className="text-sm mt-1.5" />
+          </div>
+        )}
       </SectionCard>
 
-      {/* ── Line Items Table (ITC checkbox visible in Advanced Mode via LineItemsTable) ── */}
+      {/* ── Line Items ── */}
       <div>
         <h2 className="text-base font-semibold text-gray-800 mb-3">
           {isSimple ? "Items Purchased" : "Line Items"}
         </h2>
         <LineItemsTable
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          control={control as any}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          setValue={setValue as any}
+          control={control as any} // eslint-disable-line @typescript-eslint/no-explicit-any
+          setValue={setValue as any} // eslint-disable-line @typescript-eslint/no-explicit-any
           voucherType="PURCHASE"
           companyStateCode={companyStateCode}
           partyStateCode={partyStateCode}
           stockItems={stockItems}
           godowns={godowns}
+          defaultGodownId={defaultGodownId}
+          onRequestCreate={handleRequestCreate}
         />
       </div>
 
@@ -422,26 +516,20 @@ export default function PurchaseInvoiceNewPage() {
         uiMode={uiMode}
       />
 
-      {/* ── Accounting Entries — Advanced Mode only, collapsed by default (D-06) ── */}
+      {/* ── Accounting Entries — advanced only ── */}
       {!isSimple && (
         <AccountingEntriesPanel entries={accountingEntries} isBalanced={isBalanced} />
       )}
 
-      {/* ── ITC note in Simple Mode ── */}
       {isSimple && (
         <p className="text-xs text-gray-400">
           Tax credit on eligible purchases will be automatically tracked for your GST returns.
         </p>
       )}
 
-      {/* ── Action buttons (D-07) ── */}
+      {/* ── Action buttons ── */}
       <div className="flex items-center justify-end gap-3 pt-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onSaveDraft}
-          disabled={isSaving}
-        >
+        <Button type="button" variant="outline" onClick={onSaveDraft} disabled={isSaving}>
           {draftMutation.isPending ? "Saving..." : "Save Draft"}
         </Button>
         <Button
@@ -450,13 +538,18 @@ export default function PurchaseInvoiceNewPage() {
           onClick={onPost}
           disabled={isSaving}
         >
-          {postMutation.isPending
-            ? "Posting..."
-            : isSimple
-            ? "Record Purchase"
-            : "Post Invoice"}
+          {postMutation.isPending ? "Posting..." : isSimple ? "Record Purchase" : "Post Invoice"}
         </Button>
       </div>
+
+      {/* ── Quick Item Create Dialog ── */}
+      <QuickItemDialog
+        open={quickItemOpen}
+        initialName={quickItemName}
+        uoms={uoms}
+        onClose={() => setQuickItemOpen(false)}
+        onCreated={handleItemCreated}
+      />
     </div>
   );
 }
