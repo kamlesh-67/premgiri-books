@@ -227,8 +227,9 @@ function buildPurchaseEntries(
   cgstTotal: Decimal,
   sgstTotal: Decimal,
   igstTotal: Decimal,
-  grandTotal: Decimal
 ): AccountingEntryRow[] {
+  // CR total is always the exact sum of all DR components — guarantees DR === CR
+  const grandTotal = taxableTotal.plus(cgstTotal).plus(sgstTotal).plus(igstTotal);
   const entries: AccountingEntryRow[] = [];
   if (taxableTotal.gt(0)) entries.push({ ledgerId: "purchase", ledgerName: "Purchase Account", drCr: "DR", amount: taxableTotal.toFixed(2) });
   if (cgstTotal.gt(0)) entries.push({ ledgerId: "cgst-input", ledgerName: "CGST Input Tax", drCr: "DR", amount: cgstTotal.toFixed(2) });
@@ -392,7 +393,7 @@ export default function PurchaseInvoiceNewPage() {
 
   // ── Accounting entries ───────────────────────────────────────────────────
   const accountingEntries = useMemo(() => buildPurchaseEntries(
-    selectedParty?.name ?? "", totals.taxable, totals.cgst, totals.sgst, totals.igst, totals.grand
+    selectedParty?.name ?? "", totals.taxable, totals.cgst, totals.sgst, totals.igst
   ), [selectedParty, totals]);
 
   const drTotal = accountingEntries.filter((e) => e.drCr === "DR").reduce((s, e) => s.plus(e.amount), new Decimal(0));
