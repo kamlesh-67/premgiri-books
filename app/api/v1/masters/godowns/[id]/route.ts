@@ -65,7 +65,7 @@ export async function PATCH(
     }
 
     const updated = await tx.godown.update({
-      where: { id },
+      where: { id, companyId },
       data,
     })
 

@@ -74,7 +74,7 @@ export async function PATCH(
 
   const result = await prisma.$transaction(async (tx) => {
     const ledger = await tx.ledger.update({
-      where: { id },
+      where: { id, companyId },
       data: parsed.data,
     })
     await tx.auditLog.create({

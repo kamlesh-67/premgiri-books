@@ -45,7 +45,7 @@ export async function PATCH(
     // Soft deactivate (non-negotiable rule 6: never hard-delete financial records)
     const result = await prisma.$transaction(async (tx) => {
       const item = await tx.stockItem.update({
-        where: { id },
+        where: { id, companyId },
         data: { isActive: false },
       })
       await tx.auditLog.create({
@@ -78,7 +78,7 @@ export async function PATCH(
 
   const result = await prisma.$transaction(async (tx) => {
     const item = await tx.stockItem.update({
-      where: { id },
+      where: { id, companyId },
       data: {
         ...parsed.data,
         // Recalculate gstApplicable if gstRate changed
