@@ -389,14 +389,14 @@ export default function InvoiceForm({
               Cost Centre
             </Label>
             <Select
-              value={watch("costCentreId") ?? ""}
-              onValueChange={(val) => setValue("costCentreId", val || undefined)}
+              value={watch("costCentreId") ?? "__none__"}
+              onValueChange={(val) => setValue("costCentreId", val === "__none__" ? undefined : val)}
             >
               <SelectTrigger id="costCentreId" className="w-full text-sm">
                 <SelectValue placeholder="Select cost centre (optional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— None —</SelectItem>
+                <SelectItem value="__none__">— None —</SelectItem>
                 {costCentres.map((cc) => (
                   <SelectItem key={cc.id} value={cc.id}>
                     {cc.name}

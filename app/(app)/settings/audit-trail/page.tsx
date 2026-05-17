@@ -188,7 +188,7 @@ const ENTITY_OPTIONS: { value: string; label: string }[] = [
 export default function AuditTrailPage() {
   const isAdmin = usePermission('settings', 'admin')
 
-  const [userFilter, setUserFilter] = useState('')
+  const [userFilter, setUserFilter] = useState('all')
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [entityFilter, setEntityFilter] = useState('')
   const [cursor, setCursor] = useState<string | null>(null)
@@ -212,7 +212,7 @@ export default function AuditTrailPage() {
 
   // ── Data fetching ────────────────────────────────────────────────────────────
   const params = new URLSearchParams()
-  if (userFilter) params.set('userId', userFilter)
+  if (userFilter !== 'all') params.set('userId', userFilter)
   if (dateRange?.from) params.set('dateFrom', dateRange.from.toISOString())
   if (dateRange?.to) params.set('dateTo', dateRange.to.toISOString())
   if (entityFilter) params.set('entity', entityFilter)
@@ -239,7 +239,7 @@ export default function AuditTrailPage() {
   })
 
   // ── Filter helpers ───────────────────────────────────────────────────────────
-  const hasActiveFilters = !!(userFilter || dateRange?.from || dateRange?.to || entityFilter)
+  const hasActiveFilters = !!(userFilter !== 'all' || dateRange?.from || dateRange?.to || entityFilter)
 
   function clearAll() {
     setUserFilter('')
@@ -296,7 +296,7 @@ export default function AuditTrailPage() {
             <SelectValue placeholder="All Users" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Users</SelectItem>
+            <SelectItem value="all">All Users</SelectItem>
             {(usersData ?? []).map((u) => (
               <SelectItem key={u.id} value={u.id}>
                 {u.name}

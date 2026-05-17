@@ -64,8 +64,8 @@ export default function UsersPage() {
   const uiMode = useUiStore((s) => s.uiMode)
 
   const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editUser, setEditUser] = useState<UserRow | null>(null)
   const [deactivateTarget, setDeactivateTarget] = useState<UserRow | null>(null)
@@ -74,8 +74,8 @@ export default function UsersPage() {
     queryKey: ['users', roleFilter, statusFilter],
     queryFn: async () => {
       const params = new URLSearchParams()
-      if (roleFilter) params.set('role', roleFilter)
-      if (statusFilter) params.set('status', statusFilter)
+      if (roleFilter !== 'all') params.set('role', roleFilter)
+      if (statusFilter !== 'all') params.set('status', statusFilter)
       const r = await fetch(`/api/v1/users?${params.toString()}`)
       if (!r.ok) throw new Error('Failed to load users')
       return r.json()
@@ -276,7 +276,7 @@ export default function UsersPage() {
               <SelectValue placeholder="All Roles" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Roles</SelectItem>
+              <SelectItem value="all">All Roles</SelectItem>
               {roles.map((role) => (
                 <SelectItem key={role.id} value={role.id}>
                   {role.name}
@@ -291,7 +291,7 @@ export default function UsersPage() {
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Statuses</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
             </SelectContent>
