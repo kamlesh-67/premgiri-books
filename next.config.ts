@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // PremGiri Books — GST Accounting & Business Management SaaS
+  serverExternalPackages: ['ioredis', 'pg', '@prisma/adapter-pg'],
 };
 
 export default nextConfig;
