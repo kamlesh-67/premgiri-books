@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
       totalFifoValue = totalFifoValue.plus(itemFifoValue)
 
       const openingQty = new Decimal(item.openingQty.toString())
-      const closingQty = openingQty.plus(itemInwardQty).minus(itemOutwardQty).max(new Decimal(0))
+      const closingQty = Decimal.max(openingQty.plus(itemInwardQty).minus(itemOutwardQty), new Decimal(0))
 
       return {
         itemId: item.id,
