@@ -102,6 +102,7 @@ export default function SalesInvoiceDetailPage({
   const router = useRouter();
   const queryClient = useQueryClient();
   const { uiMode } = useUiStore();
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // ── Fetch voucher ────────────────────────────────────────────────────────
   const { data: voucher, isLoading, isError } = useQuery<Voucher>({
@@ -184,8 +185,6 @@ export default function SalesInvoiceDetailPage({
   const isSales = voucher.voucherType === "SALES";
 
   // ── PDF Download ──────────────────────────────────────────────────────────
-  const [isDownloading, setIsDownloading] = useState(false)
-
   const handleDownloadPDF = async () => {
     setIsDownloading(true)
     try {
