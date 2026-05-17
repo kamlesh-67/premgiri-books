@@ -351,6 +351,7 @@ export function LineItemsTable({
                       render={({ field: f }) => (
                         <Input
                           {...f}
+                          value={f.value ?? ''}
                           type="text"
                           maxLength={12}
                           placeholder="HSN"
