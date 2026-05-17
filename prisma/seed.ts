@@ -18,6 +18,60 @@ function createPrismaClient() {
 
 const prisma = createPrismaClient()
 
+async function seedCompanyMasterData(companyId: string) {
+  const groups: Array<{ id: string; name: string; parentId?: string; nature: AccountNature; affectsGP: boolean }> = [
+    { id: 'ag-assets',              name: 'Assets',              nature: 'ASSET',     affectsGP: false },
+    { id: 'ag-liabilities',         name: 'Liabilities',         nature: 'LIABILITY', affectsGP: false },
+    { id: 'ag-income',              name: 'Income',              nature: 'INCOME',    affectsGP: false },
+    { id: 'ag-expense',             name: 'Expense',             nature: 'EXPENSE',   affectsGP: false },
+    { id: 'ag-fixed-assets',        name: 'Fixed Assets',        parentId: 'ag-assets',              nature: 'ASSET',     affectsGP: false },
+    { id: 'ag-current-assets',      name: 'Current Assets',      parentId: 'ag-assets',              nature: 'ASSET',     affectsGP: false },
+    { id: 'ag-sundry-debtors',      name: 'Sundry Debtors',      parentId: 'ag-current-assets',      nature: 'ASSET',     affectsGP: false },
+    { id: 'ag-bank',                name: 'Bank Accounts',       parentId: 'ag-current-assets',      nature: 'ASSET',     affectsGP: false },
+    { id: 'ag-cash',                name: 'Cash-in-Hand',        parentId: 'ag-current-assets',      nature: 'ASSET',     affectsGP: false },
+    { id: 'ag-stock-in-hand',       name: 'Stock-in-Hand',       parentId: 'ag-current-assets',      nature: 'ASSET',     affectsGP: true  },
+    { id: 'ag-current-liabilities', name: 'Current Liabilities', parentId: 'ag-liabilities',         nature: 'LIABILITY', affectsGP: false },
+    { id: 'ag-sundry-creditors',    name: 'Sundry Creditors',    parentId: 'ag-current-liabilities', nature: 'LIABILITY', affectsGP: false },
+    { id: 'ag-duties-taxes',        name: 'Duties & Taxes',      parentId: 'ag-current-liabilities', nature: 'LIABILITY', affectsGP: false },
+    { id: 'ag-capital',             name: 'Capital Account',     parentId: 'ag-liabilities',         nature: 'LIABILITY', affectsGP: false },
+    { id: 'ag-direct-income',       name: 'Direct Income',       parentId: 'ag-income',              nature: 'INCOME',    affectsGP: true  },
+    { id: 'ag-indirect-income',     name: 'Indirect Income',     parentId: 'ag-income',              nature: 'INCOME',    affectsGP: false },
+    { id: 'ag-direct-expense',      name: 'Direct Expense',      parentId: 'ag-expense',             nature: 'EXPENSE',   affectsGP: true  },
+    { id: 'ag-indirect-expense',    name: 'Indirect Expense',    parentId: 'ag-expense',             nature: 'EXPENSE',   affectsGP: false },
+    { id: 'ag-purchase',            name: 'Purchase Accounts',   parentId: 'ag-direct-expense',      nature: 'EXPENSE',   affectsGP: true  },
+  ]
+  for (const g of groups) {
+    await prisma.accountGroup.upsert({
+      where: { companyId_name: { companyId, name: g.name } },
+      update: {},
+      create: {
+        id: g.id + '-' + companyId,
+        companyId,
+        name: g.name,
+        parentId: g.parentId ? g.parentId + '-' + companyId : null,
+        nature: g.nature,
+        affectsGP: g.affectsGP,
+        isSystem: true,
+      },
+    })
+  }
+  await prisma.unitOfMeasure.upsert({
+    where: { companyId_symbol: { companyId, symbol: 'PCS' } },
+    update: {},
+    create: { companyId, name: 'Pieces', symbol: 'PCS' },
+  })
+  await prisma.unitOfMeasure.upsert({
+    where: { companyId_symbol: { companyId, symbol: 'KG' } },
+    update: {},
+    create: { companyId, name: 'Kilogram', symbol: 'KG' },
+  })
+  await prisma.godown.upsert({
+    where: { companyId_name: { companyId, name: 'Main Godown' } },
+    update: {},
+    create: { companyId, name: 'Main Godown', address: '', isMain: true },
+  })
+}
+
 async function main() {
   console.log('Seeding PremGiri Books demo data...')
 
@@ -237,7 +291,11 @@ async function main() {
   console.log('    kamlesh@premgiribooks.com  / Premgiri@123  (Accountant)')
   console.log('    renu@premgiribooks.com     / Premgiri@123  (Accountant)')
 
-  // --- 4. Default Account Group Tree (MAST-05) -------------------------------
+  // Seed full chart of accounts + UoM + Godown for prod company
+  await seedCompanyMasterData(prodCompany.id)
+  console.log('  PremGiri Books prod: account groups, UoMs, godown seeded')
+
+  // --- 4. Default Account Group Tree (MAST-05) — demo company ----------------
   const groups: Array<{
     id: string
     name: string

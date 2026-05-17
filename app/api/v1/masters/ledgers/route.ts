@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       where: { companyId, name: 'Sundry Debtors' },
     })
     if (!sundryDebtors) {
-      return NextResponse.json({ error: 'Sundry Debtors account group not found. Please ensure company master data is seeded.' }, { status: 500 })
+      return NextResponse.json({ error: 'Account groups not initialised for this company. Run database seed first.' }, { status: 422 })
     }
     groupId = sundryDebtors.id
     parsedData = { ...parsed.data }
