@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Decimal } from "decimal.js";
-import { Loader2 } from "lucide-react";
 
 import { useUiStore } from "@/lib/stores/uiStore";
 import { purchaseInvoiceSchema, type PurchaseInvoiceInput } from "@/lib/schemas/vouchers";
@@ -20,22 +19,6 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,160 +44,6 @@ interface UomOption {
   id: string;
   name: string;
   symbol: string;
-}
-
-// ---------------------------------------------------------------------------
-// Quick Item Create Dialog — inline, no separate file
-// ---------------------------------------------------------------------------
-
-const GST_RATES = ["0", "5", "12", "18", "28"] as const;
-
-interface QuickItemDialogProps {
-  open: boolean;
-  initialName: string;
-  uoms: UomOption[];
-  onClose: () => void;
-  onCreated: (item: StockItemOption) => void;
-}
-
-function QuickItemDialog({ open, initialName, uoms, onClose, onCreated }: QuickItemDialogProps) {
-  const [name, setName] = useState(initialName);
-  const [gstRate, setGstRate] = useState(18);
-  const [uomId, setUomId] = useState(uoms[0]?.id ?? "");
-  const [price, setPrice] = useState("0");
-  const [saving, setSaving] = useState(false);
-
-  // Reset when dialog opens with a new name
-  useMemo(() => {
-    setName(initialName);
-    setGstRate(18);
-    setUomId(uoms[0]?.id ?? "");
-    setPrice("0");
-  }, [initialName, uoms]);
-
-  async function handleSave() {
-    if (!name.trim() || !uomId) return;
-    setSaving(true);
-    try {
-      const res = await fetch("/api/v1/masters/stock-items", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          gstRate,
-          uomId,
-          openingRate: price || "0",
-          openingQty: "0",
-          reorderQty: "0",
-          hsnCode: "",
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err?.issues?.[0]?.message ?? err?.error ?? "Failed to create item");
-        return;
-      }
-      const item = await res.json();
-      toast.success(`"${item.name}" created`);
-      onCreated({
-        id: item.id,
-        name: item.name,
-        gstRate: parseFloat(item.gstRate),
-        openingRate: item.openingRate,
-        hsnCode: item.hsnCode ?? "",
-      });
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Create New Item</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label>Item Name <span className="text-red-500">*</span></Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Rice Bran Oil" />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>GST Rate <span className="text-red-500">*</span></Label>
-            <ToggleGroup
-              type="single"
-              value={String(gstRate)}
-              onValueChange={(v) => { if (v) setGstRate(parseInt(v)); }}
-              className="flex gap-1.5 flex-wrap"
-            >
-              {GST_RATES.map((r) => (
-                <ToggleGroupItem
-                  key={r}
-                  value={r}
-                  className={cn(
-                    "border rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    String(gstRate) === r
-                      ? "border-purple-300 bg-purple-100 text-purple-700"
-                      : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                  )}
-                >
-                  {r}%
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-            {gstRate > 0 && (
-              <p className="text-xs text-gray-400">
-                CGST {gstRate / 2}% + SGST {gstRate / 2}% (intra-state) · IGST {gstRate}% (inter-state)
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Unit of Measure <span className="text-red-500">*</span></Label>
-            <Select value={uomId} onValueChange={setUomId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select unit..." />
-              </SelectTrigger>
-              <SelectContent>
-                {uoms.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name} ({u.symbol})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Purchase Price (per unit)</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">₹</span>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                className="pl-7"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="0.00"
-              />
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button
-            className="bg-purple-600 hover:bg-purple-700 text-white"
-            onClick={handleSave}
-            disabled={saving || !name.trim() || !uomId}
-          >
-            {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</> : "Create Item"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -300,11 +129,6 @@ export default function PurchaseInvoiceNewPage() {
   const isSimple = uiMode === "simple";
   const queryClient = useQueryClient();
 
-  // Quick item creation state
-  const [quickItemOpen, setQuickItemOpen] = useState(false);
-  const [quickItemName, setQuickItemName] = useState("");
-  const [quickItemRowIndex, setQuickItemRowIndex] = useState(0);
-
   // Default godown for new rows
   const [defaultGodownId, setDefaultGodownId] = useState("");
 
@@ -339,7 +163,7 @@ export default function PurchaseInvoiceNewPage() {
   });
 
   // ── Fetch stock items ────────────────────────────────────────────────────
-  const { data: stockItems = [], refetch: refetchStockItems } = useQuery<StockItemOption[]>({
+  const { data: stockItems = [] } = useQuery<StockItemOption[]>({
     queryKey: ["stock-items"],
     queryFn: () => fetch("/api/v1/masters/stock-items").then((r) => {
       if (!r.ok) throw new Error("Failed to load products");
@@ -438,27 +262,71 @@ export default function PurchaseInvoiceNewPage() {
     toast.error(msg ?? 'Please fill all required fields before submitting.');
   }
 
-  const onSaveDraft = handleSubmit((data) => draftMutation.mutate(data), onFormError);
-  const onPost = handleSubmit((data) => postMutation.mutate(data), onFormError);
-
-  // ── Quick item create handler ────────────────────────────────────────────
+  // ── New item name handler — stores typed name in form, no dialog ─────────
   function handleRequestCreate(name: string, rowIndex: number) {
-    setQuickItemName(name);
-    setQuickItemRowIndex(rowIndex);
-    setQuickItemOpen(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (setValue as any)(`items.${rowIndex}._newItemName`, name);
+    setValue(`items.${rowIndex}.itemId`, "");
   }
 
-  function handleItemCreated(newItem: StockItemOption) {
-    // Add to local stock items cache
-    queryClient.setQueryData<StockItemOption[]>(["stock-items"], (old = []) => [...old, newItem]);
-    refetchStockItems();
-    // Auto-select in the target row
-    setValue(`items.${quickItemRowIndex}.itemId`, newItem.id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (setValue as any)(`items.${quickItemRowIndex}._gstRate`, newItem.gstRate);
-    setValue(`items.${quickItemRowIndex}.rate`, newItem.openingRate);
-    setValue(`items.${quickItemRowIndex}.hsnCode`, newItem.hsnCode ?? "");
-    setQuickItemOpen(false);
+  // ── Auto-create pending items before voucher submission ───────────────────
+  async function createPendingItems(): Promise<boolean> {
+    const defaultUomId = uoms[0]?.id;
+    if (!defaultUomId) {
+      toast.error("No unit of measure found. Add a UoM in Masters first.");
+      return false;
+    }
+    const rawItems = form.getValues("items") as Array<Record<string, unknown>>;
+    for (let i = 0; i < rawItems.length; i++) {
+      const newName = (rawItems[i]._newItemName as string | undefined)?.trim();
+      if (!newName || rawItems[i].itemId) continue;
+      try {
+        const res = await fetch("/api/v1/masters/stock-items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: newName,
+            gstRate: Number(rawItems[i]._gstRate ?? 0),
+            uomId: defaultUomId,
+            hsnCode: String(rawItems[i].hsnCode ?? ""),
+            openingRate: String(rawItems[i].rate ?? "0"),
+            openingQty: "0",
+            reorderQty: "0",
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          toast.error(`Failed to create "${newName}": ${err?.error ?? "Unknown error"}`);
+          return false;
+        }
+        const created = await res.json();
+        setValue(`items.${i}.itemId`, created.id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (setValue as any)(`items.${i}._newItemName`, "");
+        queryClient.setQueryData<StockItemOption[]>(["stock-items"], (old = []) => [
+          ...old,
+          { id: created.id, name: created.name, gstRate: parseFloat(created.gstRate), openingRate: created.openingRate, hsnCode: created.hsnCode ?? "" },
+        ]);
+        queryClient.invalidateQueries({ queryKey: ["stock-items"] });
+        toast.success(`Item "${created.name}" created`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : `Failed to create "${newName}"`);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  async function onSaveDraft() {
+    const ok = await createPendingItems();
+    if (!ok) return;
+    handleSubmit((data) => draftMutation.mutate(data), onFormError)();
+  }
+
+  async function onPost() {
+    const ok = await createPendingItems();
+    if (!ok) return;
+    handleSubmit((data) => postMutation.mutate(data), onFormError)();
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -633,14 +501,6 @@ export default function PurchaseInvoiceNewPage() {
         </Button>
       </div>
 
-      {/* ── Quick Item Create Dialog ── */}
-      <QuickItemDialog
-        open={quickItemOpen}
-        initialName={quickItemName}
-        uoms={uoms}
-        onClose={() => setQuickItemOpen(false)}
-        onCreated={handleItemCreated}
-      />
     </div>
   );
 }

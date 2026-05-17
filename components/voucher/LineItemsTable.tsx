@@ -57,6 +57,7 @@ interface ProductComboboxProps {
   onChange: (itemId: string) => void
   onSelect: (item: StockItemOption) => void
   onRequestCreate?: (name: string) => void
+  pendingName?: string
   stockItems: StockItemOption[]
 }
 
@@ -65,6 +66,7 @@ function ProductCombobox({
   onChange,
   onSelect,
   onRequestCreate,
+  pendingName,
   stockItems,
 }: ProductComboboxProps) {
   const [open, setOpen] = useState(false)
@@ -76,6 +78,12 @@ function ProductCombobox({
     if (!o) setQuery('')
   }
 
+  const triggerLabel = selectedItem
+    ? selectedItem.name
+    : pendingName
+    ? pendingName
+    : 'Select product...'
+
   return (
     <Popover open={open} onOpenChange={handleClose}>
       <PopoverTrigger asChild>
@@ -83,10 +91,10 @@ function ProductCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full min-w-[150px] justify-between text-sm font-normal text-gray-700 border-gray-200 hover:bg-gray-50"
+          className="w-full min-w-[150px] justify-between text-sm font-normal border-gray-200 hover:bg-gray-50"
         >
-          <span className="truncate">
-            {selectedItem ? selectedItem.name : 'Select product...'}
+          <span className={cn('truncate', pendingName && !selectedItem ? 'text-purple-700 italic' : 'text-gray-700')}>
+            {triggerLabel}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-gray-400" />
         </Button>
@@ -124,11 +132,11 @@ function ProductCombobox({
               ))}
             </CommandGroup>
 
-            {/* Quick create option — shown when user has typed something */}
+            {/* Add as new item — stored in form, created automatically on submit */}
             {query.trim() && onRequestCreate && (
               <CommandGroup>
                 <CommandItem
-                  value={`__create__${query}`}
+                  value={`__new__${query}`}
                   onSelect={() => {
                     onRequestCreate(query.trim())
                     setOpen(false)
@@ -137,7 +145,7 @@ function ProductCombobox({
                   className="text-purple-600 font-medium"
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Create &quot;{query.trim()}&quot;
+                  Add &quot;{query.trim()}&quot; as new item
                 </CommandItem>
               </CommandGroup>
             )}
@@ -199,6 +207,7 @@ export function LineItemsTable({
     setValue(`items.${index}._gstRate`, item.gstRate)
     setValue(`items.${index}.rate`, item.openingRate)
     setValue(`items.${index}.hsnCode`, item.hsnCode ?? '')
+    setValue(`items.${index}._newItemName`, '')
   }
 
   function handleAddRow() {
@@ -285,6 +294,7 @@ export function LineItemsTable({
                               ? (name) => onRequestCreate(name, index)
                               : undefined
                           }
+                          pendingName={watchedItems?.[index]?._newItemName as string | undefined}
                           stockItems={stockItems}
                         />
                       )}
