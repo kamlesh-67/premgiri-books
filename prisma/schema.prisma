@@ -140,6 +140,7 @@ model Ledger {
   voucherEntries VoucherEntry[]
   billRefs       BillRef[]
   vouchers       Voucher[]      @relation("PartyLedger")
+  orders         Order[]        @relation("OrderParty")
   employees      Employee[]     @relation("SalaryLedger")
   bankStatements BankStatement[]
 
@@ -564,8 +565,9 @@ model Order {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
-  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  orderItems OrderItem[]
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+  partyLedger Ledger?     @relation("OrderParty", fields: [partyLedgerId], references: [id])
 
   @@unique([companyId, orderType, orderNo])
   @@map("orders")

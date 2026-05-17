@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
     where,
     include: {
       _count: { select: { orderItems: true } },
+      partyLedger: { select: { id: true, name: true } },
     },
     orderBy: { date: 'desc' },
     take: 100,

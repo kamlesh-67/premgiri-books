@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, use } from "react"
+import { useState, use, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm, useFieldArray } from "react-hook-form"
@@ -142,19 +142,26 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors },
   } = useForm<ConvertFormValues>({
     resolver: zodResolver(convertOrderSchema),
-    defaultValues: {
-      tradeLedgerId: '',
-      items: order?.orderItems?.map(oi => ({
-        orderItemId: oi.id,
-        qty: new Decimal(oi.qty).minus(new Decimal(oi.dispatchedQty || '0')).toFixed(3),
-      })) ?? [],
-    },
+    defaultValues: { tradeLedgerId: '', items: [] },
   })
 
   const { fields } = useFieldArray({ control, name: 'items' })
+
+  useEffect(() => {
+    if (order) {
+      reset({
+        tradeLedgerId: '',
+        items: order.orderItems.map(oi => ({
+          orderItemId: oi.id,
+          qty: new Decimal(oi.qty).minus(new Decimal(oi.dispatchedQty || '0')).toFixed(3),
+        })),
+      })
+    }
+  }, [order, reset])
 
   // D-04: convert button label
   const convertButtonLabel = uiMode === 'simple' ? 'Convert to Bill' : 'Convert to Invoice'

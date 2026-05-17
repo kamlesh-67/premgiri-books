@@ -186,14 +186,17 @@ export async function GET(request: NextRequest) {
 
       totalFifoValue = totalFifoValue.plus(itemFifoValue)
 
+      const openingQty = new Decimal(item.openingQty.toString())
+      const closingQty = openingQty.plus(itemInwardQty).minus(itemOutwardQty).max(new Decimal(0))
+
       return {
         itemId: item.id,
         name: item.name,
         category: item.group?.name ?? '',
-        openingQty: item.openingQty.toString(),
+        openingQty: openingQty.toString(),
         inwardQty: itemInwardQty.toString(),
         outwardQty: itemOutwardQty.toString(),
-        closingQty: itemClosingQty.toString(),
+        closingQty: closingQty.toString(),
         fifoValue: itemFifoValue.toString(),
         godowns: godownSubRows,
       }
