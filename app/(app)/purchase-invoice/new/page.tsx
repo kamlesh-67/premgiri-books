@@ -476,7 +476,7 @@ export default function PurchaseInvoiceNewPage() {
 
       {/* ── Invoice Details ── */}
       <SectionCard title={isSimple ? "Supplier Details" : "Invoice Details"}>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
           {/* Party picker */}
           <div className="space-y-2">
             <Label htmlFor="partyLedgerId" className="text-sm font-medium text-gray-700">
@@ -506,6 +506,39 @@ export default function PurchaseInvoiceNewPage() {
             </Label>
             <Input id="date" type="date" {...register("date")} className="text-sm" />
             {errors.date && <p className="text-xs text-red-500">{errors.date.message}</p>}
+          </div>
+
+          {/* Supplier Invoice No */}
+          <div className="space-y-2">
+            <Label htmlFor="supplierInvoiceNo" className="text-sm font-medium text-gray-700">
+              Supplier Invoice No
+            </Label>
+            <Input
+              id="supplierInvoiceNo"
+              type="text"
+              placeholder="e.g. INV-2025-001"
+              {...register("supplierInvoiceNo")}
+              className="text-sm"
+            />
+            {errors.supplierInvoiceNo && (
+              <p className="text-xs text-red-500">{errors.supplierInvoiceNo.message}</p>
+            )}
+          </div>
+
+          {/* Supplier Invoice Date */}
+          <div className="space-y-2">
+            <Label htmlFor="supplierInvoiceDate" className="text-sm font-medium text-gray-700">
+              Supplier Invoice Date
+            </Label>
+            <Input
+              id="supplierInvoiceDate"
+              type="date"
+              {...register("supplierInvoiceDate")}
+              className="text-sm"
+            />
+            {errors.supplierInvoiceDate && (
+              <p className="text-xs text-red-500">{errors.supplierInvoiceDate.message}</p>
+            )}
           </div>
 
           {/* Voucher # */}

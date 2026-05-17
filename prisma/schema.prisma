@@ -279,8 +279,10 @@ model Voucher {
   tdsSection      String?       @db.VarChar(10)   // '194C' | '194J' | null
   tdsRate         Decimal?      @db.Decimal(5, 2)
   tdsAmount       Decimal?      @db.Decimal(15, 2)
-  linkedVoucherId String?       // for Credit Note / Debit Note -> original voucher
-  createdBy       String
+  linkedVoucherId     String?       // for Credit Note / Debit Note -> original voucher
+  supplierInvoiceNo   String?       @db.VarChar(50)  // supplier's own invoice number (purchase only)
+  supplierInvoiceDate DateTime?     @db.Date         // supplier's invoice date (purchase only)
+  createdBy           String
   embedding       Unsupported("vector(1024)")? // Phase 11 D-01: voyage-3-lite 1024-dim
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt

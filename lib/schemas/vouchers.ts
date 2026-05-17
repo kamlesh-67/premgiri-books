@@ -94,6 +94,8 @@ export const purchaseInvoiceSchema = z.object({
   voucherType: z.literal('PURCHASE'),
   partyLedgerId: requiredString('Please select a supplier').cuid('Please select a supplier'),
   date: voucherDateSchema,
+  supplierInvoiceNo: z.string().max(50).optional(),
+  supplierInvoiceDate: z.string().optional(),
   narration: z.string().max(500).optional(),
   // lineItemSchema includes itcEligible: z.boolean().default(true) per item
   items: z.array(lineItemSchema).min(1, 'Add at least one item'),

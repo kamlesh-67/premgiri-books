@@ -63,6 +63,8 @@ interface Voucher {
   sgstAmount: string;
   igstAmount: string;
   roundOff: string;
+  supplierInvoiceNo?: string | null;
+  supplierInvoiceDate?: string | null;
   partyLedger?: { id: string; name: string; gstin?: string | null } | null;
   voucherItems: VoucherItem[];
   voucherEntries: VoucherEntry[];
@@ -207,6 +209,20 @@ export default function PurchaseInvoiceDetailPage({
               <StatusBadge status={voucher.status} />
             </div>
           </div>
+          {voucher.supplierInvoiceNo && (
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Supplier Invoice No</p>
+              <p className="mt-1 text-sm font-medium text-gray-900">{voucher.supplierInvoiceNo}</p>
+            </div>
+          )}
+          {voucher.supplierInvoiceDate && (
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Supplier Invoice Date</p>
+              <p className="mt-1 text-sm font-medium text-gray-900">
+                {formatDisplayDate(voucher.supplierInvoiceDate)}
+              </p>
+            </div>
+          )}
           {voucher.narration && (
             <div className="col-span-2 sm:col-span-4">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Narration</p>

@@ -485,6 +485,13 @@ export async function createVoucher(
         status: input.status === 'DRAFT' ? 'DRAFT' : 'POSTED',
         createdBy: userId,
         linkedVoucherId: input.linkedVoucherId,
+        // Supplier reference fields — purchase invoices only
+        ...('supplierInvoiceNo' in input && input.supplierInvoiceNo ? {
+          supplierInvoiceNo: input.supplierInvoiceNo,
+        } : {}),
+        ...('supplierInvoiceDate' in input && input.supplierInvoiceDate ? {
+          supplierInvoiceDate: new Date(input.supplierInvoiceDate),
+        } : {}),
         // TDS fields — stored on voucher for audit trail (D-05)
         ...(input.tdsSection ? {
           tdsSection: input.tdsSection,
