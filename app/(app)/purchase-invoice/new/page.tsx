@@ -228,13 +228,18 @@ function buildPurchaseEntries(
   sgstTotal: Decimal,
   igstTotal: Decimal,
 ): AccountingEntryRow[] {
-  // CR total is always the exact sum of all DR components — guarantees DR === CR
-  const grandTotal = taxableTotal.plus(cgstTotal).plus(sgstTotal).plus(igstTotal);
+  // Round each component first, then derive CR from those rounded values.
+  // This guarantees sum(DR) === CR regardless of sub-paisa fractions.
+  const taxR = taxableTotal.toDecimalPlaces(2);
+  const cgstR = cgstTotal.toDecimalPlaces(2);
+  const sgstR = sgstTotal.toDecimalPlaces(2);
+  const igstR = igstTotal.toDecimalPlaces(2);
+  const grandTotal = taxR.plus(cgstR).plus(sgstR).plus(igstR);
   const entries: AccountingEntryRow[] = [];
-  if (taxableTotal.gt(0)) entries.push({ ledgerId: "purchase", ledgerName: "Purchase Account", drCr: "DR", amount: taxableTotal.toFixed(2) });
-  if (cgstTotal.gt(0)) entries.push({ ledgerId: "cgst-input", ledgerName: "CGST Input Tax", drCr: "DR", amount: cgstTotal.toFixed(2) });
-  if (sgstTotal.gt(0)) entries.push({ ledgerId: "sgst-input", ledgerName: "SGST Input Tax", drCr: "DR", amount: sgstTotal.toFixed(2) });
-  if (igstTotal.gt(0)) entries.push({ ledgerId: "igst-input", ledgerName: "IGST Input Tax", drCr: "DR", amount: igstTotal.toFixed(2) });
+  if (taxR.gt(0)) entries.push({ ledgerId: "purchase", ledgerName: "Purchase Account", drCr: "DR", amount: taxR.toFixed(2) });
+  if (cgstR.gt(0)) entries.push({ ledgerId: "cgst-input", ledgerName: "CGST Input Tax", drCr: "DR", amount: cgstR.toFixed(2) });
+  if (sgstR.gt(0)) entries.push({ ledgerId: "sgst-input", ledgerName: "SGST Input Tax", drCr: "DR", amount: sgstR.toFixed(2) });
+  if (igstR.gt(0)) entries.push({ ledgerId: "igst-input", ledgerName: "IGST Input Tax", drCr: "DR", amount: igstR.toFixed(2) });
   if (grandTotal.gt(0)) entries.push({ ledgerId: "party", ledgerName: partyName || "Supplier", drCr: "CR", amount: grandTotal.toFixed(2) });
   return entries;
 }
