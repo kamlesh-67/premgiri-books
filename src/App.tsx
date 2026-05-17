@@ -8,61 +8,61 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { ComingSoon } from "@/components/primitives/ComingSoon";
 import { navGroups } from "@/components/layout/navConfig";
 
-import Login from "./pages/auth/Login";
-import Dashboard from "./pages/app/Dashboard";
-import NotFound from "./pages/NotFound";
+import Login from "./screens/auth/Login";
+import Dashboard from "./screens/app/Dashboard";
+import NotFound from "./screens/NotFound";
 
 // Transactions
-import SalesInvoiceList from "./pages/app/transactions/SalesInvoiceList";
-import SalesInvoiceNew from "./pages/app/transactions/SalesInvoiceNew";
-import SalesInvoiceDetail from "./pages/app/transactions/SalesInvoiceDetail";
-import PurchaseInvoiceList from "./pages/app/transactions/PurchaseInvoiceList";
-import PurchaseInvoiceNew from "./pages/app/transactions/PurchaseInvoiceNew";
-import Receipt from "./pages/app/transactions/Receipt";
-import Payment from "./pages/app/transactions/Payment";
-import Journal from "./pages/app/transactions/Journal";
-import Contra from "./pages/app/transactions/Contra";
-import VoucherList from "./pages/app/transactions/VoucherList";
-import VoucherDetail from "./pages/app/transactions/VoucherDetail";
+import SalesInvoiceList from "./screens/app/transactions/SalesInvoiceList";
+import SalesInvoiceNew from "./screens/app/transactions/SalesInvoiceNew";
+import SalesInvoiceDetail from "./screens/app/transactions/SalesInvoiceDetail";
+import PurchaseInvoiceList from "./screens/app/transactions/PurchaseInvoiceList";
+import PurchaseInvoiceNew from "./screens/app/transactions/PurchaseInvoiceNew";
+import Receipt from "./screens/app/transactions/Receipt";
+import Payment from "./screens/app/transactions/Payment";
+import Journal from "./screens/app/transactions/Journal";
+import Contra from "./screens/app/transactions/Contra";
+import VoucherList from "./screens/app/transactions/VoucherList";
+import VoucherDetail from "./screens/app/transactions/VoucherDetail";
 // GST
-import Gstr1 from "./pages/app/gst/Gstr1";
-import Gstr3b from "./pages/app/gst/Gstr3b";
-import ItcRecon from "./pages/app/gst/ItcRecon";
-import EInvoice from "./pages/app/gst/EInvoice";
-import EWayBill from "./pages/app/gst/EWayBill";
+import Gstr1 from "./screens/app/gst/Gstr1";
+import Gstr3b from "./screens/app/gst/Gstr3b";
+import ItcRecon from "./screens/app/gst/ItcRecon";
+import EInvoice from "./screens/app/gst/EInvoice";
+import EWayBill from "./screens/app/gst/EWayBill";
 // Masters
-import Ledgers from "./pages/app/masters/Ledgers";
-import StockItems from "./pages/app/masters/StockItems";
-import Parties from "./pages/app/masters/Parties";
-import Employees from "./pages/app/masters/Employees";
-import Uom from "./pages/app/masters/Uom";
-import Godowns from "./pages/app/masters/Godowns";
-import Categories from "./pages/app/masters/Categories";
+import Ledgers from "./screens/app/masters/Ledgers";
+import StockItems from "./screens/app/masters/StockItems";
+import Parties from "./screens/app/masters/Parties";
+import Employees from "./screens/app/masters/Employees";
+import Uom from "./screens/app/masters/Uom";
+import Godowns from "./screens/app/masters/Godowns";
+import Categories from "./screens/app/masters/Categories";
 // Inventory
-import StockSummary from "./pages/app/inventory/StockSummary";
-import StockLedger from "./pages/app/inventory/StockLedger";
-import StockAgeing from "./pages/app/inventory/StockAgeing";
+import StockSummary from "./screens/app/inventory/StockSummary";
+import StockLedger from "./screens/app/inventory/StockLedger";
+import StockAgeing from "./screens/app/inventory/StockAgeing";
 // Payroll
-import PayrollEmployees from "./pages/app/payroll/PayrollEmployees";
-import SalaryStructures from "./pages/app/payroll/SalaryStructures";
-import Attendance from "./pages/app/payroll/Attendance";
-import PayRun from "./pages/app/payroll/PayRun";
+import PayrollEmployees from "./screens/app/payroll/PayrollEmployees";
+import SalaryStructures from "./screens/app/payroll/SalaryStructures";
+import Attendance from "./screens/app/payroll/Attendance";
+import PayRun from "./screens/app/payroll/PayRun";
 // Banking
-import Reconciliation from "./pages/app/banking/Reconciliation";
-import Cheques from "./pages/app/banking/Cheques";
+import Reconciliation from "./screens/app/banking/Reconciliation";
+import Cheques from "./screens/app/banking/Cheques";
 // Reports
-import BalanceSheet from "./pages/app/reports/BalanceSheet";
-import ProfitLoss from "./pages/app/reports/ProfitLoss";
-import TrialBalance from "./pages/app/reports/TrialBalance";
-import DayBook from "./pages/app/reports/DayBook";
-import Outstanding from "./pages/app/reports/Outstanding";
+import BalanceSheet from "./screens/app/reports/BalanceSheet";
+import ProfitLoss from "./screens/app/reports/ProfitLoss";
+import TrialBalance from "./screens/app/reports/TrialBalance";
+import DayBook from "./screens/app/reports/DayBook";
+import Outstanding from "./screens/app/reports/Outstanding";
 // Admin
-import Company from "./pages/app/admin/Company";
-import Users from "./pages/app/admin/Users";
-import Roles from "./pages/app/admin/Roles";
-import NumberSeries from "./pages/app/admin/NumberSeries";
-import Settings from "./pages/app/admin/Settings";
-import AuditLog from "./pages/app/admin/AuditLog";
+import Company from "./screens/app/admin/Company";
+import Users from "./screens/app/admin/Users";
+import Roles from "./screens/app/admin/Roles";
+import NumberSeries from "./screens/app/admin/NumberSeries";
+import Settings from "./screens/app/admin/Settings";
+import AuditLog from "./screens/app/admin/AuditLog";
 
 const queryClient = new QueryClient();
 
