@@ -141,7 +141,7 @@ export interface PrismaTx {
       update: Record<string, unknown>
     }) => Promise<{ id: string; lastSequence: number }>
     findFirstOrThrow: (args: { where: { id: string; companyId?: string } }) => Promise<{ id: string; lastSequence: number }>
-    update: (args: { where: { id: string }; data: { lastSequence: number } }) => Promise<{ id: string; lastSequence: number }>
+    update: (args: { where: { id: string; companyId: string }; data: { lastSequence: number } }) => Promise<{ id: string; lastSequence: number }>
   }
   voucher: {
     create: (args: {
@@ -198,7 +198,7 @@ export interface PrismaTx {
       where: { id?: string; voucherId?: string; companyId: string }
     }) => Promise<{ id: string; outstandingAmount: Decimal; totalAmount: Decimal; settled: boolean } | null>
     update: (args: {
-      where: { id: string }
+      where: { id: string; companyId?: string }
       data: { outstandingAmount?: Decimal; settled?: boolean }
     }) => Promise<{ id: string }>
   }
@@ -301,7 +301,7 @@ export interface PrismaTx {
       orderBy?: { purchaseDate: 'asc' | 'desc' }
     }) => Promise<Array<{ id: string; remainingQty: Decimal; costRate: Decimal; purchaseDate: Date }>>
     update: (args: {
-      where: { id: string }
+      where: { id: string; companyId?: string }
       data: { remainingQty?: Decimal; isActive?: boolean }
     }) => Promise<{ id: string }>
     updateMany: (args: {
@@ -410,7 +410,7 @@ export async function getNextVoucherNo(
   // Step 4: Increment and persist the new sequence
   const nextSeq = lockedRow.lastSequence + 1
   await tx.voucherSequence.update({
-    where: { id: seqRow.id },
+    where: { id: seqRow.id, companyId },
     data: { lastSequence: nextSeq },
   })
 
@@ -633,7 +633,7 @@ export async function createVoucher(
         }
         const newOutstanding = new Decimal(ref.outstandingAmount).minus(settlement.amount)
         await tx.billRef.update({
-          where: { id: settlement.billRefId },
+          where: { id: settlement.billRefId, companyId },
           data: {
             outstandingAmount: newOutstanding,
             settled: newOutstanding.lte(0),
@@ -656,7 +656,7 @@ export async function createVoucher(
       if (originalRef) {
         const newOutstanding = new Decimal(originalRef.outstandingAmount).minus(totalAmount)
         await tx.billRef.update({
-          where: { id: originalRef.id },
+          where: { id: originalRef.id, companyId },
           data: {
             outstandingAmount: newOutstanding.gte(0) ? newOutstanding : new Decimal(0),
             settled: newOutstanding.lte(0),
@@ -719,7 +719,7 @@ export async function createVoucher(
             toConsume,
           )
           await tx.stockBatch.update({
-            where: { id: batch.id },
+            where: { id: batch.id, companyId },
             data: { remainingQty: new Decimal(batch.remainingQty.toString()).minus(consume) },
           })
           await tx.stockConsumption.create({
@@ -858,7 +858,7 @@ export async function cancelVoucher(
         })
         if (batchRows.length > 0) {
           await tx.stockBatch.update({
-            where: { id: c.stockBatchId },
+            where: { id: c.stockBatchId, companyId },
             data: {
               remainingQty: new Decimal(batchRows[0].remainingQty.toString()).plus(
                 new Decimal(c.qty.toString()),
@@ -1078,7 +1078,7 @@ export async function postVoucher(
             toConsume,
           )
           await tx.stockBatch.update({
-            where: { id: batch.id },
+            where: { id: batch.id, companyId },
             data: { remainingQty: new Decimal(batch.remainingQty.toString()).minus(consume) },
           })
           await tx.stockConsumption.create({
