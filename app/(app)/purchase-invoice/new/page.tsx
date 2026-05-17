@@ -400,7 +400,8 @@ export default function PurchaseInvoiceNewPage() {
     refetchStockItems();
     // Auto-select in the target row
     setValue(`items.${quickItemRowIndex}.itemId`, newItem.id);
-    setValue(`items.${quickItemRowIndex}._gstRate`, newItem.gstRate);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (setValue as any)(`items.${quickItemRowIndex}._gstRate`, newItem.gstRate);
     setValue(`items.${quickItemRowIndex}.rate`, newItem.openingRate);
     setValue(`items.${quickItemRowIndex}.hsnCode`, newItem.hsnCode ?? "");
     setQuickItemOpen(false);
