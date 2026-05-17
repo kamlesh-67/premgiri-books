@@ -41,7 +41,7 @@ const requiredString = (msg: string) =>
 // NOTE: companyId is NOT here — it is always injected from session.user.companyId
 const lineItemSchema = z.object({
   itemId: requiredString('Please select a product').cuid('Please select a product'),
-  godownId: z.string().cuid().optional(),
+  godownId: z.union([z.string().cuid(), z.literal('')]).optional().transform(v => v === '' ? undefined : v),
   qty: positiveDecimalString('Quantity must be more than 0'),
   rate: nonNegativeDecimalString('Price cannot be negative'),
   discountPct: z.string().optional().default('0'),
