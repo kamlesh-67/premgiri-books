@@ -37,15 +37,11 @@ export async function POST(request: Request) {
   }
 
   // StockItem requires a stockGroup — get or create a default "General" group
-  const defaultGroup = await prisma.stockGroup.findFirst({
-    where: { companyId, name: 'General' },
+  const defaultGroup = await prisma.stockGroup.upsert({
+    where: { companyId_name: { companyId, name: 'General' } },
+    update: {},
+    create: { companyId, name: 'General' },
   })
-  if (!defaultGroup) {
-    return NextResponse.json(
-      { error: 'Default stock group "General" not found. Please ensure company master data is seeded.' },
-      { status: 500 }
-    )
-  }
 
   const result = await prisma.$transaction(async (tx) => {
     const item = await tx.stockItem.create({
