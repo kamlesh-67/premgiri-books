@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createVoucherSchema } from '@/lib/schemas/vouchers'
 import { createVoucher, ValidationError, resolveTdsPayableLedger, buildPaymentEntries, buildReceiptEntries } from '@/lib/services/VoucherEngine'
+import { calculateGST } from '@/lib/services/GSTCalculator'
 import { VoucherType, VoucherStatus } from '@prisma/client'
 import { Decimal } from 'decimal.js'
 
@@ -168,7 +169,22 @@ export async function POST(request: NextRequest) {
       const gstRate = new Decimal(
         String(item.gstRateOverride ?? rateByItemId[item.itemId as string] ?? 0)
       )
-      gstTotal = gstTotal.plus(itemTaxable.times(gstRate).dividedBy(100))
+      const gstResult = calculateGST({
+        taxableValue: itemTaxable,
+        gstRate,
+        companyStateCode: companyState,
+        partyStateCode: partyState,
+      })
+      gstTotal = gstTotal.plus(gstResult.cgst).plus(gstResult.sgst).plus(gstResult.igst)
+
+      // Enrich item — amount is required (non-nullable) on VoucherItem; GST components feed GstTransaction
+      item.amount = itemTaxable.toDecimalPlaces(2).toString()
+      item.cgstRate = gstResult.cgstRate.toString()
+      item.cgstAmt = gstResult.cgst.toDecimalPlaces(2).toString()
+      item.sgstRate = gstResult.sgstRate.toString()
+      item.sgstAmt = gstResult.sgst.toDecimalPlaces(2).toString()
+      item.igstRate = gstResult.igstRate.toString()
+      item.igstAmt = gstResult.igst.toDecimalPlaces(2).toString()
     }
 
     const grandTotal = taxableTotal.plus(gstTotal)
