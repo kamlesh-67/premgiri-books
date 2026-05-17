@@ -249,10 +249,22 @@ async function postVoucherAPI(data: PurchaseInvoiceInput): Promise<{ id: string;
     headers: { "Content-Type": "application/json" },
   });
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error ?? "Failed to save purchase invoice");
+    const err = await res.json() as Record<string, unknown>;
+    let message = "Failed to save purchase invoice";
+
+    if (err.error) {
+      message = String(err.error);
+    }
+    if (err.issues && Array.isArray(err.issues)) {
+      const firstIssue = (err.issues[0] as Record<string, unknown>)?.message;
+      if (firstIssue) {
+        message = `Validation error: ${firstIssue}`;
+      }
+    }
+
+    throw new Error(message);
   }
-  return res.json();
+  return res.json() as Promise<{ id: string; voucherNo: string }>;
 }
 
 // ---------------------------------------------------------------------------
