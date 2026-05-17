@@ -490,7 +490,7 @@ export async function createVoucher(
           supplierInvoiceNo: input.supplierInvoiceNo,
         } : {}),
         ...('supplierInvoiceDate' in input && input.supplierInvoiceDate ? {
-          supplierInvoiceDate: new Date(input.supplierInvoiceDate),
+          supplierInvoiceDate: new Date(input.supplierInvoiceDate as string),
         } : {}),
         // TDS fields — stored on voucher for audit trail (D-05)
         ...(input.tdsSection ? {
