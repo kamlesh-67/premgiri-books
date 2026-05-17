@@ -34,6 +34,7 @@ interface PartyOption {
   name: string;
   stateCode?: string;
   gstin?: string;
+  partyType?: string; // 'Customer' | 'Supplier'
 }
 
 interface CompanySession {
@@ -332,11 +333,13 @@ export default function InvoiceForm({
               className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-purple-600"
             >
               <option value="">Select customer...</option>
-              {parties.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
+              {parties
+                .filter((p) => p.partyType === "Customer")
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
             </select>
             {errors.partyLedgerId && (
               <p className="text-xs text-red-500">{errors.partyLedgerId.message}</p>
