@@ -88,22 +88,29 @@ export async function POST(request: NextRequest) {
     const companyId = session.user.companyId
     const isPurchase = parsedData.voucherType === 'PURCHASE'
 
-    // Resolve (or auto-create) the standard trading ledgers
+    // Resolve required account groups FIRST — fail fast with a clear message if missing
     const [purchaseGroup, salesGroup, gstGroup] = await Promise.all([
       prisma.accountGroup.findFirst({ where: { companyId, name: 'Purchase Accounts' } }),
       prisma.accountGroup.findFirst({ where: { companyId, name: 'Direct Income' } }),
       prisma.accountGroup.findFirst({ where: { companyId, name: 'Duties & Taxes' } }),
     ])
 
+    if (!purchaseGroup || !salesGroup || !gstGroup) {
+      return NextResponse.json(
+        { error: 'Standard account groups (Purchase Accounts / Direct Income / Duties & Taxes) not found. Please run the database seed for this company.' },
+        { status: 422 }
+      )
+    }
+
+    // Upsert standard trading ledgers — safe now that groups are confirmed to exist
     const [tradingLedger, gstLedger] = await Promise.all([
-      // Purchase Account or Sales Income — upsert so it always exists
       isPurchase
         ? prisma.ledger.upsert({
             where: { companyId_name: { companyId, name: 'Purchase Account' } },
             update: {},
             create: {
               companyId, name: 'Purchase Account',
-              groupId: purchaseGroup!.id,
+              groupId: purchaseGroup.id,
               openingBalance: '0', drCr: 'DR',
               gstRegType: 'UNREGISTERED', isActive: true,
             },
@@ -113,30 +120,22 @@ export async function POST(request: NextRequest) {
             update: {},
             create: {
               companyId, name: 'Sales Income',
-              groupId: salesGroup!.id,
+              groupId: salesGroup.id,
               openingBalance: '0', drCr: 'CR',
               gstRegType: 'UNREGISTERED', isActive: true,
             },
           }),
-      // Single GST Payable ledger for all GST (input and output)
       prisma.ledger.upsert({
         where: { companyId_name: { companyId, name: 'GST Payable' } },
         update: {},
         create: {
           companyId, name: 'GST Payable',
-          groupId: gstGroup!.id,
+          groupId: gstGroup.id,
           openingBalance: '0', drCr: 'CR',
           gstRegType: 'UNREGISTERED', isActive: true,
         },
       }),
     ])
-
-    if (!purchaseGroup || !salesGroup || !gstGroup) {
-      return NextResponse.json(
-        { error: 'Standard account groups (Purchase Accounts / Direct Income / Duties & Taxes) not found. Please run the database seed for this company.' },
-        { status: 422 }
-      )
-    }
 
     // Compute totals from items — GST rate is per-item gstRateOverride or looked up from stock master
     const items = parsedData.items as Array<Record<string, unknown>>
