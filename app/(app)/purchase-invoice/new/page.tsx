@@ -499,6 +499,9 @@ export default function PurchaseInvoiceNewPage() {
         )}
       </SectionCard>
 
+      {/* Hidden fields for form submission */}
+      <input type="hidden" {...register("voucherType")} />
+
       {/* ── Line Items ── */}
       <div>
         <h2 className="text-base font-semibold text-gray-800 mb-3">
