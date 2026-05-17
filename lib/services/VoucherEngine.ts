@@ -140,7 +140,7 @@ export interface PrismaTx {
       create: { companyId: string; voucherType: string; financialYear: string; lastSequence: number }
       update: Record<string, unknown>
     }) => Promise<{ id: string; lastSequence: number }>
-    findFirstOrThrow: (args: { where: { id: string } }) => Promise<{ id: string; lastSequence: number }>
+    findFirstOrThrow: (args: { where: { id: string; companyId?: string } }) => Promise<{ id: string; lastSequence: number }>
     update: (args: { where: { id: string }; data: { lastSequence: number } }) => Promise<{ id: string; lastSequence: number }>
   }
   voucher: {
@@ -404,7 +404,7 @@ export async function getNextVoucherNo(
 
   // Step 3: Re-read the locked row's sequence value
   const lockedRow = await tx.voucherSequence.findFirstOrThrow({
-    where: { id: seqRow.id },
+    where: { id: seqRow.id, companyId },
   })
 
   // Step 4: Increment and persist the new sequence
