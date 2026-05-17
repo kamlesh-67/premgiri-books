@@ -181,16 +181,15 @@ export async function POST(request: NextRequest) {
       entries.push({
         ledgerId: tradingLedger.id,
         drCr: isPurchase ? 'DR' : 'CR',
-        amount: taxableTotal.toDecimalPlaces(2).toString(),
+        amount: taxableTotal.toDecimalPlaces(2),
         narration: isPurchase ? 'Purchases' : 'Sales',
       })
     }
     if (gstTotal.gt(0)) {
       entries.push({
         ledgerId: gstLedger.id,
-        // Purchase: DR (input tax, reduces liability) | Sales: CR (output tax, increases liability)
         drCr: isPurchase ? 'DR' : 'CR',
-        amount: gstTotal.toDecimalPlaces(2).toString(),
+        amount: gstTotal.toDecimalPlaces(2),
         narration: isInterState ? 'IGST' : 'CGST + SGST',
       })
     }
@@ -198,7 +197,7 @@ export async function POST(request: NextRequest) {
       entries.push({
         ledgerId: parsedData.partyLedgerId,
         drCr: isPurchase ? 'CR' : 'DR',
-        amount: grandTotal.toDecimalPlaces(2).toString(),
+        amount: grandTotal.toDecimalPlaces(2),
       })
     }
 
