@@ -171,14 +171,14 @@ export function LineItemsTable({
   >
 
   const rowAmounts = (watchedItems ?? []).map((item) => {
-    const qty = new Decimal(String(item?.qty ?? '0'))
-    const rate = new Decimal(String(item?.rate ?? '0'))
-    const discPct = new Decimal(String(item?.discountPct ?? '0'))
+    const qty = new Decimal(String(item?.qty || '0'))
+    const rate = new Decimal(String(item?.rate || '0'))
+    const discPct = new Decimal(String(item?.discountPct || '0'))
     const taxable = qty
       .times(rate)
       .times(new Decimal(1).minus(discPct.dividedBy(100)))
     const gstRate = new Decimal(
-      String(item?.gstRateOverride ?? item?._gstRate ?? '0')
+      String(item?.gstRateOverride || item?._gstRate || '0')
     )
     const { cgst, sgst, igst, taxType } = calculateGST({
       taxableValue: taxable,
