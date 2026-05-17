@@ -414,8 +414,27 @@ export default function PurchaseInvoiceNewPage() {
   });
 
   const isSaving = draftMutation.isPending || postMutation.isPending;
-  const onSaveDraft = handleSubmit((data) => draftMutation.mutate(data));
-  const onPost = handleSubmit((data) => postMutation.mutate(data));
+
+  // Surfaces hidden Zod validation errors as toasts so the user knows what's wrong
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function onFormError(errors: Record<string, any>) {
+    const findFirst = (obj: Record<string, unknown>): string | null => {
+      for (const key of Object.keys(obj)) {
+        const val = obj[key] as Record<string, unknown>;
+        if (val?.message) return val.message as string;
+        if (typeof val === 'object' && val !== null) {
+          const nested = findFirst(val as Record<string, unknown>);
+          if (nested) return nested;
+        }
+      }
+      return null;
+    };
+    const msg = findFirst(errors);
+    toast.error(msg ?? 'Please fill all required fields before submitting.');
+  }
+
+  const onSaveDraft = handleSubmit((data) => draftMutation.mutate(data), onFormError);
+  const onPost = handleSubmit((data) => postMutation.mutate(data), onFormError);
 
   // ── Quick item create handler ────────────────────────────────────────────
   function handleRequestCreate(name: string, rowIndex: number) {
