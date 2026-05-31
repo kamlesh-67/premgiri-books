@@ -60,7 +60,7 @@
 - [ ] **Phase 17: Electron Shell + SQLite Migration** — App runs in Electron window; SQLite replaces PostgreSQL
 - [ ] **Phase 18: Local Authentication** — bcrypt+JWT replaces NextAuth; every route protected
 - [ ] **Phase 19: First-Run Company Setup Wizard** — Blank DB triggers `/setup`; company + admin created; setup locked after first run
-- [ ] **Phase 20: User Management** — Owner creates/deactivates users; Accountant role enforced at Users page
+- [x] **Phase 20: User Management** — Owner creates/deactivates users; Accountant role enforced at Users page
 - [ ] **Phase 21: Local File Storage + Cloud Service Removal** — PDFs write to local folder; all cloud dependencies removed
 - [ ] **Phase 22: Optional AI + Windows Installer** — Online check gates every AI call; graceful offline fallback; `.exe` installer ships
 
@@ -206,7 +206,15 @@ Plans:
   4. The application starts with no `INNGEST_*`, `REDIS_*`, `R2_*`, `RESEND_*`, or `POSTHOG_*` environment variables set — zero startup errors or missing-config warnings
   5. The codebase contains no import of `inngest`, `@upstash/redis`, `@aws-sdk/client-s3`, `resend`, or `posthog-node` — grep returns zero matches for each
 **UI hint**: yes
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [ ] 21-01-PLAN.md — AppSettings schema + migration + lib/localFiles.ts (R2 replacement)
+- [ ] 21-02-PLAN.md — Inngest removal: PayrollRunner sync function + inngest stub + embeddings no-op
+- [ ] 21-03-PLAN.md — Redis/Resend/PostHog no-op stubs + PostHogProvider removal
+- [ ] 21-04-PLAN.md — app-settings API routes + Electron IPC mkdir/getUserDataPath
+- [ ] 21-05-PLAN.md — Remove cloud packages from package.json + delete Inngest route
+- [ ] 21-06-PLAN.md — Folder picker UI in Settings Company page
 
 ### Phase 22: Optional AI + Windows Installer
 **Goal**: AI features (Smart Insights, semantic search) work when the machine is online and degrade gracefully when offline — and the app can be packaged as a Windows `.exe` installer that end users can install without developer tooling
@@ -247,7 +255,7 @@ Plans:
 | 17. Electron Shell + SQLite Migration | v1.2 | 0/TBD | Not started | - |
 | 18. Local Authentication | v1.2 | 0/TBD | Not started | - |
 | 19. First-Run Company Setup Wizard | v1.2 | 0/TBD | Not started | - |
-| 20. User Management | v1.2 | 3/3 | Complete |  |
+| 20. User Management | v1.2 | 3/3 | Complete | 2026-05-31 |
 | 21. Local File Storage + Cloud Service Removal | v1.2 | 0/TBD | Not started | - |
 | 22. Optional AI + Windows Installer | v1.2 | 0/TBD | Not started | - |
 

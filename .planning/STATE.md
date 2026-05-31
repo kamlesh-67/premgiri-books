@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Production Ready
 status: completed
-stopped_at: Phase 20 Plan 01 complete
-last_updated: "2026-05-31T14:38:00.481Z"
-last_activity: "2026-05-31 — Phase 20 Plan 01 complete: OWNER_PERMISSIONS constant, auth/me returns permissions, AppSidebar wired"
+stopped_at: Phase 20 complete — verified 2026-05-31
+last_updated: "2026-05-31T15:00:00Z"
+last_activity: "2026-05-31 — Phase 20 verified: 12/12 must-haves pass; permissions infrastructure, reset-password API, sidebar filter, and 403 guard all confirmed"
 progress:
   total_phases: 11
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 21
-  completed_plans: 20
-  percent: 64
+  completed_plans: 21
+  percent: 73
 ---
 
 # Project State
@@ -38,8 +38,8 @@ See: `.planning/PROJECT.md` (updated 2026-05-31)
 
 Phase: 20 — User Management
 Plan: 03 — complete (frontend permission guards + ResetPasswordDialog)
-Status: Complete — 3/3 plans done
-Last activity: 2026-05-31 — Phase 20 Plan 03 complete: AppSidebar isPermitted filter, Users page Server Component 403 guard, ResetPasswordDialog
+Status: Complete — 3/3 plans done — verified 2026-05-31 (12/12 must-haves)
+Last activity: 2026-05-31 — Phase 20 verified: OWNER_PERMISSIONS in JWT, auth/me returns permissions, AppSidebar isPermitted filter, Users page 403 guard, reset-password endpoint, ResetPasswordDialog
 
 Progress: [██████████] 100%
 
@@ -52,7 +52,7 @@ Progress: [██████████] 100%
 | 17 | Electron Shell + SQLite Migration | ELEC-01, ELEC-02, ELEC-03, DB-01, DB-02, DB-03, DB-04 | Not started |
 | 18 | Local Authentication | AUTH-01, AUTH-02, AUTH-03, AUTH-04 | Complete (3/3 plans done) |
 | 19 | First-Run Company Setup Wizard | SETUP-01, SETUP-02, SETUP-03, SETUP-04, SETUP-05 | Complete (2/2 plans) |
-| 20 | User Management | USER-01, USER-02, USER-03, USER-04, USER-05 | Complete (3/3 plans done) |
+| 20 | User Management | USER-01, USER-02, USER-03, USER-04, USER-05 | Complete — verified 2026-05-31 |
 | 21 | Local File Storage + Cloud Service Removal | FILE-01..05, CLOUD-01..06 | Not started |
 | 22 | Optional AI + Windows Installer | AI-01..05, ELEC-04 | Not started |
 
@@ -81,5 +81,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-05-31
-Stopped at: Phase 20 Plan 03 complete
+Stopped at: Phase 20 complete — verified
 Next action: Execute Phase 21 (Local File Storage + Cloud Service Removal)
