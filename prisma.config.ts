@@ -1,6 +1,8 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+// Phase 17: SQLite migration — desktop app uses local file database
+// DATABASE_URL should be file:./dev.db for development
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
@@ -8,9 +10,6 @@ export default defineConfig({
     seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
-    // Neon requires a direct (non-pooled) URL for migrate deploy.
-    // Set DIRECT_URL in Vercel to the non-pooled Neon connection string.
-    // Falls back to DATABASE_URL for local dev (pg direct connection).
-    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
+    url: process.env["DATABASE_URL"] ?? "file:./dev.db",
   },
 });
