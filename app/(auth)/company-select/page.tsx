@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
@@ -32,7 +31,6 @@ function getCurrentFY(): string {
 }
 
 export default function CompanySelectPage() {
-  const { update } = useSession()
   const router = useRouter()
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -53,9 +51,7 @@ export default function CompanySelectPage() {
         return
       }
 
-      // Update JWT with new companyId — triggers jwt callback with trigger='update'
-      await update({ companyId })
-
+      // select-company route re-issues the JWT cookie with the new companyId
       router.push('/dashboard')
       router.refresh()
     } catch {
@@ -155,7 +151,10 @@ export default function CompanySelectPage() {
 
       {/* Sign out link — UI-SPEC 9.2 exact copy */}
       <button
-        onClick={() => signOut({ callbackUrl: '/login' })}
+        onClick={async () => {
+          await fetch('/api/v1/auth/logout', { method: 'POST' })
+          router.push('/login')
+        }}
         className="mt-6 text-sm text-gray-500 hover:text-gray-700 underline"
       >
         Sign out

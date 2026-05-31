@@ -1,13 +1,11 @@
 'use client'
 import { useState } from 'react'
-import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { useUiStore } from '@/lib/stores/uiStore'
 import type { UiMode } from '@/lib/stores/uiStore'
 
 export function SimpleModeToggle() {
   const { uiMode, setUiMode } = useUiStore()
-  const { update } = useSession()
   const [isSaving, setIsSaving] = useState(false)
 
   async function handleToggle(newMode: UiMode) {
@@ -24,8 +22,7 @@ export function SimpleModeToggle() {
         body: JSON.stringify({ uiMode: newMode }),
       })
       if (!res.ok) throw new Error('Save failed')
-      // Refresh JWT so middleware reads the updated uiMode on next navigation
-      await update({ uiMode: newMode })
+      // The preferences route sets the ui-mode cookie; middleware reads it on next request.
       toast.success(
         `Switched to ${newMode === 'simple' ? 'Simple' : 'Advanced'} Mode.`,
         { duration: 2000 }
