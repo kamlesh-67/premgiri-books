@@ -1,0 +1,11 @@
+appId: com.premgiribooks.app
+productName: PremGiri Books
+
+directories:
+  output: dist
+
+files:
+  - electron/**
+  - .next/**
+  - public/**
+  - package.json
