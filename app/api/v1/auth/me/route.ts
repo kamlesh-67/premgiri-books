@@ -1,6 +1,7 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
 /**
  * GET /api/v1/auth/me
@@ -11,15 +12,15 @@ import { NextResponse } from 'next/server'
  *
  * Security:
  *  - 401 if no session
- *  - roleName fetched from DB using session.user.roleId + companyId (not trusted from session payload)
+ *  - roleName fetched from DB using session.roleId + companyId (not trusted from session payload)
  */
-export async function GET() {
-  const session = await auth()
+export async function GET(request: NextRequest) {
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const role = session.user.roleId
+  const role = session.roleId
     ? await prisma.role.findFirst({
-        where: { id: session.user.roleId, companyId: session.user.companyId },
+        where: { id: session.roleId, companyId: session.companyId },
         select: { name: true },
       })
     : null

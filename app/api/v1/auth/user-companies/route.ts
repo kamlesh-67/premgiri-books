@@ -1,23 +1,24 @@
 /**
  * GET /api/v1/auth/user-companies
- * Returns all companies accessible to the logged-in user's email.
+ * Returns all companies accessible to the logged-in user.
  * Used by /company-select page to populate company cards.
  *
- * NOTE: Uses authDb (unextended) because we query User by email across ALL companies.
+ * NOTE: Uses authDb (unextended) because we query User by userId across ALL companies.
  * The main prisma client would throw TenantScopeError without a companyId filter.
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { authDb } from '@/lib/authDb'
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export async function GET() {
-  const session = await auth()
-  if (!session?.user?.email) {
+export async function GET(request: NextRequest) {
+  const session = await getSessionFromRequest(request)
+  if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const users = await authDb.user.findMany({
-    where: { email: session.user.email, isActive: true },
+    where: { id: session.userId, isActive: true },
     include: {
       company: {
         select: { id: true, name: true, gstin: true, fyStart: true },
