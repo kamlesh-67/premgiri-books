@@ -1,6 +1,12 @@
-import nodemailer from 'nodemailer'
+/**
+ * lib/email.ts — NO-OP STUB
+ *
+ * Email (Resend) removed in Phase 21 (CLOUD-04).
+ * Desktop app has no email flow — all notifications are in-app only.
+ * sendEmail() logs to console so callers compile and run without errors.
+ */
 
-type EmailPayload = {
+interface EmailPayload {
   to: string
   subject: string
   html: string
@@ -8,37 +14,7 @@ type EmailPayload = {
   replyTo?: string
 }
 
-const DEFAULT_FROM = 'PremGiri Books <noreply@premgiribooks.com>'
-
-function createNodemailerTransport() {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST ?? 'localhost',
-    port: parseInt(process.env.SMTP_PORT ?? '1025', 10),
-    secure: false,
-    ignoreTLS: true,
-  })
-}
-
-/**
- * Send a transactional email.
- * Switches between Nodemailer+Mailhog (dev) and Resend (prod) via EMAIL_PROVIDER env var.
- * Pass html as a rendered string — use @react-email/render to convert React Email templates.
- *
- * Example:
- *   import { render } from '@react-email/render'
- *   import { WelcomeEmail } from '@/components/emails/WelcomeEmail'
- *   const html = await render(<WelcomeEmail name="Ramesh" companyName="Demo Co" />)
- *   await sendEmail({ to: '...', subject: 'Welcome', html })
- */
-export async function sendEmail({ to, subject, html, from, replyTo }: EmailPayload): Promise<void> {
-  const provider = process.env.EMAIL_PROVIDER ?? 'nodemailer'
-
-  if (provider === 'resend') {
-    const { Resend } = await import('resend')
-    const resend = new Resend(process.env.RESEND_API_KEY!)
-    await resend.emails.send({ from: from ?? DEFAULT_FROM, to, subject, html, replyTo })
-  } else {
-    const transporter = createNodemailerTransport()
-    await transporter.sendMail({ from: from ?? DEFAULT_FROM, to, subject, html, replyTo })
-  }
+export async function sendEmail(payload: EmailPayload): Promise<void> {
+  // No-op: Resend removed. Desktop app uses in-app notifications only.
+  console.log('[email] sendEmail no-op:', payload.to, '|', payload.subject)
 }
