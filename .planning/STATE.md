@@ -37,11 +37,11 @@ See: `.planning/PROJECT.md` (updated 2026-05-31)
 ## Current Position
 
 Phase: 20 — User Management
-Plan: 02 — complete (self-deactivation guard + reset-password endpoint)
-Status: In progress — 2/3 plans done
-Last activity: 2026-05-31 — Phase 20 Plan 02 complete: self-deactivation guard in PATCH, POST reset-password endpoint with bcrypt + audit log
+Plan: 03 — complete (frontend permission guards + ResetPasswordDialog)
+Status: Complete — 3/3 plans done
+Last activity: 2026-05-31 — Phase 20 Plan 03 complete: AppSidebar isPermitted filter, Users page Server Component 403 guard, ResetPasswordDialog
 
-Progress: [███████░░░] 67%
+Progress: [██████████] 100%
 
 ---
 
@@ -52,7 +52,7 @@ Progress: [███████░░░] 67%
 | 17 | Electron Shell + SQLite Migration | ELEC-01, ELEC-02, ELEC-03, DB-01, DB-02, DB-03, DB-04 | Not started |
 | 18 | Local Authentication | AUTH-01, AUTH-02, AUTH-03, AUTH-04 | Complete (3/3 plans done) |
 | 19 | First-Run Company Setup Wizard | SETUP-01, SETUP-02, SETUP-03, SETUP-04, SETUP-05 | Complete (2/2 plans) |
-| 20 | User Management | USER-01, USER-02, USER-03, USER-04, USER-05 | In progress (1/3 plans) |
+| 20 | User Management | USER-01, USER-02, USER-03, USER-04, USER-05 | Complete (3/3 plans done) |
 | 21 | Local File Storage + Cloud Service Removal | FILE-01..05, CLOUD-01..06 | Not started |
 | 22 | Optional AI + Windows Installer | AI-01..05, ELEC-04 | Not started |
 
@@ -80,6 +80,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-31T14:38:00.468Z
-Stopped at: Phase 20 Plan 02 complete
-Next action: Execute Phase 20 Plan 03 (User Management UI — invite/deactivate team members)
+Last session: 2026-05-31
+Stopped at: Phase 20 Plan 03 complete
+Next action: Execute Phase 21 (Local File Storage + Cloud Service Removal)

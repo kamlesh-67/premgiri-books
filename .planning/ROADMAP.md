@@ -247,7 +247,7 @@ Plans:
 | 17. Electron Shell + SQLite Migration | v1.2 | 0/TBD | Not started | - |
 | 18. Local Authentication | v1.2 | 0/TBD | Not started | - |
 | 19. First-Run Company Setup Wizard | v1.2 | 0/TBD | Not started | - |
-| 20. User Management | v1.2 | 2/3 | In Progress|  |
+| 20. User Management | v1.2 | 3/3 | Complete |  |
 | 21. Local File Storage + Cloud Service Removal | v1.2 | 0/TBD | Not started | - |
 | 22. Optional AI + Windows Installer | v1.2 | 0/TBD | Not started | - |
 
