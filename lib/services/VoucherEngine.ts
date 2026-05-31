@@ -3,7 +3,7 @@
  *
  * Core service for all voucher operations in PremGiri Books.
  * Implements the complete double-entry accounting flow:
- *  1. Sequence generation with SELECT FOR UPDATE (prevents duplicate voucher numbers)
+ *  1. Sequence generation with Prisma $transaction (SQLite Serializable isolation — no FOR UPDATE needed)
  *  2. Balance validation (DR total must equal CR total — enforced before any DB write)
  *  3. Voucher + entries + items persistence inside a single Prisma $transaction
  *  4. BillRef creation for receivables/payables tracking (POSTED only)
@@ -133,7 +133,6 @@ export interface VoucherInput {
  * without a real database connection.
  */
 export interface PrismaTx {
-  $executeRaw: (query: TemplateStringsArray, ...values: unknown[]) => Promise<number>
   voucherSequence: {
     upsert: (args: {
       where: { companyId_voucherType_financialYear: { companyId: string; voucherType: string; financialYear: string } }
@@ -371,10 +370,11 @@ export function validateBalance(
  *
  * Protocol (T-02-02):
  *  1. Upsert the VoucherSequence row to ensure it exists for this FY.
- *  2. SELECT FOR UPDATE on the row to serialize concurrent requests at DB level.
- *  3. Read the current lastSequence.
- *  4. Update lastSequence to lastSequence + 1.
- *  5. Return the formatted voucher number: TYPE_PREFIX-FY-0000
+ *  2. Read the current lastSequence.
+ *  3. Update lastSequence to lastSequence + 1.
+ *  4. Return the formatted voucher number: TYPE_PREFIX-FY-0000
+ *
+ * SQLite serializes $transaction automatically — no explicit row lock needed.
  *
  * Must be called INSIDE an existing $transaction (tx) — never outside.
  *
@@ -399,10 +399,7 @@ export async function getNextVoucherNo(
     update: {}, // already exists — no-op update
   })
 
-  // Step 2: Acquire SELECT FOR UPDATE lock to prevent concurrent duplicates (T-02-02)
-  await tx.$executeRaw`SELECT id FROM voucher_sequences WHERE id = ${seqRow.id} FOR UPDATE`
-
-  // Step 3: Re-read the locked row's sequence value
+  // Step 2: Re-read the row's sequence value (SQLite $transaction is Serializable — no FOR UPDATE needed)
   const lockedRow = await tx.voucherSequence.findFirstOrThrow({
     where: { id: seqRow.id, companyId },
   })
@@ -427,7 +424,7 @@ export async function getNextVoucherNo(
  * Flow (8 steps):
  *  1. Derive financial year from input date.
  *  2. Validate DR === CR balance — throws ValidationError before any DB write (T-02-01).
- *  3. Generate voucher number with SELECT FOR UPDATE (T-02-02).
+ *  3. Generate voucher number via Prisma $transaction (T-02-02).
  *  4. Compute GST totals from entries.
  *  5. Persist voucher + entries + items in one $transaction.
  *  6. Create BillRef for POSTED SALES/PURCHASE/CREDIT_NOTE/DEBIT_NOTE (T-02-05).
@@ -464,7 +461,7 @@ export async function createVoucher(
     const voucherDate = new Date(input.date)
     const fy = getFY(voucherDate)
 
-    // 1. Generate next voucher number (SELECT FOR UPDATE inside tx)
+    // 1. Generate next voucher number (SQLite $transaction serializes concurrency)
     const voucherNo = await getNextVoucherNo(tx, companyId, input.voucherType, fy)
 
     // 2. Compute totals from entries

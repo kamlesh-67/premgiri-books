@@ -290,11 +290,11 @@ describe('getNextVoucherNo', () => {
     }
   })
 
-  it('calls $executeRaw with SELECT FOR UPDATE to acquire row lock', async () => {
+  it('does NOT call $executeRaw — SQLite $transaction is Serializable', async () => {
     const tx = makeMockTx()
     await getNextVoucherNo(tx as any, 'c-001', 'SALES', '2024-25')
-    // Ensure $executeRaw was called (SELECT FOR UPDATE prevents concurrent duplicates)
-    expect(tx.$executeRaw).toHaveBeenCalled()
+    // SQLite $transaction serializes automatically — no explicit row lock needed
+    expect(tx.$executeRaw).not.toHaveBeenCalled()
   })
 
   it('calls voucherSequence.upsert to ensure row exists before locking', async () => {
@@ -933,21 +933,21 @@ describe('createVoucher — GstTransaction creation', () => {
 // ─── getNextVoucherNo — concurrent lock guard ────────────────────────────────
 
 describe('getNextVoucherNo — concurrent lock guard', () => {
-  it('calls $executeRaw on every invocation to acquire SELECT FOR UPDATE row lock', async () => {
+  it('does NOT call $executeRaw on any invocation — SQLite serializes $transaction', async () => {
     const tx = makeMockTx()
 
     // Call getNextVoucherNo twice on the same tx instance
     await getNextVoucherNo(tx as any, 'c-001', 'SALES', '2024-25')
     await getNextVoucherNo(tx as any, 'c-001', 'SALES', '2024-25')
 
-    // $executeRaw must have been called for each invocation (SELECT FOR UPDATE row lock)
-    expect(tx.$executeRaw).toHaveBeenCalledTimes(2)
+    // SQLite $transaction is Serializable — no explicit row lock needed on any invocation
+    expect(tx.$executeRaw).not.toHaveBeenCalled()
   })
 
   it('two concurrent invocations each increment lastSequence independently (mock simulation)', async () => {
     // Each tx is an independent mock — stateless, each starting from lastSequence=0.
-    // This validates that per-tx isolation is consistent; in production the real DB
-    // SELECT FOR UPDATE prevents duplicate sequence numbers across concurrent transactions.
+    // This validates that per-tx isolation is consistent; in production SQLite's
+    // Serializable $transaction prevents duplicate sequence numbers across concurrent transactions.
     const tx1 = makeMockTx()
     const tx2 = makeMockTx()
 
