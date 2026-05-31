@@ -62,8 +62,8 @@ export async function POST(request: NextRequest, { params }: Params) {
     )
   }
 
-  // 7. Hash the new password — 10 rounds to match the users route pattern
-  const passwordHash = await bcrypt.hash(parsed.data.password, 10)
+  // 7. Hash the new password — 12 rounds (matches setup route cost factor)
+  const passwordHash = await bcrypt.hash(parsed.data.password, 12)
 
   // 8. Atomic update + audit log — password hash NEVER included in audit log
   await prisma.$transaction(async (tx) => {
