@@ -25,5 +25,8 @@ export async function GET(request: NextRequest) {
       })
     : null
 
-  return NextResponse.json({ roleName: role?.name ?? '' })
+  return NextResponse.json({
+    roleName: role?.name ?? '',
+    permissions: session.permissions ?? {},
+  })
 }
