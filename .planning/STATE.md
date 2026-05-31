@@ -35,12 +35,12 @@ See: `.planning/PROJECT.md` (updated 2026-05-31)
 
 ## Current Position
 
-Phase: 19 — First-Run Company Setup Wizard
-Plan: Complete — 2/2 plans done (Wave 1: backend routes ✓, Wave 2: frontend wizard ✓)
-Status: Complete
-Last activity: 2026-05-31 — Phase 19 complete: POST /api/v1/setup + GET /api/v1/setup/status + SetupWizard UI + root redirect logic
+Phase: 20 — User Management
+Plan: 01 — complete (permissions infrastructure fix)
+Status: In progress — 1/3 plans done
+Last activity: 2026-05-31 — Phase 20 Plan 01 complete: OWNER_PERMISSIONS constant, auth/me returns permissions, AppSidebar wired
 
-Progress: [███░░░░░░░] 30%
+Progress: [████░░░░░░] 40%
 
 ---
 
@@ -51,7 +51,7 @@ Progress: [███░░░░░░░] 30%
 | 17 | Electron Shell + SQLite Migration | ELEC-01, ELEC-02, ELEC-03, DB-01, DB-02, DB-03, DB-04 | Not started |
 | 18 | Local Authentication | AUTH-01, AUTH-02, AUTH-03, AUTH-04 | Complete (3/3 plans done) |
 | 19 | First-Run Company Setup Wizard | SETUP-01, SETUP-02, SETUP-03, SETUP-04, SETUP-05 | Complete (2/2 plans) |
-| 20 | User Management | USER-01, USER-02, USER-03, USER-04, USER-05 | Not started |
+| 20 | User Management | USER-01, USER-02, USER-03, USER-04, USER-05 | In progress (1/3 plans) |
 | 21 | Local File Storage + Cloud Service Removal | FILE-01..05, CLOUD-01..06 | Not started |
 | 22 | Optional AI + Windows Installer | AI-01..05, ELEC-04 | Not started |
 
@@ -80,5 +80,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-05-31
-Stopped at: Phase 18 Plan 01 complete
-Next action: Execute Phase 18 Plan 02 (API route session migration — replace auth() calls)
+Stopped at: Phase 20 Plan 01 complete
+Next action: Execute Phase 20 Plan 02 (User Management UI — invite/deactivate team members)
