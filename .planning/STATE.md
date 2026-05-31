@@ -35,10 +35,10 @@ See: `.planning/PROJECT.md` (updated 2026-05-31)
 
 ## Current Position
 
-Phase: 18 — Local Authentication
-Plan: All 3 complete
-Status: Phase complete — NextAuth fully removed, JWT auth wired everywhere
-Last activity: 2026-05-31 — Phase 18 all 3 plans executed: JWT layer + 76 route migrations + next-auth removal
+Phase: 19 — First-Run Company Setup Wizard
+Plan: Planned — 2 plans ready (Wave 1: backend routes, Wave 2: frontend wizard)
+Status: Ready to execute
+Last activity: 2026-05-31 — Phase 19 planned: 2 plans (19-01 backend, 19-02 frontend) covering SETUP-01 through SETUP-05
 
 Progress: [██░░░░░░░░] 20%
 
@@ -50,7 +50,7 @@ Progress: [██░░░░░░░░] 20%
 |-------|------|-------------|--------|
 | 17 | Electron Shell + SQLite Migration | ELEC-01, ELEC-02, ELEC-03, DB-01, DB-02, DB-03, DB-04 | Not started |
 | 18 | Local Authentication | AUTH-01, AUTH-02, AUTH-03, AUTH-04 | Complete (3/3 plans done) |
-| 19 | First-Run Company Setup Wizard | SETUP-01, SETUP-02, SETUP-03, SETUP-04, SETUP-05 | Not started |
+| 19 | First-Run Company Setup Wizard | SETUP-01, SETUP-02, SETUP-03, SETUP-04, SETUP-05 | Planned (2 plans) |
 | 20 | User Management | USER-01, USER-02, USER-03, USER-04, USER-05 | Not started |
 | 21 | Local File Storage + Cloud Service Removal | FILE-01..05, CLOUD-01..06 | Not started |
 | 22 | Optional AI + Windows Installer | AI-01..05, ELEC-04 | Not started |
