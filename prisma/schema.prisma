@@ -1,24 +1,22 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider   = "postgresql"
-  extensions = [vector]
+  provider = "sqlite"
 }
 
 // --- 1. COMPANIES -----------------------------------------------------------
 model Company {
   id              String   @id @default(cuid())
   name            String
-  gstin           String?  @db.VarChar(15)
-  pan             String?  @db.VarChar(10)
-  stateCode       String   @db.VarChar(2)
+  gstin           String?
+  pan             String?
+  stateCode       String
   address         String?
   fyStart         Int      @default(4) // month number (4 = April)
   logoUrl         String?
-  annualTurnover  Decimal? @db.Decimal(15, 2)
+  annualTurnover  Decimal?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -118,20 +116,19 @@ model Ledger {
   companyId      String
   name           String
   groupId        String
-  gstin          String?    @db.VarChar(15)
-  pan            String?    @db.VarChar(10)
-  openingBalance Decimal    @default(0) @db.Decimal(15, 2)
+  gstin          String?
+  pan            String?
+  openingBalance Decimal    @default(0)
   drCr           DrCr       @default(DR)
   gstRegType     GstRegType @default(UNREGISTERED)
-  creditLimit    Decimal?   @db.Decimal(15, 2)
+  creditLimit    Decimal?
   creditDays     Int?
   bankName       String?
   bankAccount    String?
   ifsc           String?
-  stateCode      String?    @db.VarChar(2)
+  stateCode      String?
   isActive       Boolean    @default(true)
   tdsApplicable  Boolean    @default(false)  // true = TDS panel visible on Payment form
-  embedding      Unsupported("vector(1024)")? // Phase 11 D-01: voyage-3-lite 1024-dim; also covers Party (per MAST-04)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
@@ -171,12 +168,12 @@ model StockItem {
   name          String
   groupId       String
   uomId         String
-  hsnCode       String   @db.VarChar(8)
-  gstRate       Decimal  @db.Decimal(5, 2)
+  hsnCode       String
+  gstRate       Decimal
   gstApplicable Boolean  @default(true)
-  openingQty    Decimal  @default(0) @db.Decimal(12, 3)
-  openingRate   Decimal  @default(0) @db.Decimal(12, 4)
-  reorderQty    Decimal? @db.Decimal(12, 3)
+  openingQty    Decimal  @default(0)
+  openingRate   Decimal  @default(0)
+  reorderQty    Decimal?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -229,7 +226,7 @@ model VoucherSequence {
   id            String      @id @default(cuid())
   companyId     String
   voucherType   VoucherType
-  financialYear String      @db.VarChar(7) // e.g. "2024-25"
+  financialYear String      // e.g. "2024-25"
   lastSequence  Int         @default(0)
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -258,14 +255,14 @@ model Voucher {
   companyId       String
   voucherType     VoucherType
   voucherNo       String
-  date            DateTime      @db.Date
+  date            DateTime
   narration       String?
   partyLedgerId   String?
-  totalAmount     Decimal       @db.Decimal(15, 2)
-  cgstAmount      Decimal       @default(0) @db.Decimal(15, 2)
-  sgstAmount      Decimal       @default(0) @db.Decimal(15, 2)
-  igstAmount      Decimal       @default(0) @db.Decimal(15, 2)
-  roundOff        Decimal       @default(0) @db.Decimal(5, 2)
+  totalAmount     Decimal
+  cgstAmount      Decimal       @default(0)
+  sgstAmount      Decimal       @default(0)
+  igstAmount      Decimal       @default(0)
+  roundOff        Decimal       @default(0)
   status          VoucherStatus @default(DRAFT)
   irn             String?       // e-Invoice IRN (Phase 8)
   eWayBillNo      String?       // e-Way Bill number (Phase 8)
@@ -273,18 +270,17 @@ model Voucher {
   irnGeneratedAt     DateTime?     // When IRN was generated (30-day deadline compliance)
   eWayBillValidUntil DateTime?     // EWB validity end datetime from IRP EwbValidTill
   chequeNo        String?
-  chequeDated     DateTime?     @db.Date
+  chequeDated     DateTime?
   bankName        String?
   chequeStatus    String?       @default("ISSUED")
-  clearanceDate   DateTime?     @db.Date
-  tdsSection      String?       @db.VarChar(10)   // '194C' | '194J' | null
-  tdsRate         Decimal?      @db.Decimal(5, 2)
-  tdsAmount       Decimal?      @db.Decimal(15, 2)
+  clearanceDate   DateTime?
+  tdsSection      String?       // '194C' | '194J' | null
+  tdsRate         Decimal?
+  tdsAmount       Decimal?
   linkedVoucherId     String?       // for Credit Note / Debit Note -> original voucher
-  supplierInvoiceNo   String?       @db.VarChar(50)  // supplier's own invoice number (purchase only)
-  supplierInvoiceDate DateTime?     @db.Date         // supplier's invoice date (purchase only)
+  supplierInvoiceNo   String?       // supplier's own invoice number (purchase only)
+  supplierInvoiceDate DateTime?     // supplier's invoice date (purchase only)
   createdBy           String
-  embedding       Unsupported("vector(1024)")? // Phase 11 D-01: voyage-3-lite 1024-dim
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -309,7 +305,7 @@ model VoucherEntry {
   id        String  @id @default(cuid())
   voucherId String
   ledgerId  String
-  amount    Decimal @db.Decimal(15, 2)
+  amount    Decimal
   drCr      DrCr
   narration String?
   billRef   String?
@@ -330,18 +326,18 @@ model VoucherItem {
   voucherId   String
   itemId      String
   godownId    String?
-  qty         Decimal  @db.Decimal(12, 3)
-  rate        Decimal  @db.Decimal(12, 4)
-  amount      Decimal  @db.Decimal(15, 2)
-  discountPct Decimal? @db.Decimal(5, 2)
-  discountAmt Decimal? @db.Decimal(15, 2)
-  cgstRate    Decimal? @db.Decimal(5, 2)
-  cgstAmt     Decimal? @db.Decimal(15, 2)
-  sgstRate    Decimal? @db.Decimal(5, 2)
-  sgstAmt     Decimal? @db.Decimal(15, 2)
-  igstRate    Decimal? @db.Decimal(5, 2)
-  igstAmt     Decimal? @db.Decimal(15, 2)
-  hsnCode     String?  @db.VarChar(8)
+  qty         Decimal
+  rate        Decimal
+  amount      Decimal
+  discountPct Decimal?
+  discountAmt Decimal?
+  cgstRate    Decimal?
+  cgstAmt     Decimal?
+  sgstRate    Decimal?
+  sgstAmt     Decimal?
+  igstRate    Decimal?
+  igstAmt     Decimal?
+  hsnCode     String?
   batchNo     String?
   itcEligible Boolean  @default(true) // per STATE.md research flag; VOUCH-02, GST-06
   createdAt   DateTime @default(now())
@@ -361,10 +357,10 @@ model StockBatch {
   itemId        String
   godownId      String?
   voucherItemId String?  @unique
-  purchaseDate  DateTime @db.Date
-  qty           Decimal  @db.Decimal(12, 3)
-  remainingQty  Decimal  @db.Decimal(12, 3)
-  costRate      Decimal  @db.Decimal(12, 4)
+  purchaseDate  DateTime
+  qty           Decimal
+  remainingQty  Decimal
+  costRate      Decimal
   batchNo       String?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
@@ -386,7 +382,7 @@ model StockConsumption {
   companyId    String
   stockBatchId String
   voucherId    String
-  qty          Decimal  @db.Decimal(12, 3)
+  qty          Decimal
   createdAt    DateTime @default(now())
 
   company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -403,15 +399,15 @@ model GstTransaction {
   id             String     @id @default(cuid())
   companyId      String
   voucherId      String
-  gstinSupplier  String?    @db.VarChar(15)
-  gstinRecipient String?    @db.VarChar(15)
+  gstinSupplier  String?
+  gstinRecipient String?
   supplyType     SupplyType
-  returnPeriod   String     @db.VarChar(7) // "04/2024"
-  taxableValue   Decimal    @db.Decimal(15, 2)
-  cgst           Decimal    @default(0) @db.Decimal(15, 2)
-  sgst           Decimal    @default(0) @db.Decimal(15, 2)
-  igst           Decimal    @default(0) @db.Decimal(15, 2)
-  placeOfSupply  String     @db.VarChar(2)
+  returnPeriod   String     // "04/2024"
+  taxableValue   Decimal
+  cgst           Decimal    @default(0)
+  sgst           Decimal    @default(0)
+  igst           Decimal    @default(0)
+  placeOfSupply  String
   reverseCharge  Boolean    @default(false)
   gstr1Status    GstrStatus @default(PENDING)
   gstr3bStatus   GstrStatus @default(PENDING)
@@ -428,7 +424,7 @@ model GstReturn {
   id           String          @id @default(cuid())
   companyId    String
   returnType   String          // "GSTR1" | "GSTR3B"
-  returnPeriod String          @db.VarChar(7)
+  returnPeriod String
   status       GstReturnStatus @default(NOT_FILED)
   arn          String?
   jsonData     Json?
@@ -445,14 +441,14 @@ model GstReturn {
 model Gstr2aImport {
   id            String   @id @default(cuid())
   companyId     String
-  returnPeriod  String   @db.VarChar(7)    // "MM/YYYY" e.g. "04/2025"
-  supplierGstin String   @db.VarChar(15)
+  returnPeriod  String   // "MM/YYYY" e.g. "04/2025"
+  supplierGstin String
   invoiceNo     String
-  invoiceDate   DateTime @db.Date
-  taxableValue  Decimal  @db.Decimal(15, 2)
-  cgst          Decimal  @default(0) @db.Decimal(15, 2)
-  sgst          Decimal  @default(0) @db.Decimal(15, 2)
-  igst          Decimal  @default(0) @db.Decimal(15, 2)
+  invoiceDate   DateTime
+  taxableValue  Decimal
+  cgst          Decimal  @default(0)
+  sgst          Decimal  @default(0)
+  igst          Decimal  @default(0)
   uploadedAt    DateTime @default(now())
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -489,12 +485,12 @@ model BillRef {
   voucherId         String
   ledgerId          String
   billNo            String
-  billDate          DateTime  @db.Date
-  totalAmount       Decimal   @db.Decimal(15, 2)
-  outstandingAmount Decimal   @db.Decimal(15, 2)
+  billDate          DateTime
+  totalAmount       Decimal
+  outstandingAmount Decimal
   drCr              DrCr
   settled           Boolean   @default(false)
-  dueDate           DateTime? @db.Date
+  dueDate           DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -517,13 +513,13 @@ model Employee {
   salaryLedgerId String?
   pfApplicable   Boolean  @default(true)
   esiApplicable  Boolean  @default(false)
-  joinDate       DateTime @db.Date
+  joinDate       DateTime
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   salaryStructureId      String?
-  structureEffectiveFrom DateTime? @db.Date
+  structureEffectiveFrom DateTime?
 
   company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   salaryLedger    Ledger?          @relation("SalaryLedger", fields: [salaryLedgerId], references: [id])
@@ -556,10 +552,10 @@ model Order {
   companyId     String
   orderType     OrderType
   orderNo       String
-  date          DateTime    @db.Date
+  date          DateTime
   partyLedgerId String?
   status        OrderStatus @default(DRAFT)
-  totalAmount   Decimal     @db.Decimal(15, 2)
+  totalAmount   Decimal
   narration     String?
   createdBy     String
   createdAt     DateTime    @default(now())
@@ -580,11 +576,11 @@ model OrderItem {
   companyId     String
   itemId        String
   godownId      String?
-  qty           Decimal @db.Decimal(12, 3)
-  rate          Decimal @db.Decimal(12, 4)
-  amount        Decimal @db.Decimal(15, 2)
-  receivedQty   Decimal @default(0) @db.Decimal(12, 3)
-  dispatchedQty Decimal @default(0) @db.Decimal(12, 3)
+  qty           Decimal
+  rate          Decimal
+  amount        Decimal
+  receivedQty   Decimal @default(0)
+  dispatchedQty Decimal @default(0)
 
   order  Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
   item   StockItem  @relation(fields: [itemId], references: [id])
@@ -616,8 +612,8 @@ model AttendanceRecord {
   companyId   String
   employeeId  String
   month       String
-  presentDays Decimal   @db.Decimal(5, 1)
-  absentDays  Decimal   @db.Decimal(5, 1)
+  presentDays Decimal
+  absentDays  Decimal
   halfDays    Int       @default(0)
   leaveDays   Int       @default(0)
   lockedAt    DateTime?
@@ -637,8 +633,8 @@ model PayRun {
   companyId    String
   month        String
   status       String    @default("PENDING")
-  totalGross   Decimal?  @db.Decimal(15, 2)
-  totalNet     Decimal?  @db.Decimal(15, 2)
+  totalGross   Decimal?
+  totalNet     Decimal?
   errorMessage String?
   completedAt  DateTime?
   createdBy    String
@@ -659,14 +655,14 @@ model PaySlip {
   payRunId        String
   employeeId      String
   month           String
-  grossEarnings   Decimal  @db.Decimal(15, 2)
-  totalDeductions Decimal  @db.Decimal(15, 2)
-  netPay          Decimal  @db.Decimal(15, 2)
-  pfEmployee      Decimal  @db.Decimal(15, 2)
-  pfEmployer      Decimal  @db.Decimal(15, 2)
-  esiEmployee     Decimal  @db.Decimal(15, 2)
-  esiEmployer     Decimal  @db.Decimal(15, 2)
-  professionalTax Decimal  @db.Decimal(15, 2)
+  grossEarnings   Decimal
+  totalDeductions Decimal
+  netPay          Decimal
+  pfEmployee      Decimal
+  pfEmployer      Decimal
+  esiEmployee     Decimal
+  esiEmployer     Decimal
+  professionalTax Decimal
   computedData    Json
   pdfKey          String?
   createdAt       DateTime @default(now())
@@ -686,8 +682,8 @@ model BankStatement {
   companyId  String
   ledgerId   String
   bank       String
-  fromDate   DateTime @db.Date
-  toDate     DateTime @db.Date
+  fromDate   DateTime
+  toDate     DateTime
   uploadedAt DateTime @default(now())
   uploadedBy String
   rowCount   Int
@@ -705,11 +701,11 @@ model BankTransaction {
   id               String   @id @default(cuid())
   companyId        String
   statementId      String
-  txDate           DateTime @db.Date
+  txDate           DateTime
   description      String
-  debitAmount      Decimal? @db.Decimal(15, 2)
-  creditAmount     Decimal? @db.Decimal(15, 2)
-  balance          Decimal? @db.Decimal(15, 2)
+  debitAmount      Decimal?
+  creditAmount     Decimal?
+  balance          Decimal?
   matchStatus      String   @default("UNMATCHED")
   matchedVoucherId String?
   confidence       String?

@@ -1,7 +1,4 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaPg } from '@prisma/adapter-pg'
-import { Pool } from 'pg'
-import { PrismaNeon } from '@prisma/adapter-neon'
 
 // --- TenantScopeError -------------------------------------------------------
 export class TenantScopeError extends Error {
@@ -49,12 +46,8 @@ export function guardTenantScope(
 
 // --- Create extended Prisma client ------------------------------------------
 function createPrismaClient() {
-  // Use Neon serverless adapter in production (Vercel), pg adapter locally.
-  const adapter = process.env.NODE_ENV === 'production'
-    ? new PrismaNeon({ connectionString: process.env.DATABASE_URL! })
-    : new PrismaPg(new Pool({ connectionString: process.env.DATABASE_URL }))
+  // Phase 17: Plain PrismaClient for SQLite — no pg/neon adapter needed
   return new PrismaClient({
-    adapter,
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   }).$extends({
     query: {

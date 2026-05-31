@@ -1,3 +1,5 @@
+// NOTE: Embedding persistence is a no-op in SQLite mode (Phase 17).
+// Phase 11 AI embedding will be re-enabled when the pgvector extension is available.
 /**
  * EmbeddingService.ts
  * Pure helpers for building embed text, batching Voyage API calls, and persisting
@@ -10,7 +12,6 @@
  */
 
 import { voyageClient, EMBEDDING_MODEL } from '@/lib/ai'
-import { prisma } from '@/lib/prisma'
 
 // ─── Text builder: Ledger ─────────────────────────────────────────────────────
 
@@ -88,9 +89,9 @@ export async function embedBatch(texts: string[]): Promise<number[][]> {
 /**
  * Persists an embedding vector to the specified table via Prisma $executeRaw.
  *
- * CRITICAL (AI-SPEC pitfall #2): embedding MUST be JSON.stringify()'d before the ::vector
- * cast. Raw JS arrays cause Prisma serialization errors. The ::vector cast enforces
- * the 1024-dimension constraint at the Postgres level.
+ * NOTE (Phase 17): This function is a no-op in SQLite mode. SQLite has no vector
+ * type and pgvector is not available. The $executeRaw calls with ::vector cast are
+ * skipped until Phase 11 AI embedding is re-enabled with pgvector.
  *
  * Table names are NEVER dynamic — only literal branches prevent SQL injection (T-11-03-01).
  * No companyId WHERE clause here — the caller's SELECT already scoped to the correct company;
@@ -103,14 +104,16 @@ export async function embedBatch(texts: string[]): Promise<number[][]> {
 export async function persistEmbedding(
   table: 'vouchers' | 'ledgers',
   id: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   embedding: number[]
 ): Promise<void> {
-  // AI-SPEC pitfall #2: JSON.stringify is required for Prisma + pgvector ::vector cast
-  const vecStr = JSON.stringify(embedding)
-
   if (table === 'vouchers') {
-    await prisma.$executeRaw`UPDATE vouchers SET embedding = ${vecStr}::vector WHERE id = ${id}`
+    // Phase 11 (AI embedding) deferred — SQLite has no vector type; these calls are no-ops until re-enabled
+    console.warn('[EmbeddingService] SQLite mode — vector embedding skipped (Phase 11 deferred)')
+    return
   } else if (table === 'ledgers') {
-    await prisma.$executeRaw`UPDATE ledgers SET embedding = ${vecStr}::vector WHERE id = ${id}`
+    // Phase 11 (AI embedding) deferred — SQLite has no vector type; these calls are no-ops until re-enabled
+    console.warn('[EmbeddingService] SQLite mode — vector embedding skipped (Phase 11 deferred)')
+    return
   }
 }
