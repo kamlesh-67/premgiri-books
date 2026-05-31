@@ -1,4 +1,4 @@
-﻿import { auth } from '@/lib/auth'
+﻿import { readSession } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { Download, CheckCircle2, XCircle } from 'lucide-react'
 import { PageHeader } from '@/components/primitives/PageHeader'
@@ -51,9 +51,9 @@ export default async function BalanceSheetPage({
 }: {
   searchParams: Promise<{ fy?: string }>
 }) {
-  const session = await auth()
+  const session = await readSession()
   if (!session?.user?.companyId) redirect('/login')
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   const { fy: fyParam } = await searchParams
   const fy = fyParam ?? getFY()

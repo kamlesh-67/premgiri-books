@@ -34,7 +34,7 @@ const MAX_SIZE_BYTES = 2 * 1024 * 1024 // 2 MB
 
 export async function POST(request: Request) {
   const session = await getSessionFromRequest(request)
-  if (!session?.user?.id) {
+  if (!session?.userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

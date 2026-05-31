@@ -24,7 +24,7 @@ import { uploadFile, getPresignedUrl, buildR2Key } from '@/lib/r2'
 import React from 'react'
 
 export async function GET(
-  _request: NextRequest,
+  (request: NextRequest),
   { params }: { params: Promise<{ id: string }> }
 ) {
   // ── Auth guard ────────────────────────────────────────────────────────────

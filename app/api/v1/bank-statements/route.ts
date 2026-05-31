@@ -30,7 +30,7 @@ const uploadSchema = z.object({
 // GET — list bank statements for the authenticated company
 // ---------------------------------------------------------------------------
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

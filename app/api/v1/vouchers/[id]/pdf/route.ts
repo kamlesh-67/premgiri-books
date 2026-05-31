@@ -29,7 +29,7 @@ import React from 'react'
 import QRCode from 'qrcode'
 
 export async function GET(
-  _request: NextRequest,
+  (request: NextRequest),
   { params }: { params: Promise<{ id: string }> }
 ) {
   // ── Auth guard ────────────────────────────────────────────────────────────

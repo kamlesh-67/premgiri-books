@@ -26,7 +26,7 @@ import type { Prisma } from '@prisma/client'
 
 export async function GET(request: Request) {
   const session = await getSessionFromRequest(request)
-  if (!session?.user?.id) {
+  if (!session?.userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

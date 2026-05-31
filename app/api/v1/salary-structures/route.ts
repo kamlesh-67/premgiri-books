@@ -25,7 +25,7 @@ const createSchema = z.object({
   components: z.array(salaryComponentSchema).min(1, 'At least one component required'),
 })
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

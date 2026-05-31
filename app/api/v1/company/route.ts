@@ -22,7 +22,7 @@ const patchSchema = z.object({
 
 // ─── GET ─────────────────────────────────────────────────────────────────────
 
-export async function GET(_request: Request) {
+export async function GET(request: Request) {
   const session = await getSessionFromRequest(request)
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

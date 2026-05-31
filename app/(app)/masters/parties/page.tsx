@@ -1,14 +1,14 @@
-import { auth } from '@/lib/auth'
+import { readSession } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { PartiesClient } from './PartiesClient'
 
 export default async function PartiesPage() {
-  const session = await auth()
+  const session = await readSession()
   if (!session) redirect('/login')
 
-  const companyId = session.user.companyId
-  const uiMode = session.user.uiMode
+  const companyId = session.companyId
+  const uiMode = session.uiMode
 
   // Fetch initial parties server-side — avoids client-side loading flash
   const partyGroups = await prisma.accountGroup.findMany({

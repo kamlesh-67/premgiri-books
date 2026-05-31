@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { ledgerSchema } from '@/lib/schemas/masters'
 
 export async function GET(
-  _request: Request,
+  (request: Request),
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSessionFromRequest(request)

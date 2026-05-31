@@ -8,7 +8,7 @@ import { DataTable, type Column } from '@/components/primitives/DataTable'
 import { getFY, getFYStart, getFYEnd } from '@/lib/utils/fy'
 import { formatINR } from '@/lib/utils/format'
 import { getTrialBalance, validateTrialBalance, type TrialBalanceRow } from '@/lib/services/ReportEngine'
-import { auth } from '@/lib/auth'
+import { readSession } from '@/lib/session'
 
 // RSC page — reads fy from searchParams
 export default async function TrialBalancePage({
@@ -16,9 +16,9 @@ export default async function TrialBalancePage({
 }: {
   searchParams: Promise<{ fy?: string }>
 }) {
-  const session = await auth()
+  const session = await readSession()
   if (!session?.user?.companyId) redirect('/login')
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   const { fy: fyParam } = await searchParams
   const fy = fyParam ?? getFY()

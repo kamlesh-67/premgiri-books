@@ -18,7 +18,7 @@ const patchBodySchema = z.object({
  * IDOR protection: where clause always includes both id AND companyId (T-02-10).
  */
 export async function GET(
-  _request: Request,
+  (request: Request),
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSessionFromRequest(request)

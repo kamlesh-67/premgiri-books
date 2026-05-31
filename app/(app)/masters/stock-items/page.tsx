@@ -1,15 +1,15 @@
-import { auth } from '@/lib/auth'
+import { readSession } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { Decimal } from 'decimal.js'
 import { StockItemsClient } from './StockItemsClient'
 
 export default async function StockItemsPage() {
-  const session = await auth()
+  const session = await readSession()
   if (!session) redirect('/login')
 
-  const companyId = session.user.companyId
-  const uiMode = session.user.uiMode
+  const companyId = session.companyId
+  const uiMode = session.uiMode
 
   const [itemsRaw, inwardRows, outwardRows] = await Promise.all([
     prisma.stockItem.findMany({

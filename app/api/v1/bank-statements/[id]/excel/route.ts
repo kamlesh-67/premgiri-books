@@ -20,7 +20,7 @@ import ExcelJS from 'exceljs'
 type Params = { params: Promise<{ id: string }> }
 
 export async function GET(
-  _request: NextRequest,
+  (request: NextRequest),
   { params }: Params
 ) {
   // ── Auth guard ────────────────────────────────────────────────────────────

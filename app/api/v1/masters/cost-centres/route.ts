@@ -8,7 +8,7 @@ const costCentreSchema = z.object({
   name: z.string().min(1).max(100),
 })
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   const session = await getSessionFromRequest(request)
   if (!session?.user?.companyId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
