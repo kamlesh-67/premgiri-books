@@ -3,15 +3,17 @@
  *
  * Used by:
  *   - app/api/v1/auth/login/route.ts (signJWT on successful login)
+ *   - app/api/v1/setup/route.ts (signJWT for immediate post-setup auto-login)
  *   - lib/session.ts (verifyJWT to extract session from cookie)
  *   - middleware.ts (jwtVerify directly from jose — same secret)
- *
- * Plans 02 and 03 depend on the exact export names and JWTPayload shape defined here.
  */
 import { SignJWT, jwtVerify } from 'jose'
 
 const ALGORITHM = 'HS256'
 const EXPIRY = '7d'
+
+/** Cookie name used for the JWT session token. */
+export const SESSION_COOKIE_NAME = 'auth-token'
 
 /** Lazily read JWT_SECRET so tests can set process.env before calling sign/verify. */
 function getSecret(): Uint8Array {

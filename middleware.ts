@@ -9,7 +9,7 @@
  *  - Page paths → redirect to /login?callbackUrl=<pathname>
  *
  * Public paths (never blocked):
- *  - /login, /api/v1/auth/login, /api/v1/auth/logout, /dev, /setup
+ *  - /login, /api/v1/auth/login, /api/v1/auth/logout, /dev, /setup, /api/v1/setup
  */
 import { jwtVerify } from 'jose'
 import { NextResponse } from 'next/server'
@@ -27,7 +27,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/v1/auth/login') ||
     pathname.startsWith('/api/v1/auth/logout') ||
     pathname.startsWith('/dev') ||
-    pathname.startsWith('/setup')
+    pathname.startsWith('/setup') ||
+    pathname.startsWith('/api/v1/setup')
 
   // No token and not a public path → block
   if (!token && !isPublicPath) {
