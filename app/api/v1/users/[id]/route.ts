@@ -70,6 +70,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     )
   }
 
+  // Prevent self-deactivation — mirrors the self-delete guard in DELETE handler
+  if (parsed.data.isActive === false && userId === session.userId) {
+    return NextResponse.json(
+      { error: 'You cannot deactivate your own account.' },
+      { status: 400 }
+    )
+  }
+
   // Capture old state for audit log
   const oldValue = {
     name: existing.name,
