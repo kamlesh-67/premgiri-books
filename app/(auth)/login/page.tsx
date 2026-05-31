@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { CheckCircle, Loader2 } from 'lucide-react'
@@ -36,13 +35,13 @@ export default function LoginPage() {
   async function onSubmit(values: LoginInput) {
     setIsLoading(true)
     try {
-      const result = await signIn('credentials', {
-        email: values.email,
-        password: values.password,
-        redirect: false,
+      const res = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: values.email, password: values.password }),
       })
 
-      if (result?.error) {
+      if (!res.ok) {
         // D-03: Toast error, bottom-right — NOT inline (per UI-SPEC 9.1)
         toast.error('Incorrect email or password. Please try again.', {
           duration: 4000,

@@ -3,7 +3,6 @@
 import { useState, use } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { useSession } from "next-auth/react"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
@@ -73,7 +72,6 @@ export default function PurchaseOrderDetailPage({
   const { id } = use(params)
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { data: session } = useSession()
   const [showReceivePanel, setShowReceivePanel] = useState(false)
 
   // ── Fetch order detail ───────────────────────────────────────────────────
@@ -98,7 +96,6 @@ export default function PurchaseOrderDetailPage({
       if (!r.ok) return { roleName: "" }
       return r.json() as Promise<{ roleName: string }>
     },
-    enabled: !!session,
   })
 
   // D-03: Approve button is ABSENT (not rendered) for non-Admin/Owner

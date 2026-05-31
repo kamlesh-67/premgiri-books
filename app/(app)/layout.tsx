@@ -1,11 +1,12 @@
 import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
+import { readSession } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { Topbar } from '@/components/layout/Topbar'
 import { AppSidebar } from '@/components/layout/AppSidebar'
 import { AppShellClient } from '@/components/layout/AppShellClient'
 import { AutoBreadcrumb } from '@/components/layout/AutoBreadcrumb'
 import { UiModeProvider } from '@/components/layout/UiModeProvider'
+import { authDb } from '@/lib/authDb'
 import type { UiMode } from '@/lib/stores/uiStore'
 
 export default async function AppLayout({
@@ -13,15 +14,19 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await auth()
+  const session = await readSession()
   if (!session) redirect('/login')
 
-  // Read uiMode from header injected by middleware (avoids double auth() call)
+  // Read uiMode from header injected by middleware (avoids double JWT verification)
   const headersList = await headers()
   const uiMode = (headersList.get('x-ui-mode') ?? 'simple') as UiMode
 
-  // Derive user initials for avatar
-  const name = session.user.name ?? session.user.email ?? 'User'
+  // Fetch user name from DB using userId from JWT payload
+  const user = await authDb.user.findUnique({
+    where: { id: session.userId },
+    select: { name: true },
+  })
+  const name = user?.name ?? 'User'
   const initials = name
     .split(' ')
     .map((n) => n[0])
