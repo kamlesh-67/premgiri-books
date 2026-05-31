@@ -12,11 +12,14 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public paths — never redirect, never block
+  // /api/v1/setup — setup wizard API (unauthenticated; called before any session exists)
   const isPublicPath =
     pathname.startsWith('/login') ||
     pathname.startsWith('/company-select') ||
     pathname.startsWith('/api/auth') ||
-    pathname.startsWith('/dev')
+    pathname.startsWith('/dev') ||
+    pathname.startsWith('/setup') ||
+    pathname.startsWith('/api/v1/setup')
 
   // Block unauthenticated access to app pages
   if (!session && !isPublicPath) {
