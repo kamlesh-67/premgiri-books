@@ -176,7 +176,11 @@ Plans:
   4. After successful setup, the user is automatically logged in (JWT cookie set) and redirected to the Dashboard without a separate login step
   5. Navigating to `/setup` when a company already exists redirects to `/login` â€” the setup route cannot be accessed again
 **UI hint**: yes
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 19-01-PLAN.md — Backend: middleware public path + POST /api/v1/setup + GET /api/v1/setup/status
+- [ ] 19-02-PLAN.md — Frontend: root page redirect + setup page guard + SetupWizard client component
 
 ### Phase 20: User Management
 **Goal**: The Owner can create, deactivate, and reset passwords for users directly from the Users page â€” no email flow â€” and the Accountant role is blocked from accessing user management
