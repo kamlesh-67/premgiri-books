@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { headers } from 'next/headers'
 import { readSession } from '@/lib/session'
 import { redirect } from 'next/navigation'
@@ -44,8 +46,10 @@ export default async function AppLayout({
       <AppSidebar
         companyName="PremGiri Demo Co"
         userName={name}
-        userRole="Accountant"
+        userRole={session.role ?? ''}
         financialYear="2024-25"
+        // @ts-expect-error permissions prop added to AppSidebar in Plan 03
+        permissions={session.permissions}
       />
 
       <AppShellClient />
