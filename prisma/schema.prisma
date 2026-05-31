@@ -80,7 +80,7 @@ model Role {
   id          String   @id @default(cuid())
   companyId   String
   name        String
-  permissions Json     @default("{}")
+  permissions Json
   createdAt   DateTime @default(now())
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -819,6 +819,15 @@ enum AuditAction {
   POST
 }
 
+// --- APP SETTINGS (machine-level, not tenant-scoped) -----------------------
+model AppSettings {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}
+
 // --- NOTIFICATIONS (Phase 11: cron deduplication) ---------------------------
 model Notification {
   id             String   @id @default(cuid())
@@ -827,7 +836,7 @@ model Notification {
   entityId       String?  // voucherId, returnPeriod, etc.
   sentAt         DateTime @default(now())
   recipientEmail String
-  metadata       Json     @default("{}")
+  metadata       Json
 
   company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
