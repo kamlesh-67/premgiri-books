@@ -19,7 +19,7 @@
  * Returns: { voucherId, voucherNo, orderStatus }
  */
 
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { convertOrderSchema } from '@/lib/schemas/orders'
@@ -30,7 +30,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   // T-04-07-01: Authenticate before any business logic
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

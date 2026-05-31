@@ -6,11 +6,11 @@
  *
  * Security:
  *   - auth() first → 401 if no session
- *   - companyId ALWAYS from session.user.companyId — never from params (T-07-03-06)
+ *   - companyId ALWAYS from session.companyId — never from params (T-07-03-06)
  *   - IDOR protection: findFirst({ where: { id, companyId } }) — 404 for wrong company (T-07-03-03)
  */
 
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { runMatch } from '@/lib/banking/MatchingEngine'
 import { NextResponse } from 'next/server'
@@ -19,10 +19,10 @@ import type { NextRequest } from 'next/server'
 type Params = { params: Promise<{ id: string }> }
 
 export async function POST(_request: NextRequest, { params }: Params) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId  // NEVER from params (T-07-03-06)
+  const companyId = session.companyId  // NEVER from params (T-07-03-06)
   const { id } = await params
 
   // IDOR protection: verify statement belongs to this company
@@ -33,7 +33,7 @@ export async function POST(_request: NextRequest, { params }: Params) {
   if (!stmt) return NextResponse.json({ error: 'Bank statement not found' }, { status: 404 })
 
   try {
-    await runMatch(id, companyId, session.user.id)
+    await runMatch(id, companyId, session.userId)
     return NextResponse.json({ message: 'Matching complete', statementId: id })
   } catch (err) {
     console.error('[bank-statements/[id]/match POST]', err)

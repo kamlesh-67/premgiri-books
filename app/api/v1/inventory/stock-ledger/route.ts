@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -17,14 +17,14 @@ import { Decimal } from 'decimal.js'
  *
  * Security:
  *   - Auth check FIRST — 401 before any DB access (T-04-04-01)
- *   - companyId from session.user.companyId — never from query params (T-04-04-03)
+ *   - companyId from session.companyId — never from query params (T-04-04-03)
  *   - stockItem.findFirst with companyId guard prevents cross-tenant enumeration (T-04-04-02)
  */
 export async function GET(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   const searchParams = request.nextUrl.searchParams
   const itemId = searchParams.get('itemId')

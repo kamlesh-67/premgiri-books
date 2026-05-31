@@ -4,7 +4,7 @@
  *
  * Security:
  *   - auth() first on every handler → 401 before any processing
- *   - companyId ALWAYS from session.user.companyId — NEVER from form body (T-07-03-06)
+ *   - companyId ALWAYS from session.companyId — NEVER from form body (T-07-03-06)
  *   - File size: 10MB cap before file.text() (T-07-03-02)
  *   - File type: validated by extension (.csv) not MIME (RESEARCH.md anti-pattern)
  *   - bank + ledgerId validated via Zod before DB touch
@@ -12,7 +12,7 @@
  * Uploads pattern follows app/api/v1/gst/gstr2a/import/route.ts exactly.
  */
 
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { importStatement } from '@/lib/services/BankService'
 import { BANK_PARSERS } from '@/lib/banking/bankParsers'
@@ -31,10 +31,10 @@ const uploadSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export async function GET(_request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId  // NEVER from query params
+  const companyId = session.companyId  // NEVER from query params
 
   try {
     const statements = await prisma.bankStatement.findMany({
@@ -65,11 +65,11 @@ export async function GET(_request: NextRequest) {
 // ---------------------------------------------------------------------------
 
 export async function POST(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId  // NEVER from form body (T-07-03-06)
-  const userId = session.user.id
+  const companyId = session.companyId  // NEVER from form body (T-07-03-06)
+  const userId = session.userId
 
   // Parse multipart form data
   let formData: FormData

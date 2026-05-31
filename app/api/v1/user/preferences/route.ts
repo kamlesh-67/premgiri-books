@@ -4,13 +4,13 @@
  * Called by SimpleModeToggle after optimistic Zustand update.
  *
  * Security: user id from session (JWT), never from request body (T-02-02).
- * companyId from session.user.companyId for multi-tenant where clause.
+ * companyId from session.companyId for multi-tenant where clause.
  *
  * NOTE: session.user is extended in lib/auth.ts (Plan 01-01) to include
  * companyId, roleId, uiMode. Using type assertion here to satisfy the compiler
  * in this parallel worktree; merged result will have the full session type.
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { userPreferencesSchema } from '@/lib/schemas/masters'
@@ -26,7 +26,7 @@ interface ExtendedUser {
 }
 
 export async function POST(request: Request) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

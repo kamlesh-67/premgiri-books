@@ -4,10 +4,10 @@
  * Returns vouchers where chequeNo IS NOT NULL (cheque-bearing vouchers only).
  * Supports optional filtering by chequeStatus and pagination.
  *
- * SECURITY: All queries scoped to session.user.companyId (Rule 2 — CLAUDE.md).
+ * SECURITY: All queries scoped to session.companyId (Rule 2 — CLAUDE.md).
  * No companyId from query params — always from session.
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -20,10 +20,10 @@ const querySchema = z.object({
 })
 
 export async function GET(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { searchParams } = new URL(request.url)
 
   const parsed = querySchema.safeParse({

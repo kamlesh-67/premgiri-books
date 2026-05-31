@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -16,14 +16,14 @@ const statusSchema = z.object({
  * This action is intentionally irreversible (T-03-03-03).
  * Security:
  *  - auth() first — 401 before any processing
- *  - companyId ALWAYS from session.user.companyId
+ *  - companyId ALWAYS from session.companyId
  *  - auditLog written inside $transaction
  */
 export async function PATCH(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId  // NEVER from body
+  const companyId = session.companyId  // NEVER from body
   const body = await request.json()
   const parsed = statusSchema.safeParse(body)
   if (!parsed.success) {
@@ -69,7 +69,7 @@ export async function PATCH(request: NextRequest) {
       await tx.auditLog.create({
         data: {
           companyId,
-          userId: session.user.id,
+          userId: session.userId,
           entity: 'GstReturn',
           entityId: companyId,
           action: 'UPDATE',

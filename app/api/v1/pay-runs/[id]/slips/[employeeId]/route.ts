@@ -4,7 +4,7 @@
  * Returns a 15-minute presigned R2 URL to download the pay slip PDF.
  * 404 if slip not found or PDF not yet generated (pdfKey is null).
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { getPresignedUrl } from '@/lib/r2'
 import { NextResponse } from 'next/server'
@@ -13,10 +13,10 @@ import type { NextRequest } from 'next/server'
 type Params = { params: Promise<{ id: string; employeeId: string }> }
 
 export async function GET(_request: NextRequest, { params }: Params) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id: payRunId, employeeId } = await params
 
   // Verify pay run belongs to this company (IDOR protection)

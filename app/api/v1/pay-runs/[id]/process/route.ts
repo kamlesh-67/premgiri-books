@@ -4,7 +4,7 @@
  * Dev-only synchronous payroll processor — bypasses Inngest for local testing.
  * Runs the same logic as payrollRunFn inline. Blocked in production.
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -19,10 +19,10 @@ export async function POST(_request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Not available in production' }, { status: 403 })
   }
 
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id: payRunId } = await params
 
   const payRun = await prisma.payRun.findFirst({ where: { id: payRunId, companyId } })
@@ -98,7 +98,7 @@ export async function POST(_request: NextRequest, { params }: Params) {
           update: { grossEarnings: slip.grossEarnings, totalDeductions: slip.totalDeductions, netPay: slip.netPay, pfEmployee: slip.pfEmployee, pfEmployer: slip.pfEmployer, esiEmployee: slip.esiEmployee, esiEmployer: slip.esiEmployer, professionalTax: slip.professionalTax, computedData: slip.computedData as object, pdfKey: r2Key },
         })
         await tx.auditLog.create({
-          data: { companyId, userId: session.user.id, entity: 'PaySlip', entityId: record.id, action: 'CREATE', newValue: { payRunId, month } as object },
+          data: { companyId, userId: session.userId, entity: 'PaySlip', entityId: record.id, action: 'CREATE', newValue: { payRunId, month } as object },
         })
       })
     }

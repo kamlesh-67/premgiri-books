@@ -1,14 +1,14 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { uomSchema } from '@/lib/schemas/masters'
 import type { NextRequest } from 'next/server'
 
 export async function GET() {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   const uoms = await prisma.unitOfMeasure.findMany({
     where: { companyId },
@@ -32,10 +32,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   let body: unknown
   try {
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'UnitOfMeasure',
         entityId: uom.id,
         action: 'CREATE',

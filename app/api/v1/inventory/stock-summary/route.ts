@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -12,15 +12,15 @@ import { Decimal } from 'decimal.js'
  *
  * Security:
  *  - Auth check first — 401 before any DB access (T-04-03-01)
- *  - companyId always from session.user.companyId, never from request (T-04-03-02, T-04-03-03)
+ *  - companyId always from session.companyId, never from request (T-04-03-02, T-04-03-03)
  *  - $queryRaw uses Prisma parameterised template literal — safe from injection (T-04-03-02)
  *  - groupId filter does not affect companyId scoping (T-04-03-04)
  */
 export async function GET(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   try {
     const { searchParams } = new URL(request.url)

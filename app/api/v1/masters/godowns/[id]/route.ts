@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { godownSchema } from '@/lib/schemas/masters'
@@ -14,10 +14,10 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id } = await params
 
   // Verify ownership (T-01-08-02 — prevents IDOR)
@@ -72,7 +72,7 @@ export async function PATCH(
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'Godown',
         entityId: id,
         action: 'UPDATE',

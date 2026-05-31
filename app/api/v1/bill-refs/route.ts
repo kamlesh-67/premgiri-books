@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -11,7 +11,7 @@ import type { NextRequest } from 'next/server'
  *
  * Security:
  *  - Auth check is first — 401 before any logic (T-02-13)
- *  - companyId always from session.user.companyId (T-02-14)
+ *  - companyId always from session.companyId (T-02-14)
  *  - ledgerId from query param is filtered WITHIN the companyId scope — cannot access another company's bills
  *
  * Query params:
@@ -22,11 +22,11 @@ import type { NextRequest } from 'next/server'
  *    Defaults to 'receivable' (DR) if not provided.
  */
 export async function GET(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // T-02-14: companyId always from session — NEVER from query params
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { searchParams } = new URL(request.url)
 
   const ledgerId = searchParams.get('ledgerId')

@@ -6,7 +6,7 @@
  * IDOR protection: every query includes companyId from session — returns 404
  * for users belonging to another company rather than 403, leaking nothing.
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { blockUser } from '@/lib/redis'
@@ -23,13 +23,13 @@ const patchSchema = z.object({
 type Params = { params: Promise<{ id: string }> }
 
 export async function GET(_request: NextRequest, { params }: Params) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const forbidden = requirePermission(session, 'users', 'read')
   if (forbidden) return forbidden
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id: userId } = await params
 
   const user = await prisma.user.findUnique({
@@ -46,13 +46,13 @@ export async function GET(_request: NextRequest, { params }: Params) {
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const forbidden = requirePermission(session, 'users', 'admin')
   if (forbidden) return forbidden
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id: userId } = await params
 
   // IDOR protection: include companyId in lookup
@@ -85,7 +85,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'User',
         entityId: userId,
         action: 'UPDATE',
@@ -108,17 +108,17 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(_request: NextRequest, { params }: Params) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const forbidden = requirePermission(session, 'users', 'admin')
   if (forbidden) return forbidden
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id: userId } = await params
 
   // Prevent self-deactivation (T-09-02-06)
-  if (userId === session.user.id) {
+  if (userId === session.userId) {
     return NextResponse.json(
       { error: 'You cannot deactivate your own account.' },
       { status: 400 }
@@ -139,7 +139,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'User',
         entityId: userId,
         action: 'DELETE',

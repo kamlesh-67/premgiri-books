@@ -11,14 +11,14 @@
  * Per CLAUDE.md rule 7: companyId always from session, never from request body.
  */
 
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { inngest } from '@/lib/inngest'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { NextResponse } from 'next/server'
 
 export async function POST(): Promise<NextResponse> {
   // ── Auth gate ───────────────────────────────────────────────────────────────
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -32,7 +32,7 @@ export async function POST(): Promise<NextResponse> {
   try {
     await inngest.send({
       name: 'premgiri/embeddings.refresh',
-      data: { companyId: session.user.companyId },
+      data: { companyId: session.companyId },
     })
   } catch (err: unknown) {
     console.error('[POST /api/v1/embeddings/trigger] Failed to enqueue Inngest event:', err)

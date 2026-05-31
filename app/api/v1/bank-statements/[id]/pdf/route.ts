@@ -14,7 +14,7 @@
  */
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { BankReconciliationPDF } from '@/lib/services/PDFTemplates/BankReconciliationPDF'
@@ -28,13 +28,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   // ── Auth guard ────────────────────────────────────────────────────────────
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   // companyId MUST come from session — never from URL (T-07-05-01)
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id } = await params
 
   // ── IDOR protection: fetch statement with companyId guard ─────────────────

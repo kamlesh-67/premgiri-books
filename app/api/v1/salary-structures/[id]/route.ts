@@ -3,7 +3,7 @@
  * PATCH  /api/v1/salary-structures/[id]  — update name or components
  * DELETE /api/v1/salary-structures/[id]  — soft delete (isActive=false)
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -29,10 +29,10 @@ const updateSchema = z.object({
 type Params = { params: Promise<{ id: string }> }
 
 export async function GET(_request: NextRequest, { params }: Params) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id } = await params
 
   const structure = await prisma.salaryStructure.findFirst({
@@ -45,10 +45,10 @@ export async function GET(_request: NextRequest, { params }: Params) {
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id } = await params
 
   const existing = await prisma.salaryStructure.findFirst({ where: { id, companyId } })
@@ -75,7 +75,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'SalaryStructure',
         entityId: id,
         action: 'UPDATE',
@@ -90,10 +90,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(_request: NextRequest, { params }: Params) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id } = await params
 
   const existing = await prisma.salaryStructure.findFirst({ where: { id, companyId } })
@@ -108,7 +108,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'SalaryStructure',
         entityId: id,
         action: 'DELETE',

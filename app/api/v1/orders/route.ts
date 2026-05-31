@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -11,7 +11,7 @@ import type { OrderType, OrderStatus } from '@prisma/client'
  *
  * Returns paginated list of orders for the authenticated company.
  * Security:
- *  - companyId always from session.user.companyId (T-04-06-02)
+ *  - companyId always from session.companyId (T-04-06-02)
  *  - type/status filters are additive ON TOP of companyId scope
  *
  * Query params:
@@ -19,11 +19,11 @@ import type { OrderType, OrderStatus } from '@prisma/client'
  *  - status: OrderStatus filter (DRAFT | APPROVED | PARTIALLY_FULFILLED | CLOSED | CANCELLED)
  */
 export async function GET(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // T-04-06-02: companyId always from session — never from query params or body
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { searchParams } = new URL(request.url)
 
   const typeParam = searchParams.get('type') as OrderType | null
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
  *  - Audit log inside $transaction (T-04-06-05)
  */
 export async function POST(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()

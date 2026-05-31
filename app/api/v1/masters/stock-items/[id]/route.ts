@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { stockItemSchema } from '@/lib/schemas/masters'
@@ -7,12 +7,12 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
   const item = await prisma.stockItem.findFirst({
-    where: { id, companyId: session.user.companyId },
+    where: { id, companyId: session.companyId },
     include: { uom: { select: { name: true, symbol: true } } },
   })
   if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -30,10 +30,10 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id } = await params
   const body = await request.json()
 
@@ -51,7 +51,7 @@ export async function PATCH(
       await tx.auditLog.create({
         data: {
           companyId,
-          userId: session.user.id,
+          userId: session.userId,
           entity: 'StockItem',
           entityId: id,
           action: 'UPDATE',
@@ -90,7 +90,7 @@ export async function PATCH(
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'StockItem',
         entityId: id,
         action: 'UPDATE',

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { Decimal } from 'decimal.js'
 
@@ -15,16 +15,16 @@ import { Decimal } from 'decimal.js'
  *
  * Security:
  *  - auth() first — 401 before any DB operation
- *  - companyId ALWAYS from session.user.companyId — NEVER from query params (T-03-06-02)
+ *  - companyId ALWAYS from session.companyId — NEVER from query params (T-03-06-02)
  *  - section and period are optional filters validated by regex before DB use (T-03-06-03)
  */
 export async function GET(request: Request) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session?.user?.companyId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const companyId = session.user.companyId  // NEVER from query params
+  const companyId = session.companyId  // NEVER from query params
 
   const { searchParams } = new URL(request.url)
   const periodParam = searchParams.get('period')   // MMYYYY e.g. '042025'

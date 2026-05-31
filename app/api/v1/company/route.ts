@@ -3,11 +3,11 @@
  * PATCH /api/v1/company — Update name and/or address (GSTIN/PAN/stateCode are read-only).
  *
  * Security:
- *  - T-09-03-04: companyId always from session.user.companyId — never from request body / URL
+ *  - T-09-03-04: companyId always from session.companyId — never from request body / URL
  *  - T-09-03-01: Zod schema strips gstin/pan/stateCode — immutable after registration
  *  - Rule 7 (CLAUDE.md): every mutation writes to audit_logs inside the same $transaction
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
@@ -23,7 +23,7 @@ const patchSchema = z.object({
 // ─── GET ─────────────────────────────────────────────────────────────────────
 
 export async function GET(_request: Request) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -31,7 +31,7 @@ export async function GET(_request: Request) {
   const forbidden = requirePermission(session, 'settings', 'read')
   if (forbidden) return forbidden
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   const company = await prisma.company.findUnique({
     where: { id: companyId },
@@ -58,7 +58,7 @@ export async function GET(_request: Request) {
 // ─── PATCH ───────────────────────────────────────────────────────────────────
 
 export async function PATCH(request: Request) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -66,8 +66,8 @@ export async function PATCH(request: Request) {
   const forbidden = requirePermission(session, 'settings', 'admin')
   if (forbidden) return forbidden
 
-  const companyId = session.user.companyId
-  const userId = session.user.id
+  const companyId = session.companyId
+  const userId = session.userId
 
   // Parse + validate — extra fields (gstin, pan, stateCode) are stripped silently
   let body: unknown

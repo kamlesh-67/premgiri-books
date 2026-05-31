@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -17,12 +17,12 @@ const VALID_STATUSES = Object.values(VoucherStatus)
  * Creates a new voucher using VoucherEngine.
  * Security:
  *  - Auth check is FIRST — 401 before body parsing (T-02-13)
- *  - companyId is NEVER read from body — always from session.user.companyId (T-02-12)
+ *  - companyId is NEVER read from body — always from session.companyId (T-02-12)
  *  - Zod parse happens before any DB write (T-02-11)
  *  - ValidationError from VoucherEngine (unbalanced DR/CR) returns 422
  */
 export async function POST(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Entry builder for PAYMENT — constructs double-entry legs from high-level fields (TDS-01 gap closure)
-  // companyId for TDS Payable lookup comes exclusively from session.user.companyId (T-02-12)
+  // companyId for TDS Payable lookup comes exclusively from session.companyId (T-02-12)
   if (parsedData.voucherType === 'PAYMENT') {
     const gross = new Decimal(parsedData.amount as string)
     let tdsPayableLedgerId: string | null = null
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     if (parsedData.tdsSection && parsedData.tdsAmount) {
       try {
         tdsAmt = new Decimal(parsedData.tdsAmount as string)
-        tdsPayableLedgerId = await resolveTdsPayableLedger(prisma, session.user.companyId)
+        tdsPayableLedgerId = await resolveTdsPayableLedger(prisma, session.companyId)
       } catch {
         tdsAmt = null
         tdsPayableLedgerId = null
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
   // Entry builder for PURCHASE and SALES — auto-resolve standard ledgers, compute GST server-side
   if ((parsedData.voucherType === 'PURCHASE' || parsedData.voucherType === 'SALES') && (parsedData.items as Array<Record<string, unknown>>).length > 0) {
-    const companyId = session.user.companyId
+    const companyId = session.companyId
     const isPurchase = parsedData.voucherType === 'PURCHASE'
 
     // Resolve required account groups FIRST — fail fast with a clear message if missing
@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
  *
  * Lists vouchers for the authenticated company (multi-tenant).
  * Security:
- *  - companyId always from session.user.companyId (T-02-11)
+ *  - companyId always from session.companyId (T-02-11)
  *  - type/status/date/partyId/q filters are additive ON TOP of companyId scope
  *
  * Query params:
@@ -252,11 +252,11 @@ export async function POST(request: NextRequest) {
  *  - q:       search string — matches voucherNo (contains)
  */
 export async function GET(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // T-02-11: companyId always from session — NEVER from query params or body
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { searchParams } = new URL(request.url)
 
   const typeParam = searchParams.get('type')
