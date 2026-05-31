@@ -41,8 +41,8 @@
 
 - [ ] **USER-01**: Owner can create new users by entering name, email, password, and role — no email invite required
 - [ ] **USER-02**: Two roles: **Owner** (full access including user management) and **Accountant** (all accounting features, no user/settings management)
-- [ ] **USER-03**: Owner can deactivate a user — deactivated users are blocked at login via `isActive` DB check
-- [ ] **USER-04**: Owner can reset another user's password directly from the Users page (no email flow)
+- [x] **USER-03**: Owner can deactivate a user — deactivated users are blocked at login via `isActive` DB check
+- [x] **USER-04**: Owner can reset another user's password directly from the Users page (no email flow)
 - [ ] **USER-05**: Users page accessible to Owner role only — Accountant sees 403
 
 ### FILE — Local File Storage

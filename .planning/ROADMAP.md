@@ -179,8 +179,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 19-01-PLAN.md — Backend: middleware public path + POST /api/v1/setup + GET /api/v1/setup/status
-- [ ] 19-02-PLAN.md — Frontend: root page redirect + setup page guard + SetupWizard client component
+- [ ] 19-01-PLAN.md ï¿½ Backend: middleware public path + POST /api/v1/setup + GET /api/v1/setup/status
+- [ ] 19-02-PLAN.md ï¿½ Frontend: root page redirect + setup page guard + SetupWizard client component
 
 ### Phase 20: User Management
 **Goal**: The Owner can create, deactivate, and reset passwords for users directly from the Users page â€” no email flow â€” and the Accountant role is blocked from accessing user management
@@ -247,7 +247,7 @@ Plans:
 | 17. Electron Shell + SQLite Migration | v1.2 | 0/TBD | Not started | - |
 | 18. Local Authentication | v1.2 | 0/TBD | Not started | - |
 | 19. First-Run Company Setup Wizard | v1.2 | 0/TBD | Not started | - |
-| 20. User Management | v1.2 | 0/TBD | Not started | - |
+| 20. User Management | v1.2 | 2/3 | In Progress|  |
 | 21. Local File Storage + Cloud Service Removal | v1.2 | 0/TBD | Not started | - |
 | 22. Optional AI + Windows Installer | v1.2 | 0/TBD | Not started | - |
 

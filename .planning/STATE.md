@@ -1,16 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.2
-milestone_name: milestone
-status: in_progress
-last_updated: "2026-05-31T18:00:00.000Z"
-last_activity: 2026-05-31 — Phase 19 complete: Setup wizard (backend API + frontend wizard) fully wired
+milestone_name: Production Ready
+status: completed
+stopped_at: Phase 20 Plan 01 complete
+last_updated: "2026-05-31T14:38:00.481Z"
+last_activity: "2026-05-31 — Phase 20 Plan 01 complete: OWNER_PERMISSIONS constant, auth/me returns permissions, AppSidebar wired"
 progress:
   total_phases: 11
-  completed_phases: 5
-  total_plans: 13
-  completed_plans: 13
-  percent: 45
+  completed_phases: 7
+  total_plans: 21
+  completed_plans: 20
+  percent: 64
 ---
 
 # Project State
@@ -18,7 +19,7 @@ progress:
 **Project:** PremGiri Books
 **Milestone:** v1.2 — Electron Desktop App
 **Status:** Roadmap complete — Phase 17 (Electron Shell + SQLite Migration) is next
-**Progress:** [░░░░░░░░░░] 0% (0/6 phases)
+**Progress:** [██████████] 95%
 **Mode:** yolo
 
 ---
@@ -36,11 +37,11 @@ See: `.planning/PROJECT.md` (updated 2026-05-31)
 ## Current Position
 
 Phase: 20 — User Management
-Plan: 01 — complete (permissions infrastructure fix)
-Status: In progress — 1/3 plans done
-Last activity: 2026-05-31 — Phase 20 Plan 01 complete: OWNER_PERMISSIONS constant, auth/me returns permissions, AppSidebar wired
+Plan: 02 — complete (self-deactivation guard + reset-password endpoint)
+Status: In progress — 2/3 plans done
+Last activity: 2026-05-31 — Phase 20 Plan 02 complete: self-deactivation guard in PATCH, POST reset-password endpoint with bcrypt + audit log
 
-Progress: [████░░░░░░] 40%
+Progress: [███████░░░] 67%
 
 ---
 
@@ -79,6 +80,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-31
-Stopped at: Phase 20 Plan 01 complete
-Next action: Execute Phase 20 Plan 02 (User Management UI — invite/deactivate team members)
+Last session: 2026-05-31T14:38:00.468Z
+Stopped at: Phase 20 Plan 02 complete
+Next action: Execute Phase 20 Plan 03 (User Management UI — invite/deactivate team members)
