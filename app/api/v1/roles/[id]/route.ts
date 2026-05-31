@@ -6,7 +6,7 @@
  * Last-Admin guard (T-09-02-04): returns 400 if deleting this role would leave
  * the company with zero roles that have settings.admin permission.
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { hasPermission } from '@/lib/services/PermissionService'
@@ -22,13 +22,13 @@ const patchSchema = z.object({
 type Params = { params: Promise<{ id: string }> }
 
 export async function GET(_request: NextRequest, { params }: Params) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const forbidden = requirePermission(session, 'settings', 'read')
   if (forbidden) return forbidden
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id: roleId } = await params
 
   const role = await prisma.role.findUnique({
@@ -47,13 +47,13 @@ export async function GET(_request: NextRequest, { params }: Params) {
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const forbidden = requirePermission(session, 'settings', 'admin')
   if (forbidden) return forbidden
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id: roleId } = await params
 
   const existing = await prisma.role.findUnique({
@@ -80,7 +80,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'Role',
         entityId: roleId,
         action: 'UPDATE',
@@ -96,13 +96,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(_request: NextRequest, { params }: Params) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const forbidden = requirePermission(session, 'settings', 'admin')
   if (forbidden) return forbidden
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id: roleId } = await params
 
   const existing = await prisma.role.findUnique({
@@ -147,7 +147,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'Role',
         entityId: roleId,
         action: 'DELETE',

@@ -14,13 +14,13 @@
  *
  * Security:
  *   - auth() first → 401 if no session
- *   - companyId ALWAYS from session.user.companyId — never from params or body (T-07-03-06)
+ *   - companyId ALWAYS from session.companyId — never from params or body (T-07-03-06)
  *   - IDOR protection: findFirst({ where: { id, companyId } }) — 404 for wrong company
  *   - action validated via Zod before any DB touch
  *   - All DB changes + auditLog written inside prisma.$transaction (T-07-03-04)
  */
 
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -37,11 +37,11 @@ const ELIGIBLE_STATUSES = new Set(['AUTO_HIGH', 'AUTO_MEDIUM', 'AUTO_LOW'])
 type Params = { params: Promise<{ id: string }> }
 
 export async function PATCH(request: NextRequest, { params }: Params) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId  // NEVER from body (T-07-03-06)
-  const userId = session.user.id
+  const companyId = session.companyId  // NEVER from body (T-07-03-06)
+  const userId = session.userId
   const { id: txId } = await params
 
   // Parse and validate request body via Zod

@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { z } from 'zod'
 import { getBalanceSheet, exportToExcel } from '@/lib/services/ReportEngine'
 import { getFY } from '@/lib/utils/fy'
@@ -8,11 +8,11 @@ const querySchema = z.object({
 })
 
 export async function GET(request: Request) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session?.user?.companyId) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
   }
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   const { searchParams } = new URL(request.url)
   const parsed = querySchema.safeParse({ fy: searchParams.get('fy') ?? undefined })

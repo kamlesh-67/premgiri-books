@@ -4,15 +4,16 @@
  * Unit tests for cheque register API routes.
  * Tests: auth guards, IDOR protection, business rules.
  *
- * Uses Vitest with mocked prisma and auth.
+ * Uses Vitest with mocked prisma and getSessionFromRequest.
+ * Updated in Phase 18 Plan 02 to use JWT session (flat JWTPayload) instead of NextAuth session.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
 // ─── Mocks (must be before imports) ──────────────────────────────────────────
 
-vi.mock('@/lib/auth', () => ({
-  auth: vi.fn(),
+vi.mock('@/lib/session', () => ({
+  getSessionFromRequest: vi.fn(),
 }))
 
 vi.mock('@/lib/prisma', () => ({
@@ -32,19 +33,20 @@ vi.mock('@/lib/prisma', () => ({
 
 // ─── Import after mocks ───────────────────────────────────────────────────────
 
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { GET } from '@/app/api/v1/cheques/route'
 import { PATCH } from '@/app/api/v1/cheques/[voucherId]/route'
 
-const mockAuth = auth as ReturnType<typeof vi.fn>
+const mockGetSession = getSessionFromRequest as ReturnType<typeof vi.fn>
 const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>
 const mockFindFirst = prisma.voucher.findFirst as ReturnType<typeof vi.fn>
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const COMPANY_ID = 'cmp_test_001'
-const SESSION = { user: { id: 'usr_001', companyId: COMPANY_ID } }
+// Flat JWTPayload — no .user nesting (Phase 18 migration)
+const SESSION = { userId: 'usr_001', companyId: COMPANY_ID, roleId: null, role: '', uiMode: 'simple', permissions: {} }
 
 function makeGetRequest(params?: Record<string, string>) {
   const url = new URL('http://localhost/api/v1/cheques')
@@ -70,7 +72,7 @@ describe('GET /api/v1/cheques', () => {
   })
 
   it('Test 1: returns 401 without auth session', async () => {
-    mockAuth.mockResolvedValueOnce(null)
+    mockGetSession.mockResolvedValueOnce(null)
 
     const response = await GET(makeGetRequest())
 
@@ -80,7 +82,7 @@ describe('GET /api/v1/cheques', () => {
   })
 
   it('Test 2: returns 200 with an array when authenticated', async () => {
-    mockAuth.mockResolvedValueOnce(SESSION)
+    mockGetSession.mockResolvedValueOnce(SESSION)
 
     // Mock $transaction to return [data, count]
     const chequeVoucher = {
@@ -117,7 +119,7 @@ describe('PATCH /api/v1/cheques/[voucherId]', () => {
   })
 
   it('Test 3: returns 400 when chequeStatus is CLEARED and no clearanceDate', async () => {
-    mockAuth.mockResolvedValueOnce(SESSION)
+    mockGetSession.mockResolvedValueOnce(SESSION)
 
     // Mock findFirst to return a valid existing voucher (so we reach the business rule)
     mockFindFirst.mockResolvedValueOnce({

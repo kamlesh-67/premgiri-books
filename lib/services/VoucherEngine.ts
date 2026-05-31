@@ -51,8 +51,15 @@ const TYPE_PREFIX: Record<VoucherType, string> = {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 /** Minimal session shape required by VoucherEngine */
+/** Flat session shape from JWTPayload (Phase 18 — no .user nesting) */
 export interface VoucherSession {
-  user: {
+  companyId: string
+  userId: string
+  stateCode?: string
+  name?: string
+  email?: string
+  // Allow older shape during transition (will be removed in Phase 18 cleanup)
+  user?: {
     companyId: string
     id: string
     stateCode?: string
@@ -445,8 +452,8 @@ export async function createVoucher(
   }
 ): Promise<unknown> {
   // companyId always from session — NEVER from input (multi-tenant rule, CLAUDE.md)
-  const companyId = session.user.companyId
-  const userId = session.user.id
+  const companyId = session.companyId ?? session.user?.companyId ?? ""
+  const userId = session.userId ?? session.user?.id ?? ""
 
   // Validate entries before opening a transaction
   const entries = input.entries ?? []
@@ -781,8 +788,8 @@ export async function cancelVoucher(
     $transaction: (fn: (tx: PrismaTx) => Promise<unknown>) => Promise<unknown>
   }
 ): Promise<unknown> {
-  const companyId = session.user.companyId
-  const userId = session.user.id
+  const companyId = session.companyId ?? session.user?.companyId ?? ""
+  const userId = session.userId ?? session.user?.id ?? ""
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db: { $transaction: (fn: (tx: PrismaTx) => Promise<unknown>) => Promise<unknown> } =
@@ -920,8 +927,8 @@ export async function postVoucher(
     $transaction: (fn: (tx: PrismaTx) => Promise<unknown>) => Promise<unknown>
   }
 ): Promise<unknown> {
-  const companyId = session.user.companyId
-  const userId = session.user.id
+  const companyId = session.companyId ?? session.user?.companyId ?? ""
+  const userId = session.userId ?? session.user?.id ?? ""
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db: { $transaction: (fn: (tx: PrismaTx) => Promise<unknown>) => Promise<unknown> } =
@@ -1124,7 +1131,7 @@ export async function postVoucher(
  * Unique constraint [companyId, name] prevents duplicate creation.
  *
  * @param prismaClient - Prisma client (not a tx — runs on main connection)
- * @param companyId - Always from session.user.companyId (T-02-12)
+ * @param companyId - Always from session.companyId ?? session.user?.companyId ?? "" (T-02-12)
  */
 export async function resolveTdsPayableLedger(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

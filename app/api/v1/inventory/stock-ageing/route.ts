@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -12,15 +12,15 @@ import Decimal from 'decimal.js'
  *
  * Security:
  *  - auth() first — 401 before any processing (T-04-05-01)
- *  - companyId ALWAYS from session.user.companyId (T-04-05-02)
+ *  - companyId ALWAYS from session.companyId (T-04-05-02)
  *  - isActive=true and remainingQty > 0 filter prevents phantom rows (T-04-05-03)
  *  - asOf only affects bucket computation server-side; no write operations (T-04-05-04)
  */
 export async function GET(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId // NEVER from query params or body
+  const companyId = session.companyId // NEVER from query params or body
 
   const { searchParams } = new URL(request.url)
   // asOf defaults to today (Indian context: server date)

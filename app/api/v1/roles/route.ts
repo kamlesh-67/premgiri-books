@@ -2,7 +2,7 @@
  * GET  /api/v1/roles  — list roles for the current company (requires settings.read)
  * POST /api/v1/roles  — create a new role (requires settings.admin)
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { NextResponse } from 'next/server'
@@ -15,13 +15,13 @@ const createSchema = z.object({
 })
 
 export async function GET(_request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const forbidden = requirePermission(session, 'settings', 'read')
   if (forbidden) return forbidden
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   const roles = await prisma.role.findMany({
     where: { companyId },
@@ -41,13 +41,13 @@ export async function GET(_request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const forbidden = requirePermission(session, 'settings', 'admin')
   if (forbidden) return forbidden
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const body = await request.json()
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) {
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'Role',
         entityId: record.id,
         action: 'CREATE',

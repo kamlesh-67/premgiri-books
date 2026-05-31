@@ -8,13 +8,13 @@
  *
  * Security:
  *  - T-09-03-02: Server-side MIME type + size validation before any R2 operation
- *  - T-09-03-04: companyId always from session.user.companyId
+ *  - T-09-03-04: companyId always from session.companyId
  *  - Rule 7 (CLAUDE.md): audit log in same $transaction as company update
  *
  * R2 env vars required:
  *   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
@@ -33,7 +33,7 @@ const MAX_SIZE_BYTES = 2 * 1024 * 1024 // 2 MB
 // ─── POST ─────────────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -41,8 +41,8 @@ export async function POST(request: Request) {
   const forbidden = requirePermission(session, 'settings', 'admin')
   if (forbidden) return forbidden
 
-  const companyId = session.user.companyId
-  const userId = session.user.id
+  const companyId = session.companyId
+  const userId = session.userId
 
   // Parse multipart form data
   let formData: FormData

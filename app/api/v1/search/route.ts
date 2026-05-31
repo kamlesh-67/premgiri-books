@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -58,18 +58,18 @@ const searchParamsSchema = z.object({
 //
 // Security:
 //  - Auth check FIRST — 401 before any body/param parsing (T-10-01-04)
-//  - companyId ALWAYS from session.user.companyId — never from query params (T-10-01-01)
+//  - companyId ALWAYS from session.companyId — never from query params (T-10-01-01)
 //  - All four Prisma queries include companyId guard (T-10-01-02)
 //  - limit clamped to max 50; empty q short-circuits (T-10-01-03)
 // ---------------------------------------------------------------------------
 
 export async function GET(request: NextRequest) {
   // Auth guard — FIRST (T-10-01-04)
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // companyId ALWAYS from session — never from user-supplied input (T-10-01-01)
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   // Parse + validate query params with Zod
   const rawParams = Object.fromEntries(new URL(request.url).searchParams)

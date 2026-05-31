@@ -6,7 +6,7 @@
  *
  * Security:
  *   - auth() first → 401 if no session
- *   - companyId ALWAYS from session.user.companyId — never from params (T-07-03-06)
+ *   - companyId ALWAYS from session.companyId — never from params (T-07-03-06)
  *   - IDOR protection: findFirst({ where: { id, companyId } }) — 404 for wrong company (T-07-03-03)
  *
  * Query params:
@@ -14,7 +14,7 @@
  *   - limit: rows per page (default 50)
  */
 
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { computeBrsData } from '@/lib/services/BankService'
 import { NextResponse } from 'next/server'
@@ -23,10 +23,10 @@ import type { NextRequest } from 'next/server'
 type Params = { params: Promise<{ id: string }> }
 
 export async function GET(request: NextRequest, { params }: Params) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId  // NEVER from URL params (T-07-03-06)
+  const companyId = session.companyId  // NEVER from URL params (T-07-03-06)
   const { id } = await params
 
   // Parse pagination query params

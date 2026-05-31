@@ -2,7 +2,7 @@
  * GET  /api/v1/salary-structures  — list active structures for company
  * POST /api/v1/salary-structures  — create new salary structure
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -26,10 +26,10 @@ const createSchema = z.object({
 })
 
 export async function GET(_request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   const structures = await prisma.salaryStructure.findMany({
     where: { companyId, isActive: true },
@@ -41,10 +41,10 @@ export async function GET(_request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   const body = await request.json()
   const parsed = createSchema.safeParse(body)
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       await tx.auditLog.create({
         data: {
           companyId,
-          userId: session.user.id,
+          userId: session.userId,
           entity: 'SalaryStructure',
           entityId: created.id,
           action: 'CREATE',

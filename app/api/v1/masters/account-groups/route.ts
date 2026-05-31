@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
@@ -57,7 +57,7 @@ function flattenTree(groups: AccountGroupNode[]): AccountGroupFlat[] {
  */
 export async function GET() {
   // T-01-09-01: Auth check — always first
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session?.user?.companyId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -29,14 +29,14 @@ interface ItcRow {
  *
  * Security:
  *  - auth() first — 401 before any processing
- *  - companyId ALWAYS from session.user.companyId
+ *  - companyId ALWAYS from session.companyId
  *  - period validated with Zod before any DB operation
  */
 export async function GET(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId  // NEVER from query params or body
+  const companyId = session.companyId  // NEVER from query params or body
   const { searchParams } = new URL(request.url)
 
   const periodParam = searchParams.get('period')

@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { getGstr3bSummary } from '@/lib/services/GSTService'
@@ -18,12 +18,12 @@ const exportSchema = z.object({
  *
  * Security:
  *  - auth() first — 401 before any processing
- *  - companyId ALWAYS from session.user.companyId — never from request body (T-08-03-02)
+ *  - companyId ALWAYS from session.companyId — never from request body (T-08-03-02)
  *  - period validated with Zod regex before any DB operation (T-08-03-04)
  *  - Requires auth — download blocked for unauthenticated requests (T-08-03-01)
  */
 export async function POST(request: Request) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     })
   }
 
-  const companyId = session.user.companyId  // NEVER from request body
+  const companyId = session.companyId  // NEVER from request body
 
   // Parse and validate request body
   let body: unknown
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
       prisma.auditLog.create({
         data: {
           companyId,
-          userId: session.user.id,
+          userId: session.userId,
           entity: 'GstReturn',
           entityId: period,
           action: 'UPDATE',

@@ -5,7 +5,7 @@
  * Per D-05: bulk upsert; individual records can be adjusted afterward.
  * Skips employees whose attendance is locked (lockedAt is set).
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -17,10 +17,10 @@ const bulkSchema = z.object({
 })
 
 export async function PATCH(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   const body = await request.json()
   const parsed = bulkSchema.safeParse(body)
@@ -74,7 +74,7 @@ export async function PATCH(request: NextRequest) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'AttendanceRecord',
         entityId: 'bulk',
         action: 'UPDATE',

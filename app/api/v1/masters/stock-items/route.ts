@@ -1,14 +1,14 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { stockItemSchema } from '@/lib/schemas/masters'
 import { Decimal } from 'decimal.js'
 
 export async function GET() {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   const [items, inwardRows, outwardRows] = await Promise.all([
     prisma.stockItem.findMany({
@@ -51,10 +51,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const body = await request.json()
   const parsed = stockItemSchema.safeParse(body)
   if (!parsed.success) {
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'StockItem',
         entityId: item.id,
         action: 'CREATE',

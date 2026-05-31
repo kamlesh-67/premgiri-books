@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -12,14 +12,14 @@ const periodSchema = z.string().regex(/^\d{2}\/\d{4}$/, 'Period must be MM/YYYY'
  * Returns GSTR-1 sections (B2B, B2CS, CDNR, HSN, NIL-rated) for the given period.
  * Security:
  *  - auth() first — 401 before any processing
- *  - companyId ALWAYS from session.user.companyId (T-03-03-01)
+ *  - companyId ALWAYS from session.companyId (T-03-03-01)
  *  - period validated with Zod regex before DB query
  */
 export async function GET(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId  // NEVER from query params or body
+  const companyId = session.companyId  // NEVER from query params or body
   const { searchParams } = new URL(request.url)
 
   const periodParam = searchParams.get('period')

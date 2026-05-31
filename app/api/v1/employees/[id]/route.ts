@@ -5,7 +5,7 @@
  * salaryStructureId: nullable FK to SalaryStructure (D-03)
  * structureEffectiveFrom: date the structure takes effect
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -26,10 +26,10 @@ const patchSchema = z.object({
 type Params = { params: Promise<{ id: string }> }
 
 export async function GET(_request: NextRequest, { params }: Params) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id } = await params
 
   const employee = await prisma.employee.findFirst({
@@ -45,10 +45,10 @@ export async function GET(_request: NextRequest, { params }: Params) {
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { id } = await params
 
   const existing = await prisma.employee.findFirst({ where: { id, companyId } })
@@ -78,7 +78,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'Employee',
         entityId: id,
         action: 'UPDATE',

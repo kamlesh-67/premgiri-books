@@ -1,14 +1,14 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { ledgerSchema, customerSchema, supplierSchema } from '@/lib/schemas/masters'
 import type { NextRequest } from 'next/server'
 
 export async function GET(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { searchParams } = new URL(request.url)
   const type = searchParams.get('type')
   const nature = searchParams.get('nature') // 'ASSET'|'LIABILITY'|'INCOME'|'EXPENSE'
@@ -99,10 +99,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const body = await request.json()
   const { partyType, ...rest } = body // partyType: 'customer' | 'supplier' | undefined
 
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'Ledger',
         entityId: ledger.id,
         action: 'CREATE',

@@ -3,7 +3,7 @@
  * PUT /api/v1/attendance                — upsert single employee attendance
  *                                         Returns 409 if attendance is locked
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -43,10 +43,10 @@ function serializeAttendance(record: {
 }
 
 export async function GET(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { searchParams } = new URL(request.url)
   const month = searchParams.get('month')
 
@@ -97,10 +97,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   const body = await request.json()
   const parsed = putSchema.safeParse(body)
@@ -150,7 +150,7 @@ export async function PUT(request: NextRequest) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'AttendanceRecord',
         entityId: upserted.id,
         action: existing ? 'UPDATE' : 'CREATE',

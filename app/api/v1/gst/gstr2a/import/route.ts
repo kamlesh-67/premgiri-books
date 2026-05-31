@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -47,16 +47,16 @@ interface Gstr2aJson {
  *
  * Security:
  *  - auth() first — 401 before any processing (T-03-03-01)
- *  - companyId ALWAYS from session.user.companyId — NEVER from form body
+ *  - companyId ALWAYS from session.companyId — NEVER from form body
  *  - File MIME type validated + 10MB cap before parsing (T-03-03-02, T-03-03-05)
  *  - JSON.parse in try/catch — no eval (T-03-03-02)
  *  - auditLog written inside $transaction
  */
 export async function POST(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId  // NEVER from body
+  const companyId = session.companyId  // NEVER from body
 
   let formData: FormData
   try {
@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
         await tx.auditLog.create({
           data: {
             companyId,
-            userId: session.user.id,
+            userId: session.userId,
             entity: 'Gstr2aImport',
             entityId: companyId,
             action: 'CREATE',

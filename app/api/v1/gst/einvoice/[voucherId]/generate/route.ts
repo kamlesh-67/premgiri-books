@@ -9,7 +9,7 @@
  *  - T-08-04-02: Atomic compare-and-swap (irn=PENDING) prevents TOCTOU double-generation (CR-01)
  *  - T-08-04-04: voucherId validated as CUID before any DB query
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
@@ -36,7 +36,7 @@ export async function POST(
   { params }: { params: Promise<{ voucherId: string }> },
 ) {
   // 1. Auth guard
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // 2. Validate voucherId as CUID (T-08-04-04)
@@ -58,7 +58,7 @@ export async function POST(
 
   // 4. Existence check — IDOR guard (T-08-04-01)
   const exists = await prisma.voucher.findFirst({
-    where: { id: voucherId, companyId: session.user.companyId },
+    where: { id: voucherId, companyId: session.companyId },
     select: { id: true },
   })
   if (!exists) {
@@ -69,7 +69,7 @@ export async function POST(
   // Eliminates the TOCTOU race between the fast-path 409 check and the IRP call.
   // Concurrent requests will see locked.count===0 and receive a 409.
   const locked = await prisma.voucher.updateMany({
-    where: { id: voucherId, companyId: session.user.companyId, irn: null },
+    where: { id: voucherId, companyId: session.companyId, irn: null },
     data: { irn: 'PENDING' },
   })
   if (locked.count === 0) {
@@ -83,9 +83,9 @@ export async function POST(
   try {
     const result = await generateIrn(
       voucherId,
-      session.user.companyId,
+      session.companyId,
       body.ewbDtls,
-      session.user.id,
+      session.userId,
     )
 
     return NextResponse.json({
@@ -98,7 +98,7 @@ export async function POST(
   } catch (err: unknown) {
     // Reset irn back to null if IRP call failed, so the user can retry
     await prisma.voucher.updateMany({
-      where: { id: voucherId, companyId: session.user.companyId, irn: 'PENDING' },
+      where: { id: voucherId, companyId: session.companyId, irn: 'PENDING' },
       data: { irn: null },
     }).catch(() => { /* best-effort reset — log is handled by EInvoiceService */ })
 

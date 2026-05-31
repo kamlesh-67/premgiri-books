@@ -9,7 +9,7 @@
  *  - T-08-04-03: 422 guard if voucher has no IRN
  *  - T-08-04-04: voucherId validated as CUID before any DB query
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { generateStandaloneEwb } from '@/lib/services/EInvoiceService'
@@ -30,7 +30,7 @@ export async function POST(
   { params }: { params: Promise<{ voucherId: string }> },
 ) {
   // 1. Auth guard
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // 2. Validate voucherId as CUID (T-08-04-04)
@@ -54,9 +54,9 @@ export async function POST(
   try {
     const result = await generateStandaloneEwb(
       voucherId,
-      session.user.companyId,
+      session.companyId,
       body,
-      session.user.id,
+      session.userId,
     )
 
     return NextResponse.json({

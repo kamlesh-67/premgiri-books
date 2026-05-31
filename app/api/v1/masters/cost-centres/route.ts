@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
@@ -9,14 +9,14 @@ const costCentreSchema = z.object({
 })
 
 export async function GET(_request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session?.user?.companyId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
     const costCentres = await prisma.costCentre.findMany({
-      where: { companyId: session.user.companyId, isActive: true },
+      where: { companyId: session.companyId, isActive: true },
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
     })
@@ -28,12 +28,12 @@ export async function GET(_request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session?.user?.companyId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const body = await request.json()
   const parsed = costCentreSchema.safeParse(body)
   if (!parsed.success) {
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       await tx.auditLog.create({
         data: {
           companyId,
-          userId: session.user.id,
+          userId: session.userId,
           entity: 'CostCentre',
           entityId: costCentre.id,
           action: 'CREATE',

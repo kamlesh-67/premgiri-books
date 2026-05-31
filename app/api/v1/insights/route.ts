@@ -7,7 +7,7 @@
  *
  * Security:
  * - Auth check FIRST — 401 before any cache/DB touch (CLAUDE.md rule 9)
- * - companyId ALWAYS from session.user.companyId — never from query params (CLAUDE.md rule 2)
+ * - companyId ALWAYS from session.companyId — never from query params (CLAUDE.md rule 2)
  * - Zod validates all query params (CLAUDE.md rule 10)
  * - NEVER returns 5xx to client — on AI error returns 200 + empty insights (AI-SPEC §6)
  *
@@ -18,7 +18,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { getCache, setCache, deleteCache } from '@/lib/redis'
 import { generateInsights } from '@/lib/services/InsightsService'
 import type { InsightsResponse } from '@/lib/services/InsightsService'
@@ -45,13 +45,13 @@ const CACHE_TTL_SECONDS = 900 // 15 minutes per D-07
 
 export async function GET(request: NextRequest) {
   // Step 1: Auth gate FIRST (CLAUDE.md rule 9)
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   // Step 2: companyId ALWAYS from session — never from query/body (CLAUDE.md rule 2)
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   // Step 3: Parse + validate query params with Zod (CLAUDE.md rule 10)
   const rawParams = Object.fromEntries(new URL(request.url).searchParams)

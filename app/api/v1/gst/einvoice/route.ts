@@ -5,16 +5,16 @@
  * Supports filtering by status (PENDING | GENERATED | CANCELLED) and period (MM/YYYY).
  *
  * Security:
- *  - companyId always from session.user.companyId — never from query params
+ *  - companyId always from session.companyId — never from query params
  *  - Paginated to max 50 records per page
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import type { Prisma } from '@prisma/client'
 
 export async function GET(req: Request) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
   }
 
   const where: Prisma.VoucherWhereInput = {
-    companyId: session.user.companyId,
+    companyId: session.companyId,
     voucherType: 'SALES',
     ...dateFilter,
     ...statusFilter,

@@ -9,7 +9,7 @@
  *  - companyId always from session, never from request body
  *  - Audit log written in same $transaction as the update
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -25,10 +25,10 @@ interface RouteContext {
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { voucherId } = await context.params
 
   // Parse + validate request body
@@ -90,7 +90,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'Voucher',
         entityId: voucherId,
         action: 'UPDATE',

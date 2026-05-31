@@ -13,10 +13,10 @@
  *
  * Security:
  *  - T-09-03-03: requirePermission('settings','admin') — Admin-only
- *  - T-09-03-04: companyId always from session.user.companyId
+ *  - T-09-03-04: companyId always from session.companyId
  *  - T-09-03-05: hard take:51 limit prevents full-table scans
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
@@ -25,7 +25,7 @@ import type { Prisma } from '@prisma/client'
 // ─── GET ─────────────────────────────────────────────────────────────────────
 
 export async function GET(request: Request) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
   const forbidden = requirePermission(session, 'settings', 'admin')
   if (forbidden) return forbidden
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
   const { searchParams } = new URL(request.url)
 
   const userId = searchParams.get('userId') ?? undefined
