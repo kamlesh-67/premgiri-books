@@ -1,10 +1,10 @@
 /**
  * GET  /api/v1/pay-runs  — list pay runs for company
- * POST /api/v1/pay-runs  — upsert PENDING PayRun + fire Inngest job → 202
+ * POST /api/v1/pay-runs  — upsert PENDING PayRun + run payroll directly → 202
  */
-import { getSessionFromRequest } from '@/lib/session'
+import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { inngest } from '@/lib/inngest'
+import { runPayroll } from '@/lib/services/PayrollRunner'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -13,11 +13,11 @@ const createSchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/, 'Month must be YYYY-MM format'),
 })
 
-export async function GET(request: NextRequest) {
-  const session = await getSessionFromRequest(request)
+export async function GET(_request: NextRequest) {
+  const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.companyId
+  const companyId = session.user.companyId
 
   const runs = await prisma.payRun.findMany({
     where: { companyId },
@@ -35,10 +35,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getSessionFromRequest(request)
+  const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.companyId
+  const companyId = session.user.companyId
 
   const body = await request.json()
   const parsed = createSchema.safeParse(body)
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         companyId,
         month,
         status: 'PENDING',
-        createdBy: session.userId,
+        createdBy: session.user.id,
       },
       update: {
         status: 'PENDING',
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.userId,
+        userId: session.user.id,
         entity: 'PayRun',
         entityId: run.id,
         action: 'CREATE',
@@ -81,17 +81,9 @@ export async function POST(request: NextRequest) {
     return run
   })
 
-  // Fire Inngest job — fire-and-forget; do not block 202 if Inngest is unavailable locally
-  inngest.send({
-    name: 'premgiri/payroll.run',
-    data: {
-      payRunId: payRun.id,
-      companyId,
-      month,
-      triggeredBy: session.userId,
-    },
-  }).catch((err) => {
-    console.warn('[pay-runs] Inngest unavailable — job not queued:', err?.message)
+  // Run payroll synchronously (Inngest removed — CLOUD-01)
+  runPayroll(payRun.id, companyId, month, session.user.id).catch((err) => {
+    console.error('[pay-run route] PayrollRunner failed:', err)
   })
 
   return NextResponse.json(
