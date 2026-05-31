@@ -192,18 +192,20 @@ export default function UsersPageClient() {
       align: 'right',
       cell: (u) => (
         <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            aria-label={`Edit ${u.name}`}
-            onClick={() => {
-              setEditUser(u)
-              setDialogOpen(true)
-            }}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
+          {canAdmin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label={`Edit ${u.name}`}
+              onClick={() => {
+                setEditUser(u)
+                setDialogOpen(true)
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
           {canAdmin && (
             <Button
               variant="ghost"
