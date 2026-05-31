@@ -7,12 +7,14 @@ import { useSidebarStore } from '@/lib/stores/sidebarStore'
 import { navGroups } from '@/components/layout/navConfig'
 import type { NavItem } from '@/components/layout/navConfig'
 import { cn } from '@/lib/utils'
+import { hasPermission } from '@/lib/services/PermissionService'
 
 interface AppSidebarProps {
   companyName: string
   userName: string
   userRole: string
   financialYear: string
+  permissions?: unknown
 }
 
 export function AppSidebar({
@@ -20,6 +22,7 @@ export function AppSidebar({
   userName,
   userRole,
   financialYear,
+  permissions,
 }: AppSidebarProps) {
   const pathname = usePathname()
   const { uiMode } = useUiStore()
@@ -39,6 +42,15 @@ export function AppSidebar({
 
   function isVisible(item: NavItem): boolean {
     return item.visibleIn.includes(uiMode)
+  }
+
+  function isPermitted(item: NavItem): boolean {
+    if (!item.requirePermission) return true
+    return hasPermission(
+      permissions,
+      item.requirePermission.resource,
+      item.requirePermission.action
+    )
   }
 
   function isActive(href: string): boolean {
@@ -76,7 +88,7 @@ export function AppSidebar({
         {/* Navigation */}
         <nav className="flex-1 px-2 py-3 space-y-4">
           {navGroups.map((group, groupIdx) => {
-            const visibleItems = group.items.filter(isVisible)
+            const visibleItems = group.items.filter((item) => isVisible(item) && isPermitted(item))
             if (visibleItems.length === 0) return null
 
             return (
