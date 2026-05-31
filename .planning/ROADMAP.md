@@ -158,7 +158,12 @@ Plans:
   3. Every protected API route called without a valid JWT returns 401 — confirmed by hitting any `/api/v1/` route with no cookie
   4. The codebase contains no import of `next-auth`, `getServerSession`, or `authOptions` — grep returns zero matches
   5. The JWT payload contains `userId`, `companyId`, and `role` — multi-tenant `companyId` isolation is preserved with the new auth layer
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 18-01-PLAN.md — JWT infrastructure: lib/jwt.ts, lib/session.ts, login/logout routes, middleware.ts rewrite, authDb.ts SQLite fix
+- [ ] 18-02-PLAN.md — Mass migration: replace auth() with getSessionFromRequest in all 85 API routes
+- [ ] 18-03-PLAN.md — Client cleanup: login page fetch, remove SessionProvider, delete lib/auth.ts, remove next-auth from package.json
 
 ### Phase 19: First-Run Company Setup Wizard
 **Goal**: A user who opens the app for the first time (empty database) is guided through a setup wizard that creates the company record and admin account — after which the setup route is permanently inaccessible
