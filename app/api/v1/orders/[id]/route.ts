@@ -13,7 +13,7 @@ import { OrderService, ValidationError, ForbiddenError } from '@/lib/services/Or
  *  - IDOR protection: where clause always includes both id AND companyId (T-04-06-06)
  */
 export async function GET(
-  (request: NextRequest),
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getSessionFromRequest(request)

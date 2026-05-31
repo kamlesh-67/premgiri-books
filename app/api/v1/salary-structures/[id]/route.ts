@@ -28,7 +28,7 @@ const updateSchema = z.object({
 
 type Params = { params: Promise<{ id: string }> }
 
-export async function GET((request: NextRequest), { params }: Params) {
+export async function GET(request: NextRequest, { params }: Params) {
   const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -89,7 +89,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   return NextResponse.json(updated)
 }
 
-export async function DELETE((request: NextRequest), { params }: Params) {
+export async function DELETE(request: NextRequest, { params }: Params) {
   const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

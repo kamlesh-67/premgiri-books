@@ -9,3 +9,19 @@ files:
   - .next/**
   - public/**
   - package.json
+  - node_modules/**
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+extraMetadata:
+  main: electron/main.js

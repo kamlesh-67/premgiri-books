@@ -14,7 +14,7 @@ import { createVoucher } from '@/lib/services/VoucherEngine'
 
 type Params = { params: Promise<{ id: string }> }
 
-export async function POST((request: NextRequest), { params }: Params) {
+export async function POST(request: NextRequest, { params }: Params) {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Not available in production' }, { status: 403 })
   }
