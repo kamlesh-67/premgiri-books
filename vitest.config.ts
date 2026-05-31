@@ -9,5 +9,11 @@ export default defineConfig({
     setupFiles: ['vitest.setup.ts'],
     include: ['**/*.{test,spec}.{ts,tsx}'],
     exclude: ['node_modules', '.claude/**', 'e2e/**'],
+    // jose is ESM-only — Vite must inline it rather than trying to load it as a CJS file
+    server: {
+      deps: {
+        inline: ['jose'],
+      },
+    },
   },
 })
