@@ -1,10 +1,10 @@
 /**
  * GET  /api/v1/pay-runs  — list pay runs for company
- * POST /api/v1/pay-runs  — upsert PENDING PayRun + fire Inngest job → 202
+ * POST /api/v1/pay-runs  — upsert PENDING PayRun + run payroll directly → 202
  */
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { inngest } from '@/lib/inngest'
+import { runPayroll } from '@/lib/services/PayrollRunner'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -81,17 +81,9 @@ export async function POST(request: NextRequest) {
     return run
   })
 
-  // Fire Inngest job — fire-and-forget; do not block 202 if Inngest is unavailable locally
-  inngest.send({
-    name: 'premgiri/payroll.run',
-    data: {
-      payRunId: payRun.id,
-      companyId,
-      month,
-      triggeredBy: session.user.id,
-    },
-  }).catch((err) => {
-    console.warn('[pay-runs] Inngest unavailable — job not queued:', err?.message)
+  // Run payroll synchronously (Inngest removed — CLOUD-01)
+  runPayroll(payRun.id, companyId, month, session.user.id).catch((err) => {
+    console.error('[pay-run route] PayrollRunner failed:', err)
   })
 
   return NextResponse.json(
