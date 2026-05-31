@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "lastLogin" TIMESTAMP(3);
