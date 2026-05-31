@@ -22,6 +22,21 @@ import { z } from 'zod'
 import { authDb } from '@/lib/authDb'
 import { signJWT, SESSION_COOKIE_NAME } from '@/lib/jwt'
 
+// ─── Owner Permissions ───────────────────────────────────────────────────────
+// Compile-time constant: all resources granted to the Owner role at setup.
+// Accountant roles created later must use a different permissions object (T-20-01).
+const OWNER_PERMISSIONS = {
+  vouchers:  ['read', 'write', 'admin'],
+  reports:   ['read'],
+  masters:   ['read', 'write', 'admin'],
+  inventory: ['read', 'write', 'admin'],
+  payroll:   ['read', 'write', 'admin'],
+  banking:   ['read', 'write', 'admin'],
+  gst:       ['read', 'write', 'admin'],
+  settings:  ['read', 'admin'],
+  users:     ['read', 'admin'],
+} as const
+
 // ─── Account Groups (Chart of Accounts seed) ─────────────────────────────────
 // These 19 groups form the standard Indian accounting hierarchy (Tally-style).
 // All are system groups: isSystem = true prevents user deletion.
@@ -129,7 +144,7 @@ export async function POST(request: Request) {
       data: {
         companyId: company.id,
         name: 'Owner',
-        permissions: {},
+        permissions: OWNER_PERMISSIONS,
       },
     })
 
@@ -174,7 +189,7 @@ export async function POST(request: Request) {
     roleId: result.ownerRole.id,
     role: 'Owner',
     uiMode: 'simple',
-    permissions: {},
+    permissions: OWNER_PERMISSIONS,
   })
 
   // COOKIE — identical maxAge / sameSite / httpOnly to the login route pattern
