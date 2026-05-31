@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Users, UserCheck, Pencil, UserMinus } from 'lucide-react'
+import { Users, UserCheck, Pencil, UserMinus, KeyRound } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,7 @@ import { StatusBadge } from '@/components/primitives/StatusBadge'
 import { DataTable, type Column } from '@/components/primitives/DataTable'
 import { Toolbar } from '@/components/primitives/Toolbar'
 import { UserDialog } from '@/components/settings/UserDialog'
+import { ResetPasswordDialog } from '@/components/settings/ResetPasswordDialog'
 import { usePermission } from '@/hooks/usePermission'
 import { useUiStore } from '@/lib/stores/uiStore'
 
@@ -69,6 +70,7 @@ export default function UsersPageClient() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editUser, setEditUser] = useState<UserRow | null>(null)
   const [deactivateTarget, setDeactivateTarget] = useState<UserRow | null>(null)
+  const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null)
 
   const { data: users = [], isLoading } = useQuery<UserRow[]>({
     queryKey: ['users', roleFilter, statusFilter],
@@ -202,6 +204,17 @@ export default function UsersPageClient() {
           >
             <Pencil className="h-4 w-4" />
           </Button>
+          {canAdmin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label={`Reset password for ${u.name}`}
+              onClick={() => setResetTarget({ id: u.id, name: u.name })}
+            >
+              <KeyRound className="h-4 w-4" />
+            </Button>
+          )}
           {u.isActive ? (
             <Button
               variant="ghost"
@@ -321,6 +334,18 @@ export default function UsersPageClient() {
         }}
         user={editUser}
         onSuccess={() => qc.invalidateQueries({ queryKey: ['users'] })}
+      />
+
+      {/* Reset Password dialog */}
+      <ResetPasswordDialog
+        open={resetTarget !== null}
+        onOpenChange={(o) => { if (!o) setResetTarget(null) }}
+        userId={resetTarget?.id ?? ''}
+        userName={resetTarget?.name ?? ''}
+        onSuccess={() => {
+          setResetTarget(null)
+          qc.invalidateQueries({ queryKey: ['users'] })
+        }}
       />
 
       {/* Deactivate confirmation */}
