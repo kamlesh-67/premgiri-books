@@ -25,7 +25,7 @@ export default async function AppLayout({
 
   // Fetch user name from DB using userId from JWT payload
   const user = await authDb.user.findUnique({
-    where: { id: session.userId },
+    where: { id: session.userId, companyId: session.companyId },
     select: { name: true },
   })
   const name = user?.name ?? 'User'
