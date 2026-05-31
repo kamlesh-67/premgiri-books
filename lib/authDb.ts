@@ -7,18 +7,15 @@
  * Using authDb bypasses the tenant extension — use ONLY for auth operations.
  *
  * DO NOT use authDb for any other purpose. All other DB access must use lib/prisma.ts.
+ *
+ * NOTE: No driver adapter needed — Prisma's built-in SQLite provider requires no pg/PrismaPg.
  */
 import { PrismaClient } from '@prisma/client'
-import { PrismaPg } from '@prisma/adapter-pg'
-import { Pool } from 'pg'
 
 const globalForAuthDb = globalThis as unknown as { __authDb?: PrismaClient }
 
 function createAuthDb() {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
-  const adapter = new PrismaPg(pool)
   return new PrismaClient({
-    adapter,
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   })
 }
