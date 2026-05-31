@@ -1,6 +1,6 @@
 'use client'
 import { Bell, LogOut, Menu } from 'lucide-react'
-import { signOut } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import Image from 'next/image'
 import { SimpleModeToggle } from '@/components/shared/SimpleModeToggle'
@@ -32,6 +32,12 @@ export function Topbar({ userName, userInitials }: TopbarProps) {
   })
 
   const { toggle } = useSidebarStore()
+  const router = useRouter()
+
+  async function handleSignOut() {
+    await fetch('/api/v1/auth/logout', { method: 'POST' })
+    router.push('/login')
+  }
 
   return (
     <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 z-50 flex items-center px-3 sm:px-4 gap-2 sm:gap-3">
@@ -102,7 +108,7 @@ export function Topbar({ userName, userInitials }: TopbarProps) {
                 size="icon"
                 className="h-9 w-9"
                 aria-label="Sign out"
-                onClick={() => signOut({ callbackUrl: '/login' })}
+                onClick={handleSignOut}
               >
                 <LogOut className="h-4 w-4 text-gray-500" />
               </Button>

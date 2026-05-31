@@ -1,5 +1,10 @@
 'use client'
-import { useSession } from 'next-auth/react'
+import { useQuery } from '@tanstack/react-query'
+
+interface MeResponse {
+  roleName: string
+  permissions?: Record<string, string[]>
+}
 
 /**
  * Client-side permission hook.
@@ -11,7 +16,15 @@ import { useSession } from 'next-auth/react'
  * for actual security enforcement.
  */
 export function usePermission(resource: string, action: string): boolean {
-  const { data: session } = useSession()
-  const permissions = session?.user?.permissions as Record<string, string[]> | undefined
+  const { data } = useQuery<MeResponse | null>({
+    queryKey: ['auth-me'],
+    queryFn: async () => {
+      const r = await fetch('/api/v1/auth/me')
+      if (!r.ok) return null
+      return r.json() as Promise<MeResponse>
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+  const permissions = data?.permissions
   return permissions?.[resource]?.includes(action) ?? false
 }

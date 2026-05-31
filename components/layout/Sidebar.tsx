@@ -1,10 +1,15 @@
 'use client'
-import { useSession } from 'next-auth/react'
+import { useQuery } from '@tanstack/react-query'
 import { useUiStore } from '@/lib/stores/uiStore'
 import { navGroups } from './navConfig'
 import type { NavItem as NavItemType } from './navConfig'
 import { NavItem } from './NavItem'
 import { NavGroup } from './NavGroup'
+
+interface MeResponse {
+  roleName: string
+  permissions?: Record<string, string[]>
+}
 
 /**
  * Check if the session grants a specific resource+action permission.
@@ -20,25 +25,32 @@ function sessionHasPermission(
 }
 
 /**
- * Derives a display role label from the user's permissions.
- * Since JWT only carries roleId, we infer the label from permissions.
+ * Derives a display role label from the roleName returned by /api/v1/auth/me.
  */
-function getRoleLabel(permissions: Record<string, string[]> | undefined): string {
-  if (!permissions) return 'User'
-  if (permissions.settings?.includes('admin')) return 'Admin'
-  if (permissions.vouchers?.includes('write')) return 'Accountant'
-  if (permissions.vouchers?.includes('read')) return 'Viewer'
-  return 'User'
+function getRoleLabel(roleName: string | undefined): string {
+  if (!roleName) return 'User'
+  return roleName
 }
 
-export function Sidebar() {
-  const { data: session } = useSession()
-  const uiMode = useUiStore((s) => s.uiMode)
+interface SidebarProps {
+  userName: string
+  userInitials: string
+}
 
-  const permissions = session?.user?.permissions as Record<string, string[]> | undefined
-  const userName = session?.user?.name ?? 'User'
-  const roleLabel = getRoleLabel(permissions)
-  const userInitial = userName.charAt(0).toUpperCase()
+export function Sidebar({ userName, userInitials }: SidebarProps) {
+  const { data: me } = useQuery<MeResponse | null>({
+    queryKey: ['auth-me'],
+    queryFn: async () => {
+      const r = await fetch('/api/v1/auth/me')
+      if (!r.ok) return null
+      return r.json() as Promise<MeResponse>
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const uiMode = useUiStore((s) => s.uiMode)
+  const permissions = me?.permissions
+  const roleLabel = getRoleLabel(me?.roleName)
 
   return (
     <aside className="fixed top-14 bottom-0 left-0 w-[240px] bg-white border-r border-gray-200 overflow-y-auto z-40">
@@ -102,7 +114,7 @@ export function Sidebar() {
       <div className="border-t border-gray-200 p-3 mt-auto">
         <div className="flex items-center gap-2 px-2 py-1">
           <div className="h-7 w-7 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-semibold text-xs">
-            {userInitial}
+            {userInitials}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">{userName}</p>

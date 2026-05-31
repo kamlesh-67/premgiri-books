@@ -1,4 +1,4 @@
-import type { Session } from 'next-auth'
+import type { JWTPayload } from '@/lib/jwt'
 import { NextResponse } from 'next/server'
 import { hasPermission } from '@/lib/services/PermissionService'
 
@@ -12,12 +12,11 @@ import { hasPermission } from '@/lib/services/PermissionService'
  *   if (forbidden) return forbidden
  */
 export function requirePermission(
-  session: Session,
+  session: JWTPayload,
   resource: string,
   action: string
 ): NextResponse | null {
-  const perms = session.user.permissions as Record<string, string[]> | undefined
-  if (!hasPermission(perms, resource, action)) {
+  if (!hasPermission(session.permissions, resource, action)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   return null
