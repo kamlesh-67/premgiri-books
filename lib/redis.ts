@@ -12,5 +12,9 @@ export async function blockUser(_userId: string, _ttlSeconds = 60): Promise<void
 
 export async function isUserBlocked(_userId: string): Promise<boolean> {
   // No-op: always returns false. JWT expiry + DB isActive handles session invalidation.
+  // IMPORTANT: Route-level protection relies on user.isActive being checked in the
+  // session/JWT callback (lib/auth.ts) — NOT on this function. Any route that previously
+  // relied on isUserBlocked() as its primary guard must verify it also checks isActive
+  // from the database on every request, not just at login time.
   return false
 }
