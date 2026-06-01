@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog, shell, Menu } from 'electron'
 import { spawn, ChildProcess } from 'child_process'
 import { writeFile } from 'fs/promises'
-import path from 'path'
+import path, { resolve } from 'path'
 import http from 'http'
 
 const isProd = app.isPackaged
@@ -101,6 +101,22 @@ function buildAppMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
+/**
+ * Validates that the given filePath is within an allowed directory.
+ * Prevents renderer-side code from writing arbitrary files via IPC.
+ */
+function assertAllowedPath(filePath: string): void {
+  const allowed = [
+    app.getPath('userData'),
+    app.getPath('downloads'),
+  ]
+  const abs = resolve(filePath)
+  const isAllowed = allowed.some((base) => abs.startsWith(resolve(base) + path.sep) || abs === resolve(base))
+  if (!isAllowed) {
+    throw new Error(`Path not allowed: ${filePath}`)
+  }
+}
+
 function registerIpcHandlers(): void {
   ipcMain.handle('app:version', () => app.getVersion())
 
@@ -117,10 +133,12 @@ function registerIpcHandlers(): void {
   )
 
   ipcMain.handle('fs:writeFile', async (_event, filePath: string, data: string | Uint8Array) => {
+    assertAllowedPath(filePath)
     await writeFile(filePath, data)
   })
 
   ipcMain.handle('fs:mkdir', async (_event, dirPath: string) => {
+    assertAllowedPath(dirPath)
     const { mkdir } = await import('fs/promises')
     await mkdir(dirPath, { recursive: true })
   })
