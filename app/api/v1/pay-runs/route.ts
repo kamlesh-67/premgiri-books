@@ -81,13 +81,17 @@ export async function POST(request: NextRequest) {
     return run
   })
 
-  // Run payroll synchronously (Inngest removed — CLOUD-01)
-  runPayroll(payRun.id, companyId, month, session.user.id).catch((err) => {
-    console.error('[pay-run route] PayrollRunner failed:', err)
-  })
-
-  return NextResponse.json(
-    { id: payRun.id, month, status: 'PENDING' },
-    { status: 202 }
-  )
+  // Run payroll synchronously and await result (Inngest removed — CLOUD-01)
+  try {
+    const result = await runPayroll(payRun.id, companyId, month, session.user.id)
+    return NextResponse.json(
+      { id: payRun.id, month, status: result.status, slipCount: result.slipCount },
+      { status: 200 }
+    )
+  } catch (err: unknown) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Payroll run failed' },
+      { status: 500 }
+    )
+  }
 }
