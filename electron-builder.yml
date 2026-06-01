@@ -1,11 +1,12 @@
 appId: com.premgiribooks.app
 productName: PremGiri Books
+artifactName: "PremGiriBooks-Setup-${version}.exe"
 
 directories:
   output: dist
 
 files:
-  - electron/**
+  - electron-dist/**
   - .next/**
   - public/**
   - package.json
@@ -22,6 +23,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
+  uninstallDisplayName: "PremGiri Books"
 
 extraMetadata:
-  main: electron/main.js
+  main: electron-dist/main.js
