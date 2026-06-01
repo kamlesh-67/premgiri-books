@@ -6,5 +6,4 @@
  * the transition. Delete this file entirely after confirming no imports remain.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const allFunctions: any[] = []
+export const allFunctions: unknown[] = []
