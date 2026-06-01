@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Lock, Loader2 } from 'lucide-react'
+import { Lock, Loader2, FolderOpen, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { SectionCard } from '@/components/shared/SectionCard'
@@ -37,6 +37,8 @@ export default function CompanyProfilePage() {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [fileError, setFileError] = useState<string | null>(null)
   const [isBuilding, setIsBuilding] = useState(false)
+  const [folderPath, setFolderPath] = useState<string>('')
+  const [isSavingFolder, setIsSavingFolder] = useState(false)
 
   const isAdmin = usePermission('settings', 'admin')
   const { mode } = useUiMode()
@@ -48,12 +50,22 @@ export default function CompanyProfilePage() {
     queryFn: () => fetch('/api/v1/company').then((r) => r.json()),
   })
 
+  const { data: appSettingsData, refetch: refetchSettings } = useQuery<{ key: string; value: string | null }>({
+    queryKey: ['app-settings', 'file_output_folder'],
+    queryFn: () =>
+      fetch('/api/v1/app-settings?key=file_output_folder').then((r) => r.json()),
+  })
+
   useEffect(() => {
     if (data) {
       setName(data.name ?? '')
       setAddress(data.address ?? '')
     }
   }, [data])
+
+  useEffect(() => {
+    setFolderPath(appSettingsData?.value ?? '')
+  }, [appSettingsData])
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -120,6 +132,53 @@ export default function CompanyProfilePage() {
 
   // Determine which logo image source to show
   const logoSrc = logoPreview ?? data?.logoUrl ?? null
+
+  async function handlePickFolder() {
+    if (!window.electronAPI) {
+      toast.error('Folder picker requires the desktop app')
+      return
+    }
+    const result = await window.electronAPI.showOpenDialog({
+      properties: ['openDirectory'],
+      title: 'Select folder for PDFs and file exports',
+    })
+    if (result.canceled || !result.filePaths[0]) return
+    const chosen = result.filePaths[0]
+    setIsSavingFolder(true)
+    try {
+      const res = await fetch('/api/v1/app-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'file_output_folder', value: chosen }),
+      })
+      if (!res.ok) throw new Error('Failed to save folder')
+      setFolderPath(chosen)
+      toast.success('Output folder saved')
+      refetchSettings()
+    } catch {
+      toast.error('Could not save folder path')
+    } finally {
+      setIsSavingFolder(false)
+    }
+  }
+
+  async function handleClearFolder() {
+    setIsSavingFolder(true)
+    try {
+      await fetch('/api/v1/app-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'file_output_folder', value: '' }),
+      })
+      setFolderPath('')
+      toast.success('Output folder cleared — using default location')
+      refetchSettings()
+    } catch {
+      toast.error('Could not clear folder path')
+    } finally {
+      setIsSavingFolder(false)
+    }
+  }
 
   const onBuild = async () => {
     setIsBuilding(true)
@@ -296,6 +355,46 @@ export default function CompanyProfilePage() {
           </div>
         </div>
       )}
+
+      {/* File Output Folder */}
+      <SectionCard title="File Output Folder">
+        <div className="space-y-3">
+          <p className="text-sm text-gray-500">
+            PDFs (Sales Invoice, PaySlips) and file exports are saved to this folder.
+            Default: <span className="font-mono text-xs">%APPDATA%\PremGiriBooks\files\</span>
+          </p>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 font-mono truncate min-h-[36px]">
+              {folderPath || (
+                <span className="text-gray-400">%APPDATA%\PremGiriBooks\files\ (default)</span>
+              )}
+            </div>
+            {folderPath && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearFolder}
+                disabled={isSavingFolder}
+                title="Clear custom folder — revert to default"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          <Button
+            onClick={handlePickFolder}
+            disabled={isSavingFolder || !isAdmin}
+            size="sm"
+            variant="outline"
+          >
+            <FolderOpen className="h-4 w-4 mr-2" />
+            {isSavingFolder ? 'Saving…' : 'Choose Folder'}
+          </Button>
+          {!isAdmin && (
+            <p className="text-xs text-gray-400">Only Owner role can change the output folder.</p>
+          )}
+        </div>
+      </SectionCard>
 
       {/* Data Intelligence / Smart Search — Admin only */}
       {isAdmin && (
