@@ -14,7 +14,7 @@
  * NOT in the Electron renderer — they use Node.js fs directly, NOT IPC.
  */
 
-import path from 'path'
+import path, { resolve, isAbsolute } from 'path'
 import { mkdir, writeFile } from 'fs/promises'
 
 /**
@@ -48,10 +48,22 @@ export async function getOutputFolder(): Promise<string> {
  */
 export async function writeLocalFile(filename: string, buffer: Buffer | Uint8Array): Promise<string> {
   const folder = await getOutputFolder()
-  await mkdir(folder, { recursive: true })
-  const filePath = path.join(folder, filename)
-  await writeFile(filePath, buffer)
-  return filePath
+
+  // Reject folder paths that are not absolute (relative paths could escape via ..)
+  if (!isAbsolute(folder)) {
+    throw new Error(`Output folder must be an absolute path, got: ${folder}`)
+  }
+
+  // Resolve and verify the final path stays inside the declared folder
+  const resolvedFolder = resolve(folder)
+  const resolvedPath = resolve(folder, filename)
+  if (!resolvedPath.startsWith(resolvedFolder + path.sep)) {
+    throw new Error(`Filename escapes output folder: ${filename}`)
+  }
+
+  await mkdir(resolvedFolder, { recursive: true })
+  await writeFile(resolvedPath, buffer)
+  return resolvedPath
 }
 
 /**
