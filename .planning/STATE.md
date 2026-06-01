@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Production Ready
 status: completed
-stopped_at: Phase 21 complete — all 6 plans done 2026-06-01
+stopped_at: Phase 22 complete — all 4 plans done 2026-06-01
 last_updated: "2026-06-01T00:00:00Z"
-last_activity: "2026-06-01 — Phase 21 complete: AppSettings DB + local file library, Inngest removed, cloud stubs (Redis/email/analytics/PostHog), Electron IPC + app-settings API, cloud packages removed, folder picker UI"
+last_activity: "2026-06-01 — Phase 22 complete: safeStorage IPC for AI keys, NSIS installer config, AI Config settings page, useOnlineStatus hook, SmartInsightsWidget offline gate, offline-aware semantic search"
 progress:
   total_phases: 11
-  completed_phases: 9
-  total_plans: 27
-  completed_plans: 27
-  percent: 82
+  completed_phases: 10
+  total_plans: 31
+  completed_plans: 31
+  percent: 91
 ---
 
 # Project State

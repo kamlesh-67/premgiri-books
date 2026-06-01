@@ -62,7 +62,7 @@
 - [ ] **Phase 19: First-Run Company Setup Wizard** â€” Blank DB triggers `/setup`; company + admin created; setup locked after first run
 - [x] **Phase 20: User Management** â€” Owner creates/deactivates users; Accountant role enforced at Users page
 - [ ] **Phase 21: Local File Storage + Cloud Service Removal** â€” PDFs write to local folder; all cloud dependencies removed
-- [ ] **Phase 22: Optional AI + Windows Installer** â€” Online check gates every AI call; graceful offline fallback; `.exe` installer ships
+- [x] **Phase 22: Optional AI + Windows Installer** — Online check gates every AI call; graceful offline fallback; `.exe` installer ships
 
 ---
 
@@ -221,7 +221,13 @@ Plans:
   4. Running `pnpm build:electron` produces a `.exe` installer via electron-builder NSIS that installs the app, creates a Start Menu shortcut, and supports uninstall through Windows Add/Remove Programs
   5. Installing the `.exe` on a clean Windows machine with no Node.js or developer tools launches the app successfully and completes the first-run setup wizard
 **UI hint**: yes
-**Plans**: 4 plans\n\nPlans:\n- [ ] 22-01-PLAN.md — safeStorage IPC handlers + net:isOnline + loadAiKeysIntoEnv() in electron/main.ts\n- [ ] 22-02-PLAN.md — electron-builder.yml artifactName + uninstallDisplayName; package.json build:installer with tsc step\n- [ ] 22-03-PLAN.md — /api/v1/ai-config route + Settings → AI Configuration page + useOnlineStatus hook\n- [ ] 22-04-PLAN.md — SmartInsightsWidget online gate using useOnlineStatus\n
+**Plans**: 4 plans
+
+Plans:
+- [x] 22-01-PLAN.md — safeStorage IPC handlers + net:isOnline + loadAiKeysIntoEnv() in electron/main.ts
+- [x] 22-02-PLAN.md — electron-builder.yml artifactName + uninstallDisplayName; package.json build:installer with tsc step
+- [x] 22-03-PLAN.md — /api/v1/ai-config route + Settings → AI Configuration page + useOnlineStatus hook
+- [x] 22-04-PLAN.md — SmartInsightsWidget online gate using useOnlineStatus
 ---
 
 ## Progress
