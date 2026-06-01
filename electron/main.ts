@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, Menu } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, Menu, safeStorage, net } from 'electron'
 import { spawn, ChildProcess } from 'child_process'
 import { writeFile } from 'fs/promises'
+import { readFileSync, writeFileSync, existsSync } from 'fs'
 import path, { resolve } from 'path'
 import http from 'http'
 
@@ -117,6 +118,35 @@ function assertAllowedPath(filePath: string): void {
   }
 }
 
+function getAiKeysStorePath(): string {
+  return path.join(app.getPath('userData'), 'ai-keys.json')
+}
+
+function readAiKeyStore(): Record<string, string> {
+  try {
+    const filePath = getAiKeysStorePath()
+    if (!existsSync(filePath)) return {}
+    return JSON.parse(readFileSync(filePath, 'utf8')) as Record<string, string>
+  } catch {
+    return {}
+  }
+}
+
+function writeAiKeyStore(store: Record<string, string>): void {
+  writeFileSync(getAiKeysStorePath(), JSON.stringify(store), 'utf8')
+}
+
+async function loadAiKeysIntoEnv(): Promise<void> {
+  if (!safeStorage.isEncryptionAvailable()) return
+  const store = readAiKeyStore()
+  for (const key of ['VOYAGE_API_KEY', 'ANTHROPIC_API_KEY']) {
+    const b64 = store[key]
+    if (b64) {
+      process.env[key] = safeStorage.decryptString(Buffer.from(b64, 'base64'))
+    }
+  }
+}
+
 function registerIpcHandlers(): void {
   ipcMain.handle('app:version', () => app.getVersion())
 
@@ -144,6 +174,32 @@ function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('app:getUserDataPath', () => app.getPath('userData'))
+
+  ipcMain.handle('safeStorage:set', (_event, key: string, value: string) => {
+    if (!safeStorage.isEncryptionAvailable()) throw new Error('safeStorage not available')
+    if (typeof key !== 'string' || key.length === 0) throw new TypeError('key must be a non-empty string')
+    if (typeof value !== 'string') throw new TypeError('value must be a string')
+    const encrypted = safeStorage.encryptString(value)
+    const b64 = encrypted.toString('base64')
+    const store = readAiKeyStore()
+    store[key] = b64
+    writeAiKeyStore(store)
+  })
+
+  ipcMain.handle('safeStorage:get', (_event, key: string): string => {
+    if (!safeStorage.isEncryptionAvailable()) throw new Error('safeStorage not available')
+    const store = readAiKeyStore()
+    if (!store[key]) return ''
+    return safeStorage.decryptString(Buffer.from(store[key], 'base64'))
+  })
+
+  ipcMain.handle('safeStorage:delete', (_event, key: string) => {
+    const store = readAiKeyStore()
+    delete store[key]
+    writeAiKeyStore(store)
+  })
+
+  ipcMain.handle('net:isOnline', () => net.isOnline())
 }
 
 function createWindow(): void {
@@ -169,6 +225,7 @@ function createWindow(): void {
 app.on('ready', async () => {
   buildAppMenu()
   registerIpcHandlers()
+  await loadAiKeysIntoEnv()
   await startNextServer()
   createWindow()
 })
