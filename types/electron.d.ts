@@ -19,6 +19,10 @@ declare global {
       writeFile: (filePath: string, data: string | Uint8Array) => Promise<void>
       mkdir: (dirPath: string) => Promise<void>
       getUserDataPath: () => Promise<string>
+      safeStorageSet: (key: string, value: string) => Promise<void>
+      safeStorageGet: (key: string) => Promise<string>
+      safeStorageDelete: (key: string) => Promise<void>
+      isOnline: () => Promise<boolean>
     }
   }
 }

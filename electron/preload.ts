@@ -26,4 +26,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Get the Electron app userData path (used as default output folder fallback)
   getUserDataPath: (): Promise<string> =>
     ipcRenderer.invoke('app:getUserDataPath'),
+
+  // AI key storage — OS-encrypted via Electron safeStorage
+  safeStorageSet: (key: string, value: string): Promise<void> =>
+    ipcRenderer.invoke('safeStorage:set', key, value),
+
+  safeStorageGet: (key: string): Promise<string> =>
+    ipcRenderer.invoke('safeStorage:get', key),
+
+  safeStorageDelete: (key: string): Promise<void> =>
+    ipcRenderer.invoke('safeStorage:delete', key),
+
+  // Network status
+  isOnline: (): Promise<boolean> =>
+    ipcRenderer.invoke('net:isOnline'),
 })
