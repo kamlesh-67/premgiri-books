@@ -237,6 +237,18 @@ export async function runPayroll(
     // DR = totalGross + employer PF + employer ESI
     const drAmount = totalGross.plus(totalEmrPF).plus(totalEmrESI)
 
+    // Verify double-entry balance before creating voucher (CLAUDE.md rule #3)
+    const totalCR = journalSlips
+      .reduce((s, sl) => s.plus(new Decimal(sl.netPay)), new Decimal(0))
+      .plus(totalEmpPF).plus(totalEmrPF)
+      .plus(totalEmpESI).plus(totalEmrESI)
+      .plus(totalPT)
+    if (!drAmount.equals(totalCR)) {
+      throw new Error(
+        `Payroll journal is unbalanced: DR=${drAmount.toFixed(2)} CR=${totalCR.toFixed(2)} for month ${month}`
+      )
+    }
+
     // Determine journal date: last day of month
     const [y, m] = month.split('-').map(Number)
     const lastDay = new Date(y, m, 0).getDate()
