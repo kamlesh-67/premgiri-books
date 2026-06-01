@@ -16,7 +16,8 @@
     "test:phase-11-eval": "vitest run tests/integration/phase-11-eval.test.ts",
     "seed": "pnpm dlx prisma db seed",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "build:installer": "next build && tsc -p tsconfig.electron.json && electron-builder"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
