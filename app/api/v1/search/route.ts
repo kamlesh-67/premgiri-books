@@ -96,15 +96,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ results: [] })
   }
 
+  // Online check — skip embedQuery when Electron reports offline (AI-01)
+  let isOnline = true
+  try { isOnline = require('electron').net.isOnline() } catch {}
+
   // Performance timer for slow-query monitoring
   const t0 = performance.now()
 
   try {
-    // ── 1. Embed the query (vector path) — runs in parallel with iLike queries ──
-    const queryVecPromise = embedQuery(q).then(async (queryVec) => {
-      if (!queryVec) return { ledgers: [], vouchers: [] }
-      return vectorSearch({ companyId, vec: queryVec, limit })
-    })
+    // ── 1. Embed the query (vector path) — only when online ──
+    const queryVecPromise = isOnline
+      ? embedQuery(q).then(async (queryVec) => {
+          if (!queryVec) return { ledgers: [], vouchers: [] }
+          return vectorSearch({ companyId, vec: queryVec, limit })
+        })
+      : Promise.resolve({ ledgers: [], vouchers: [] })
 
     // ── 2. Run all requested entity iLike queries in parallel ──
     const [ledgerRows, voucherRows, partyRows, stockItemRows, vectorResults] = await Promise.all([
