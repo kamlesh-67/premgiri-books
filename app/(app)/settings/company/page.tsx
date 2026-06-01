@@ -165,11 +165,12 @@ export default function CompanyProfilePage() {
   async function handleClearFolder() {
     setIsSavingFolder(true)
     try {
-      await fetch('/api/v1/app-settings', {
+      const res = await fetch('/api/v1/app-settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: 'file_output_folder', value: '' }),
       })
+      if (!res.ok) throw new Error('Failed to clear folder')
       setFolderPath('')
       toast.success('Output folder cleared — using default location')
       refetchSettings()
