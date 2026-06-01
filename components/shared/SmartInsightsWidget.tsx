@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { SectionCard } from '@/components/shared/SectionCard'
 import { captureEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 
 type InsightType = 'top_customer' | 'biggest_expense' | 'gst_trend'
 
@@ -39,6 +40,7 @@ const insightTypeColors: Record<InsightType, string> = {
 export function SmartInsightsWidget({ className }: SmartInsightsWidgetProps) {
   const queryClient = useQueryClient()
   const [bypassCache, setBypassCache] = useState(false)
+  const isOnline = useOnlineStatus()
 
   const { data, isLoading, isFetching, isError } = useQuery<InsightsResponse>({
     queryKey: ['insights'],
@@ -49,6 +51,7 @@ export function SmartInsightsWidget({ className }: SmartInsightsWidgetProps) {
       return r.json() as Promise<InsightsResponse>
     },
     staleTime: 15 * 60 * 1000,
+    enabled: isOnline,
   })
 
   // Fire insight_viewed once per fresh data load
@@ -84,6 +87,16 @@ export function SmartInsightsWidget({ className }: SmartInsightsWidgetProps) {
       Refresh Insights
     </Button>
   )
+
+  if (!isOnline) {
+    return (
+      <SectionCard title="Smart Insights" action={refreshButton} className={className}>
+        <p className="text-sm text-gray-500 px-4 py-6">
+          AI insights are unavailable while offline. Connect to the internet to enable Smart Insights.
+        </p>
+      </SectionCard>
+    )
+  }
 
   return (
     <SectionCard title="Smart Insights" action={refreshButton} className={className}>
