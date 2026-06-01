@@ -61,7 +61,7 @@ export async function runPayroll(
 
       // D-11: log warning for employees without salaryLedgerId
       if (!emp.salaryLedgerId) {
-        console.warn(`[PayrollRunner] Employee ${emp.employeeCode} (${emp.name}) has no salaryLedgerId — excluded from journal`)
+        // Employee excluded from journal — no salary ledger linked
       }
 
       const attendance = attendanceMap[emp.id] ?? {
@@ -318,8 +318,6 @@ export async function runPayroll(
       where: { companyId, month },
       data: { lockedAt: new Date() },
     })
-
-    console.log('[PayrollRunner] Pay run completed:', payRunId, month)
 
     return { status: 'COMPLETED', payRunId, month, slipCount: computedSlips.length }
 

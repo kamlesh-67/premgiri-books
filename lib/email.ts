@@ -14,7 +14,6 @@ interface EmailPayload {
   replyTo?: string
 }
 
-export async function sendEmail(payload: EmailPayload): Promise<void> {
+export async function sendEmail(_payload: EmailPayload): Promise<void> {
   // No-op: Resend removed. Desktop app uses in-app notifications only.
-  console.log('[email] sendEmail no-op:', payload.to, '|', payload.subject)
 }
