@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Production Ready
 status: completed
-stopped_at: Phase 20 complete — verified 2026-05-31
-last_updated: "2026-05-31T15:00:00Z"
-last_activity: "2026-05-31 — Phase 20 verified: 12/12 must-haves pass; permissions infrastructure, reset-password API, sidebar filter, and 403 guard all confirmed"
+stopped_at: Phase 21 complete — all 6 plans done 2026-06-01
+last_updated: "2026-06-01T00:00:00Z"
+last_activity: "2026-06-01 — Phase 21 complete: AppSettings DB + local file library, Inngest removed, cloud stubs (Redis/email/analytics/PostHog), Electron IPC + app-settings API, cloud packages removed, folder picker UI"
 progress:
   total_phases: 11
-  completed_phases: 8
-  total_plans: 21
-  completed_plans: 21
-  percent: 73
+  completed_phases: 9
+  total_plans: 27
+  completed_plans: 27
+  percent: 82
 ---
 
 # Project State
@@ -36,10 +36,10 @@ See: `.planning/PROJECT.md` (updated 2026-05-31)
 
 ## Current Position
 
-Phase: 20 — User Management
-Plan: 03 — complete (frontend permission guards + ResetPasswordDialog)
-Status: Complete — 3/3 plans done — verified 2026-05-31 (12/12 must-haves)
-Last activity: 2026-05-31 — Phase 20 verified: OWNER_PERMISSIONS in JWT, auth/me returns permissions, AppSidebar isPermitted filter, Users page 403 guard, reset-password endpoint, ResetPasswordDialog
+Phase: 21 — Local File Storage + Cloud Service Removal
+Plan: 06 — complete (folder picker UI in Settings → Company)
+Status: Complete — 6/6 plans done — 2026-06-01
+Last activity: 2026-06-01 — Phase 21: AppSettings SQLite table, lib/localFiles.ts, PayrollRunner direct fn, Inngest/Redis/email/analytics/PostHog stubs, app-settings API, Electron IPC fs:mkdir + getUserDataPath, 12 cloud packages removed, folder picker UI
 
 Progress: [██████████] 100%
 
@@ -53,7 +53,7 @@ Progress: [██████████] 100%
 | 18 | Local Authentication | AUTH-01, AUTH-02, AUTH-03, AUTH-04 | Complete (3/3 plans done) |
 | 19 | First-Run Company Setup Wizard | SETUP-01, SETUP-02, SETUP-03, SETUP-04, SETUP-05 | Complete (2/2 plans) |
 | 20 | User Management | USER-01, USER-02, USER-03, USER-04, USER-05 | Complete — verified 2026-05-31 |
-| 21 | Local File Storage + Cloud Service Removal | FILE-01..05, CLOUD-01..06 | Not started |
+| 21 | Local File Storage + Cloud Service Removal | FILE-01..05, CLOUD-01..06 | Complete — 6/6 plans done 2026-06-01 |
 | 22 | Optional AI + Windows Installer | AI-01..05, ELEC-04 | Not started |
 
 ---
@@ -82,4 +82,4 @@ None.
 
 Last session: 2026-05-31
 Stopped at: Phase 20 complete — verified
-Next action: Execute Phase 21 (Local File Storage + Cloud Service Removal)
+Next action: Execute Phase 22 (Optional AI + Windows Installer)
