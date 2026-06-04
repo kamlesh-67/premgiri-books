@@ -10,7 +10,7 @@
 import { getSessionFromRequest } from '@/lib/session'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { prisma } from '@/lib/prisma'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { z } from 'zod'
 
 // Zod schema — deliberately excludes gstin, pan, stateCode (read-only after registration).
@@ -22,9 +22,9 @@ const patchSchema = z.object({
 
 // ─── GET ─────────────────────────────────────────────────────────────────────
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const session = await getSessionFromRequest(request)
-  if (!session?.user?.id) {
+  if (!session?.userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -57,9 +57,9 @@ export async function GET(request: Request) {
 
 // ─── PATCH ───────────────────────────────────────────────────────────────────
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
   const session = await getSessionFromRequest(request)
-  if (!session?.user?.id) {
+  if (!session?.userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

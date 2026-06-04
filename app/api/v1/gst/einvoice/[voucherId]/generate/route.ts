@@ -10,7 +10,7 @@
  *  - T-08-04-04: voucherId validated as CUID before any DB query
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { generateIrn } from '@/lib/services/EInvoiceService'
@@ -32,7 +32,7 @@ const generateIrnSchema = z.object({
 })
 
 export async function POST(
-  req: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ voucherId: string }> },
 ) {
   // 1. Auth guard
@@ -50,7 +50,7 @@ export async function POST(
   // 3. Validate request body
   let body: z.infer<typeof generateIrnSchema>
   try {
-    const raw = await req.json().catch(() => ({}))
+    const raw = await request.json().catch(() => ({}))
     body = generateIrnSchema.parse(raw)
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })

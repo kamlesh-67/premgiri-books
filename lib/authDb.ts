@@ -10,12 +10,19 @@
  *
  * NOTE: No driver adapter needed — Prisma's built-in SQLite provider requires no pg/PrismaPg.
  */
+import path from 'path'
 import { PrismaClient } from '@prisma/client'
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 
 const globalForAuthDb = globalThis as unknown as { __authDb?: PrismaClient }
 
 function createAuthDb() {
+  const dbUrl = process.env['DATABASE_URL'] ?? `file:${path.resolve('dev.db')}`
+  const rawPath = dbUrl.replace(/^file:/, '')
+  const dbPath = path.isAbsolute(rawPath) ? rawPath : path.resolve(process.cwd(), rawPath)
+  const adapter = new PrismaBetterSqlite3({ url: dbPath })
   return new PrismaClient({
+    adapter,
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   })
 }

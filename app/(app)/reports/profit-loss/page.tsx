@@ -1,4 +1,4 @@
-﻿import { readSession } from '@/lib/session'
+import { readSession } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { Download } from 'lucide-react'
 import { PageHeader } from '@/components/primitives/PageHeader'
@@ -47,7 +47,7 @@ export default async function ProfitLossPage({
   searchParams: Promise<{ fy?: string; compareFy?: string }>
 }) {
   const session = await readSession()
-  if (!session?.user?.companyId) redirect('/login')
+  if (!session?.companyId) redirect('/login')
   const companyId = session.companyId
 
   const { fy: fyParam, compareFy: compareFyParam } = await searchParams

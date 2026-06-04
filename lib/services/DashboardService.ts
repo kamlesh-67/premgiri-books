@@ -1,8 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { setCache, getCache } from '@/lib/redis'
 import { Decimal } from 'decimal.js'
-
-const CACHE_TTL = 300 // 5 minutes
 
 // ─── Business KPIs ─────────────────────────────────────────────────────────
 
@@ -18,13 +15,7 @@ export interface BusinessKPIs {
 }
 
 export async function getCachedBusinessKPIs(companyId: string): Promise<BusinessKPIs> {
-  const cacheKey = `dashboard:business:${companyId}`
-  const cached = await getCache<BusinessKPIs>(cacheKey)
-  if (cached) return cached
-
-  const data = await computeBusinessKPIs(companyId)
-  await setCache(cacheKey, data, CACHE_TTL)
-  return data
+  return computeBusinessKPIs(companyId)
 }
 
 async function computeBusinessKPIs(companyId: string): Promise<BusinessKPIs> {
@@ -206,13 +197,7 @@ export interface AccountantKPIs {
 }
 
 export async function getCachedAccountantKPIs(companyId: string): Promise<AccountantKPIs> {
-  const cacheKey = `dashboard:accountant:${companyId}`
-  const cached = await getCache<AccountantKPIs>(cacheKey)
-  if (cached) return cached
-
-  const data = await computeAccountantKPIs(companyId)
-  await setCache(cacheKey, data, CACHE_TTL)
-  return data
+  return computeAccountantKPIs(companyId)
 }
 
 async function computeAccountantKPIs(companyId: string): Promise<AccountantKPIs> {

@@ -14,15 +14,11 @@
 import { randomBytes } from 'crypto'
 import * as forge from 'node-forge'
 import { prisma } from '@/lib/prisma'
-import { getCache, setCache } from '@/lib/redis'
 import { Decimal } from 'decimal.js'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const IRP_BASE_URL = process.env.IRP_BASE_URL ?? 'https://einv-apisandbox.nic.in'
-/** 5 hours — 1-hour buffer vs 6-hour IRP token validity */
-const CACHE_TTL = 60 * 60 * 5
-const cacheKey = (gstin: string) => `irp:token:${gstin}`
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -520,9 +516,6 @@ export async function generateStandaloneEwb(
  * Decrypts SEK using AES-ECB with app_key.
  */
 async function getAuthToken(gstin: string): Promise<{ token: string; sek: string }> {
-  const cached = await getCache<{ token: string; sek: string }>(cacheKey(gstin))
-  if (cached) return cached
-
   // Generate cryptographically secure 32-byte (256-bit) AES app_key (CR-04)
   const appKey = randomBytes(32).toString('hex')
 
@@ -574,8 +567,6 @@ async function getAuthToken(gstin: string): Promise<{ token: string; sek: string
   const sek = forge.util.encode64(dec.output.bytes())
 
   const result = { token: authRes.AuthToken!, sek }
-  // T-08-02-03: store in Redis with TTL — never in module scope
-  await setCache(cacheKey(gstin), result, CACHE_TTL)
   return result
 }
 

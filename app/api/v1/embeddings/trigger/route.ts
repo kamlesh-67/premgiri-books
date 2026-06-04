@@ -10,13 +10,13 @@
  * Response: 202 Accepted with skipped reason
  */
 
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { requirePermission } from '@/lib/utils/requirePermission'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 
-export async function POST(): Promise<NextResponse> {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   // ── Auth gate ───────────────────────────────────────────────────────────────
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

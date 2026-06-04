@@ -19,7 +19,6 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { getSessionFromRequest } from '@/lib/session'
-import { getCache, setCache, deleteCache } from '@/lib/redis'
 import { generateInsights } from '@/lib/services/InsightsService'
 import type { InsightsResponse } from '@/lib/services/InsightsService'
 
@@ -36,10 +35,6 @@ type InsightsRouteResponse = {
 const refreshSchema = z.object({
   refresh: z.enum(['1']).optional(),
 })
-
-// ─── Cache TTL ────────────────────────────────────────────────────────────────
-
-const CACHE_TTL_SECONDS = 900 // 15 minutes per D-07
 
 // ─── GET /api/v1/insights ─────────────────────────────────────────────────────
 
@@ -59,47 +54,12 @@ export async function GET(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 })
   }
-  const bypassCache = parsed.data.refresh === '1'
-
-  // Step 4: Redis cache key (exact pattern per D-07)
-  const cacheKey = `insights:${companyId}`
-
-  // Step 5: Serve from cache if not bypassing
-  if (!bypassCache) {
-    try {
-      const cached = await getCache<InsightsResponse>(cacheKey)
-      if (cached !== null) {
-        return NextResponse.json({ ...cached, cached: true } satisfies InsightsRouteResponse)
-      }
-    } catch (cacheErr) {
-      // Redis error must not block insight generation (AI-SPEC §6 fallback policy)
-      console.warn('[insights] Redis read error, falling through to fresh generation:', cacheErr)
-    }
-  }
-
-  // Step 6: Bypass → delete stale cache entry
-  if (bypassCache) {
-    try {
-      await deleteCache(cacheKey)
-    } catch {
-      // Non-blocking — if del fails, the old cache key expires naturally
-    }
-  }
-
-  // Step 7: Structured log on cache miss (useful for offline flywheel metric — AI-SPEC §6)
+  // Step 7: Structured log (useful for offline flywheel metric — AI-SPEC §6)
   console.log('[insights] cache miss for company:', companyId)
 
   // Step 8: Generate fresh insights
   try {
     const result = await generateInsights(companyId)
-
-    // Step 9: Cache on success (errors return empty insights, not worth caching long-term)
-    // Only cache if we got at least some content (or empty — still valid to cache briefly)
-    try {
-      await setCache(cacheKey, result, CACHE_TTL_SECONDS)
-    } catch {
-      // Cache write failure must not break the response
-    }
 
     return NextResponse.json({ ...result, cached: false } satisfies InsightsRouteResponse)
   } catch (err) {

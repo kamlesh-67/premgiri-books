@@ -35,7 +35,7 @@ const OWNER_PERMISSIONS = {
   gst:       ['read', 'write', 'admin'],
   settings:  ['read', 'admin'],
   users:     ['read', 'admin'],
-} as const
+} satisfies Record<string, string[]>
 
 // ─── Account Groups (Chart of Accounts seed) ─────────────────────────────────
 // These 19 groups form the standard Indian accounting hierarchy (Tally-style).

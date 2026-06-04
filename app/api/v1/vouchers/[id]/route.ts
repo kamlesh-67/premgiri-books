@@ -1,6 +1,6 @@
 import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { z } from 'zod'
 import { cancelVoucher, postVoucher, ValidationError } from '@/lib/services/VoucherEngine'
 
@@ -18,7 +18,7 @@ const patchBodySchema = z.object({
  * IDOR protection: where clause always includes both id AND companyId (T-02-10).
  */
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSessionFromRequest(request)
@@ -89,7 +89,7 @@ export async function GET(
  * Audit log is written inside the VoucherEngine $transaction (T-02-15).
  */
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSessionFromRequest(request)

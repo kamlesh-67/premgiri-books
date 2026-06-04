@@ -1,10 +1,10 @@
 import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { stockItemSchema } from '@/lib/schemas/masters'
 import { Decimal } from 'decimal.js'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -50,7 +50,7 @@ export async function GET() {
   )
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

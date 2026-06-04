@@ -5,7 +5,7 @@
  * Machine-level settings (not tenant-scoped). Uses authDb to bypass the
  * tenant extension on the main prisma client.
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { authDb } from '@/lib/authDb'
 import { NextResponse, NextRequest } from 'next/server'
@@ -22,8 +22,8 @@ const putSchema = z.object({
 // ─── GET ─────────────────────────────────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await getSessionFromRequest(request)
+  if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
 // ─── PUT ─────────────────────────────────────────────────────────────────────
 
 export async function PUT(request: NextRequest) {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await getSessionFromRequest(request)
+  if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

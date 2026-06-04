@@ -7,8 +7,8 @@
  *  - T-22-07: OWNER-only route; 403 for non-owner roles
  *  - Actual key storage happens client-side via window.electronAPI.safeStorageSet (IPC)
  */
-import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { getSessionFromRequest } from '@/lib/session'
+import { authDb as prisma } from '@/lib/authDb'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -19,13 +19,13 @@ const postSchema = z.object({
 
 // ─── GET ─────────────────────────────────────────────────────────────────────
 
-export async function GET(_request: Request) {
-  const session = await auth()
-  if (!session?.user?.id) {
+export async function GET(request: NextRequest) {
+  const session = await getSessionFromRequest(request)
+  if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  if (session.user.role !== 'OWNER') {
+  if (session.role !== 'OWNER') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -43,12 +43,12 @@ export async function GET(_request: Request) {
 // ─── POST ────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await getSessionFromRequest(request)
+  if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  if (session.user.role !== 'OWNER') {
+  if (session.role !== 'OWNER') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

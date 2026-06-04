@@ -4,10 +4,6 @@
  * This seed is a no-op; real seeding runs post first-run wizard.
  */
 
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
-
 export const ACCOUNT_GROUPS = [
   { name: 'Capital Account',       nature: 'LIABILITY', affectsGP: false },
   { name: 'Current Assets',        nature: 'ASSET',     affectsGP: false },
@@ -29,4 +25,4 @@ async function main() {
   console.log('Seed: schema-only run. Company-level seed runs post first-run wizard (Phase 19).')
 }
 
-main().catch(console.error).finally(() => prisma.$disconnect())
+main().catch(console.error)

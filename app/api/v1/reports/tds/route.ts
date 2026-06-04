@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { Decimal } from 'decimal.js'
@@ -18,9 +18,9 @@ import { Decimal } from 'decimal.js'
  *  - companyId ALWAYS from session.companyId — NEVER from query params (T-03-06-02)
  *  - section and period are optional filters validated by regex before DB use (T-03-06-03)
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const session = await getSessionFromRequest(request)
-  if (!session?.user?.companyId) {
+  if (!session?.companyId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

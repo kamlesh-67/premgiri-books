@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
               companyId,
               isActive: true,
               gstRegType: { notIn: ['REGULAR', 'COMPOSITION'] },
-              name: { contains: q, mode: 'insensitive' },
+              name: { contains: q },
             },
             select: { id: true, name: true, gstin: true },
             take: limit,
@@ -134,8 +134,8 @@ export async function GET(request: NextRequest) {
             where: {
               companyId,
               OR: [
-                { voucherNo: { contains: q, mode: 'insensitive' } },
-                { partyLedger: { name: { contains: q, mode: 'insensitive' } } },
+                { voucherNo: { contains: q } },
+                { partyLedger: { name: { contains: q } } },
               ],
             },
             select: {
@@ -157,8 +157,8 @@ export async function GET(request: NextRequest) {
               isActive: true,
               gstRegType: { in: ['REGULAR', 'COMPOSITION'] },
               OR: [
-                { name: { contains: q, mode: 'insensitive' } },
-                { gstin: { contains: q, mode: 'insensitive' } },
+                { name: { contains: q } },
+                { gstin: { contains: q } },
               ],
             },
             select: { id: true, name: true, gstin: true },
@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
             where: {
               companyId,
               isActive: true,
-              name: { contains: q, mode: 'insensitive' },
+              name: { contains: q },
             },
             select: { id: true, name: true, hsnCode: true },
             take: limit,

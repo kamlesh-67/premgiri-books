@@ -1,10 +1,10 @@
 import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { stockItemSchema } from '@/lib/schemas/masters'
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSessionFromRequest(request)
@@ -27,7 +27,7 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSessionFromRequest(request)

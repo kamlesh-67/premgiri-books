@@ -48,7 +48,6 @@ export default async function AppLayout({
         userName={name}
         userRole={session.role ?? ''}
         financialYear="2024-25"
-        // @ts-expect-error permissions prop added to AppSidebar in Plan 03
         permissions={session.permissions}
       />
 

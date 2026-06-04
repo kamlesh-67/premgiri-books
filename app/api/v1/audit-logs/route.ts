@@ -19,12 +19,12 @@
 import { getSessionFromRequest } from '@/lib/session'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { prisma } from '@/lib/prisma'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import type { Prisma } from '@prisma/client'
 
 // ─── GET ─────────────────────────────────────────────────────────────────────
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const session = await getSessionFromRequest(request)
   if (!session?.userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

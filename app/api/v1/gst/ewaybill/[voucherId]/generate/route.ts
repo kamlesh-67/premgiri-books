@@ -10,7 +10,7 @@
  *  - T-08-04-04: voucherId validated as CUID before any DB query
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { z } from 'zod'
 import { generateStandaloneEwb } from '@/lib/services/EInvoiceService'
 
@@ -26,7 +26,7 @@ const generateEwbSchema = z.object({
 })
 
 export async function POST(
-  req: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ voucherId: string }> },
 ) {
   // 1. Auth guard
@@ -44,7 +44,7 @@ export async function POST(
   // 3. Validate request body
   let body: z.infer<typeof generateEwbSchema>
   try {
-    const raw = await req.json()
+    const raw = await request.json()
     body = generateEwbSchema.parse(raw)
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })

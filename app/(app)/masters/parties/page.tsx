@@ -15,10 +15,11 @@ export default async function PartiesPage() {
     where: { companyId, name: { in: ['Sundry Debtors', 'Sundry Creditors'] } },
     select: { id: true, name: true },
   })
-  const partyGroupIds = partyGroups.map((g) => g.id)
-  const groupNameById = Object.fromEntries(partyGroups.map((g) => [g.id, g.name]))
+  const partyGroupIds = partyGroups.map((g: { id: string; name: string }) => g.id)
+  const groupNameById = Object.fromEntries(partyGroups.map((g: { id: string; name: string }) => [g.id, g.name]))
 
-  const partiesRaw = partyGroupIds.length > 0
+  type LedgerWithGroup = Awaited<ReturnType<typeof prisma.ledger.findMany<{ include: { group: { select: { name: true } } } }>>>[number]
+  const partiesRaw: LedgerWithGroup[] = partyGroupIds.length > 0
     ? await prisma.ledger.findMany({
         where: { companyId, groupId: { in: partyGroupIds } },
         include: { group: { select: { name: true } } },

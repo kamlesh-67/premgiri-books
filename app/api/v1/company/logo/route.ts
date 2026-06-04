@@ -17,7 +17,9 @@
 import { getSessionFromRequest } from '@/lib/session'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { prisma } from '@/lib/prisma'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
+import { writeFileSync, mkdirSync } from 'fs'
+import { join } from 'path'
 
 const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const
 type AllowedMime = (typeof ALLOWED_MIME_TYPES)[number]
@@ -32,7 +34,7 @@ const MAX_SIZE_BYTES = 2 * 1024 * 1024 // 2 MB
 
 // ─── POST ─────────────────────────────────────────────────────────────────────
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const session = await getSessionFromRequest(request)
   if (!session?.userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -76,32 +78,14 @@ export async function POST(request: Request) {
 
   const mimeType = file.type as AllowedMime
   const ext = MIME_TO_EXT[mimeType]
-  const r2Key = `companies/${companyId}/logo.${ext}`
-
-  // Upload to R2 using dynamic import (avoids loading @aws-sdk/client-s3 on every request)
-  const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3')
-
-  const s3 = new S3Client({
-    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId: process.env.R2_ACCESS_KEY_ID ?? '',
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',
-    },
-    region: 'auto',
-  })
-
   const fileBuffer = Buffer.from(await file.arrayBuffer())
 
-  await s3.send(
-    new PutObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME,
-      Key: r2Key,
-      Body: fileBuffer,
-      ContentType: file.type,
-    }),
-  )
-
-  const publicUrl = `${process.env.R2_PUBLIC_URL}/${r2Key}`
+  // Save logo to local public/uploads/logos/ (cloud storage removed in Phase 21)
+  const uploadDir = join(process.cwd(), 'public', 'uploads', 'logos')
+  mkdirSync(uploadDir, { recursive: true })
+  const fileName = `${companyId}.${ext}`
+  writeFileSync(join(uploadDir, fileName), fileBuffer)
+  const publicUrl = `/uploads/logos/${fileName}`
 
   // Update company.logoUrl + audit log in a single transaction
   await prisma.$transaction([

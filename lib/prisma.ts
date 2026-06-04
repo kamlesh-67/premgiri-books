@@ -1,4 +1,6 @@
+import path from 'path'
 import { PrismaClient } from '@prisma/client'
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 
 // --- TenantScopeError -------------------------------------------------------
 export class TenantScopeError extends Error {
@@ -46,8 +48,12 @@ export function guardTenantScope(
 
 // --- Create extended Prisma client ------------------------------------------
 function createPrismaClient() {
-  // Phase 17: Plain PrismaClient for SQLite — no pg/neon adapter needed
+  const dbUrl = process.env['DATABASE_URL'] ?? `file:${path.resolve('dev.db')}`
+  const rawPath = dbUrl.replace(/^file:/, '')
+  const dbPath = path.isAbsolute(rawPath) ? rawPath : path.resolve(process.cwd(), rawPath)
+  const adapter = new PrismaBetterSqlite3({ url: dbPath })
   return new PrismaClient({
+    adapter,
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   }).$extends({
     query: {

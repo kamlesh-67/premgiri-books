@@ -292,7 +292,7 @@ export async function runPayroll(
       }] : []),
     ]
 
-    const session = { user: { companyId, id: triggeredBy } }
+    const session = { companyId, userId: triggeredBy }
     await createVoucher(
       {
         voucherType: 'JOURNAL',

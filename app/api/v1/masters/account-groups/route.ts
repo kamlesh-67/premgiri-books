@@ -1,6 +1,6 @@
 import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -55,13 +55,13 @@ function flattenTree(groups: AccountGroupNode[]): AccountGroupFlat[] {
  *
  * Security: T-01-09-01 (auth check), T-01-09-02 (companyId scoping)
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   // T-01-09-01: Auth check — always first
   const session = await getSessionFromRequest(request)
-  if (!session?.user?.companyId) {
+  if (!session?.companyId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  const { companyId } = session.user
+  const companyId = session.companyId
 
   // Fetch nested tree (3 levels deep covers full seeded hierarchy)
   // T-01-09-02: Always filter by companyId — no cross-tenant data

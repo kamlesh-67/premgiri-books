@@ -5,29 +5,15 @@
  *
  * Security: user id from session (JWT), never from request body (T-02-02).
  * companyId from session.companyId for multi-tenant where clause.
- *
- * NOTE: session.user is extended in lib/auth.ts (Plan 01-01) to include
- * companyId, roleId, uiMode. Using type assertion here to satisfy the compiler
- * in this parallel worktree; merged result will have the full session type.
  */
 import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { userPreferencesSchema } from '@/lib/schemas/masters'
 
-// Extended session user type — matches lib/auth.ts session callback from Plan 01-01
-interface ExtendedUser {
-  id: string
-  email: string
-  name?: string | null
-  companyId: string
-  roleId: string | null
-  uiMode: 'simple' | 'advanced'
-}
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const session = await getSessionFromRequest(request)
-  if (!session?.user?.id) {
+  if (!session?.userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -40,14 +26,11 @@ export async function POST(request: Request) {
     )
   }
 
-  // Cast to extended user type — lib/auth.ts (01-01) adds companyId to JWT
-  const user = session.user as unknown as ExtendedUser
-
   // companyId from session (per non-negotiable rule — NEVER from body)
   await prisma.user.update({
     where: {
-      id: user.id,
-      companyId: user.companyId,
+      id: session.userId,
+      companyId: session.companyId,
     },
     data: { uiMode: parsed.data.uiMode },
   })

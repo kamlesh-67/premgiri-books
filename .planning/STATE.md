@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.2
-milestone_name: Production Ready
+milestone_name: milestone
 status: completed
-stopped_at: Phase 22 complete — all 4 plans done 2026-06-01
-last_updated: "2026-06-01T00:00:00Z"
-last_activity: "2026-06-01 — Phase 22 complete: safeStorage IPC for AI keys, NSIS installer config, AI Config settings page, useOnlineStatus hook, SmartInsightsWidget offline gate, offline-aware semantic search"
+stopped_at: context exhaustion at 75% (2026-06-03)
+last_updated: "2026-06-03T16:41:41.509Z"
+last_activity: "2026-06-01 — Phase 21: AppSettings SQLite table, lib/localFiles.ts, PayrollRunner direct fn, Inngest/Redis/email/analytics/PostHog stubs, app-settings API, Electron IPC fs:mkdir + getUserDataPath, 12 cloud packages removed, folder picker UI"
 progress:
   total_phases: 11
   completed_phases: 10
@@ -80,6 +80,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-31
-Stopped at: Phase 20 complete — verified
+Last session: 2026-06-03T16:41:41.495Z
+Stopped at: context exhaustion at 75% (2026-06-03)
 Next action: Execute Phase 22 (Optional AI + Windows Installer)

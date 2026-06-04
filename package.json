@@ -27,6 +27,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
     "@hookform/resolvers": "^3.10.0",
+    "@prisma/adapter-better-sqlite3": "7.8.0",
     "@prisma/client": "^7.8.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -63,6 +64,7 @@
     "@types/papaparse": "^5.5.2",
     "@types/qrcode": "^1.5.6",
     "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -109,7 +111,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.21",
     "dotenv": "^17.4.2",
-    "electron": "^42.3.0",
+    "electron": "^32.3.3",
     "electron-builder": "^26.8.1",
     "eslint": "^9.32.0",
     "eslint-config-next": "^15.3.1",
@@ -126,5 +128,11 @@
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^3.2.4",
     "vitest-mock-extended": "^3.1.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "prisma"
+    ]
   }
 }

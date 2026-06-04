@@ -10,15 +10,15 @@
  *  - Only returns vouchers that have eWayBillNo set
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import type { Prisma } from '@prisma/client'
 
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { searchParams } = new URL(req.url)
+  const { searchParams } = new URL(request.url)
   const period = searchParams.get('period')   // MM/YYYY
   const status = searchParams.get('status')   // ACTIVE | EXPIRED
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))

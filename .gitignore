@@ -32,6 +32,7 @@ lerna-debug.log*
 # Build output
 dist
 dist-ssr
+electron-dist/
 
 # Build artifacts
 tsconfig.tsbuildinfo

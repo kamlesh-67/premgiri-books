@@ -3,7 +3,7 @@
  *
  * Application logic for Purchase Orders and Sales Orders.
  * Business rules enforced:
- *  - companyId always from session.user.companyId (multi-tenant, T-04-06-02)
+ *  - companyId always from session.companyId (multi-tenant, T-04-06-02)
  *  - orderNo generated server-side — never accepted from client (T-04-06-04)
  *  - approveOrder requires Admin or Owner role fetched from DB (T-04-06-03, D-03)
  *  - Every status change writes auditLog inside the same $transaction (T-04-06-05)
@@ -36,11 +36,18 @@ export class ForbiddenError extends Error {
 
 // ─── Session shape required by OrderService ───────────────────────────────────
 
+/** Flat session shape from JWTPayload (Phase 18 — no .user nesting) */
 export interface OrderSession {
-  user: {
+  companyId: string
+  userId: string
+  roleId: string | null
+  name?: string
+  email?: string
+  // Allow older nested shape during transition
+  user?: {
     companyId: string
     id: string
-    roleId: string | null
+    roleId?: string | null
     name?: string
     email?: string
   }
@@ -87,7 +94,8 @@ export const OrderService = {
    * All operations inside a single $transaction.
    */
   async createOrder(input: CreateOrderInput, session: OrderSession) {
-    const companyId = session.user.companyId
+    const companyId = session.companyId ?? session.user?.companyId ?? ''
+    const userId = session.userId ?? session.user?.id ?? ''
 
     return prisma.$transaction(async (tx) => {
       const orderNo = await getNextOrderNo(input.orderType, companyId, tx)
@@ -107,7 +115,7 @@ export const OrderService = {
           status: 'DRAFT',
           totalAmount: totalAmount.toFixed(2),
           narration: input.narration ?? null,
-          createdBy: session.user.id,
+          createdBy: userId,
           orderItems: {
             create: input.items.map((item) => ({
               companyId,
@@ -126,7 +134,7 @@ export const OrderService = {
       await tx.auditLog.create({
         data: {
           companyId,
-          userId: session.user.id,
+          userId,
           entity: 'Order',
           entityId: order.id,
           action: 'CREATE',
@@ -146,16 +154,18 @@ export const OrderService = {
 
   /**
    * Approve a DRAFT order.
-   * Role check: only Admin or Owner (fetched from DB via session.user.roleId — D-03).
+   * Role check: only Admin or Owner (fetched from DB via session.roleId — D-03).
    * Cross-tenant guard: order.findFirst with companyId (T-04-06-06).
    */
   async approveOrder(orderId: string, session: OrderSession) {
-    const companyId = session.user.companyId
+    const companyId = session.companyId ?? session.user?.companyId ?? ''
+    const userId = session.userId ?? session.user?.id ?? ''
+    const roleId = session.roleId ?? session.user?.roleId ?? null
 
-    // D-03: role fetched from DB — session.user.roleId is not trusted for authorization decisions
-    const role = session.user.roleId
+    // D-03: role fetched from DB — session.roleId is not trusted for authorization decisions
+    const role = roleId
       ? await prisma.role.findFirst({
-          where: { id: session.user.roleId, companyId },
+          where: { id: roleId, companyId },
           select: { name: true },
         })
       : null
@@ -182,7 +192,7 @@ export const OrderService = {
       await tx.auditLog.create({
         data: {
           companyId,
-          userId: session.user.id,
+          userId,
           entity: 'Order',
           entityId: orderId,
           action: 'UPDATE',
@@ -200,7 +210,8 @@ export const OrderService = {
    * Cannot cancel a CLOSED or already CANCELLED order.
    */
   async cancelOrder(orderId: string, session: OrderSession) {
-    const companyId = session.user.companyId
+    const companyId = session.companyId ?? session.user?.companyId ?? ''
+    const userId = session.userId ?? session.user?.id ?? ''
 
     return prisma.$transaction(async (tx) => {
       // Cross-tenant guard (T-04-06-06)
@@ -220,7 +231,7 @@ export const OrderService = {
       await tx.auditLog.create({
         data: {
           companyId,
-          userId: session.user.id,
+          userId,
           entity: 'Order',
           entityId: orderId,
           action: 'CANCEL',
@@ -238,7 +249,8 @@ export const OrderService = {
    * Cannot close a CANCELLED or already CLOSED order.
    */
   async closeOrder(orderId: string, session: OrderSession) {
-    const companyId = session.user.companyId
+    const companyId = session.companyId ?? session.user?.companyId ?? ''
+    const userId = session.userId ?? session.user?.id ?? ''
 
     return prisma.$transaction(async (tx) => {
       // Cross-tenant guard (T-04-06-06)
@@ -258,7 +270,7 @@ export const OrderService = {
       await tx.auditLog.create({
         data: {
           companyId,
-          userId: session.user.id,
+          userId,
           entity: 'Order',
           entityId: orderId,
           action: 'UPDATE',
@@ -288,7 +300,8 @@ export const OrderService = {
    * T-04-07-03: requestedQty > pendingQty throws ValidationError BEFORE any DB write.
    */
   async convertOrder(orderId: string, input: ConvertOrderInput, session: OrderSession) {
-    const companyId = session.user.companyId
+    const companyId = session.companyId ?? session.user?.companyId ?? ''
+    const userId = session.userId ?? session.user?.id ?? ''
 
     return prisma.$transaction(async (tx) => {
       // 1. Fetch order with items (cross-tenant guard — T-04-07-02)
@@ -404,7 +417,7 @@ export const OrderService = {
           partyLedgerId,
           totalAmount,
           status: 'POSTED',
-          createdBy: session.user.id,
+          createdBy: userId,
           voucherEntries: {
             create: entries.map((e) => ({
               ledgerId: e.ledgerId,
@@ -445,7 +458,7 @@ export const OrderService = {
       await tx.auditLog.create({
         data: {
           companyId,
-          userId: session.user.id,
+          userId,
           entity: 'Voucher',
           entityId: voucher.id,
           action: 'CREATE',
@@ -563,7 +576,7 @@ export const OrderService = {
       await tx.auditLog.create({
         data: {
           companyId,
-          userId: session.user.id,
+          userId,
           entity: 'Order',
           entityId: orderId,
           action: 'UPDATE',

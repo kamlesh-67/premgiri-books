@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { godownSchema } from '@/lib/schemas/masters'
 import type { NextRequest } from 'next/server'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

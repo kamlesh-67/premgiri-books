@@ -1,4 +1,5 @@
 import { getSessionFromRequest } from '@/lib/session'
+import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { getProfitLoss, exportToExcel } from '@/lib/services/ReportEngine'
 import { getFY } from '@/lib/utils/fy'
@@ -7,9 +8,9 @@ const querySchema = z.object({
   fy: z.string().regex(/^\d{4}-\d{2}$/).default(getFY()),
 })
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const session = await getSessionFromRequest(request)
-  if (!session?.user?.companyId) {
+  if (!session?.companyId) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
   }
   const companyId = session.companyId

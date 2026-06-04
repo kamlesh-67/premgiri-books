@@ -1,4 +1,4 @@
-﻿import Link from 'next/link'
+import Link from 'next/link'
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import Decimal from 'decimal.js'
@@ -17,7 +17,7 @@ export default async function TrialBalancePage({
   searchParams: Promise<{ fy?: string }>
 }) {
   const session = await readSession()
-  if (!session?.user?.companyId) redirect('/login')
+  if (!session?.companyId) redirect('/login')
   const companyId = session.companyId
 
   const { fy: fyParam } = await searchParams

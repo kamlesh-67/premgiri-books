@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { getSessionFromRequest } from '@/lib/session'
 import { z } from 'zod'
 import { getBalanceSheet } from '@/lib/services/ReportEngine'
@@ -18,9 +18,9 @@ function serializeNode(node: AccountGroupNode): unknown {
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const session = await getSessionFromRequest(request)
-  if (!session?.user?.companyId) {
+  if (!session?.companyId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const companyId = session.companyId

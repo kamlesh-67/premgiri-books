@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server'
 import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
@@ -22,7 +23,7 @@ const exportSchema = z.object({
  *  - period validated with Zod regex before any DB operation (T-08-03-04)
  *  - Requires auth — download blocked for unauthenticated requests (T-08-03-01)
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const session = await getSessionFromRequest(request)
   if (!session) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {

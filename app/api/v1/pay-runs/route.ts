@@ -2,7 +2,7 @@
  * GET  /api/v1/pay-runs  — list pay runs for company
  * POST /api/v1/pay-runs  — upsert PENDING PayRun + run payroll directly → 202
  */
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { runPayroll } from '@/lib/services/PayrollRunner'
 import { NextResponse } from 'next/server'
@@ -13,11 +13,11 @@ const createSchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/, 'Month must be YYYY-MM format'),
 })
 
-export async function GET(_request: NextRequest) {
-  const session = await auth()
+export async function GET(request: NextRequest) {
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   const runs = await prisma.payRun.findMany({
     where: { companyId },
@@ -35,10 +35,10 @@ export async function GET(_request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth()
+  const session = await getSessionFromRequest(request)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const companyId = session.user.companyId
+  const companyId = session.companyId
 
   const body = await request.json()
   const parsed = createSchema.safeParse(body)
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         companyId,
         month,
         status: 'PENDING',
-        createdBy: session.user.id,
+        createdBy: session.userId,
       },
       update: {
         status: 'PENDING',
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     await tx.auditLog.create({
       data: {
         companyId,
-        userId: session.user.id,
+        userId: session.userId,
         entity: 'PayRun',
         entityId: run.id,
         action: 'CREATE',
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
   // Run payroll synchronously and await result (Inngest removed — CLOUD-01)
   try {
-    const result = await runPayroll(payRun.id, companyId, month, session.user.id)
+    const result = await runPayroll(payRun.id, companyId, month, session.userId)
     return NextResponse.json(
       { id: payRun.id, month, status: result.status, slipCount: result.slipCount },
       { status: 200 }
