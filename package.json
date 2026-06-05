@@ -3,10 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "nextron",
-    "build:next": "next build",
-    "build": "nextron build",
-    "build:electron": "electron-builder",
+    "dev": "next dev",
+    "build": "next build",
+    "build:electron": "nextron build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",

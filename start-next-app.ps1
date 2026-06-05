@@ -1,4 +1,4 @@
-$ProjectDir = "F:\Premgiri-books\premgiri-books"
+$ProjectDir = "D:\My\BPG\design-inspirations-main"
 $AppName = "premgiri-books"
 
 Set-Location $ProjectDir
@@ -13,7 +13,12 @@ if ($LocalCommit -eq $RemoteCommit) {
     Write-Host "No updates found."
 
     # Ensure app is running
-    pm2 start npm --name $AppName -- start 2>$null
+    $Exists = pm2 jlist | ConvertFrom-Json | Where-Object { $_.name -eq $AppName }
+    if ($Exists) {
+        pm2 start $AppName 2>$null
+    } else {
+        pm2 start pnpm --name $AppName -- start
+    }
 
     Start-Sleep -Seconds 10
     Start-Process "http://localhost:3000"
@@ -25,10 +30,10 @@ Write-Host "New update found. Deploying..."
 git reset --hard origin/main
 
 Write-Host "Installing packages..."
-npm install
+pnpm install
 
 Write-Host "Building..."
-npm run build
+pnpm run build
 
 Write-Host "Checking PM2 process..."
 
@@ -37,10 +42,9 @@ $Exists = pm2 jlist | ConvertFrom-Json | Where-Object { $_.name -eq $AppName }
 if ($Exists) {
     Write-Host "Restarting PM2 app..."
     pm2 restart $AppName
-}
-else {
+} else {
     Write-Host "Starting PM2 app..."
-    pm2 start npm --name $AppName -- start
+    pm2 start pnpm --name $AppName -- start
 }
 
 pm2 save
