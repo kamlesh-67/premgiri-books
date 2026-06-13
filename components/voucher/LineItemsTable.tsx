@@ -142,9 +142,9 @@ function ProductCombobox({
                       </span>
                       <span className={cn(
                         "text-[10px] px-1.5 py-0.5 rounded font-semibold",
-                        new Decimal(item.currentQty).gt(0) ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                        new Decimal(item.currentQty ?? 0).gt(0) ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
                       )}>
-                        Stock: {item.currentQty}
+                        Stock: {item.currentQty ?? 0}
                       </span>
                     </div>
                   </div>
