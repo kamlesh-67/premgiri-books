@@ -90,7 +90,7 @@ describe('GET /api/v1/cheques', () => {
       voucherNo: 'PAY-001',
       date: new Date('2025-04-01'),
       voucherType: 'PAYMENT',
-      totalAmount: { toFixed: (n: number) => '10000.00' },
+      totalAmount: { toFixed: (_n: number) => '10000.00' },
       partyLedger: { name: 'Test Party' },
       chequeNo: 'CHQ123',
       chequeDated: new Date('2025-04-01'),

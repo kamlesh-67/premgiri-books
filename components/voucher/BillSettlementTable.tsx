@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { SectionCard } from "@/components/primitives/SectionCard";
 import { formatINR } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { Decimal } from "decimal.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -53,13 +54,13 @@ export interface BillSettlementTableProps {
 
 /** Round to 2dp using toFixed to avoid floating-point display artifacts. */
 function addDecimalStrings(...values: string[]): string {
-  const sum = values.reduce((acc, v) => acc + parseFloat(v || "0"), 0);
-  return parseFloat(sum.toFixed(2)).toString();
+  const sum = values.reduce((acc, v) => acc.plus(v || "0"), new Decimal(0));
+  return new Decimal(sum.toFixed(2)).toString();
 }
 
 function subtractDecimalStrings(a: string, b: string): string {
-  const result = parseFloat(a || "0") - parseFloat(b || "0");
-  return parseFloat(result.toFixed(2)).toString();
+  const result = new Decimal(a || "0").minus(b || "0");
+  return new Decimal(result.toFixed(2)).toString();
 }
 
 /** Format age with colour coding: default gray, > 30 days amber, > 60 days red */
@@ -71,7 +72,7 @@ function ageDaysClass(days: number): string {
 
 /** Format a decimal string for display using formatINR (which accepts number). */
 function formatDecimalStr(value: string): string {
-  return formatINR(parseFloat(value || "0"));
+  return formatINR(new Decimal(String(value || "0")).toNumber());
 }
 
 // ---------------------------------------------------------------------------
@@ -132,7 +133,7 @@ export function BillSettlementTable({
     ...selections.map((s) => s.amount || "0")
   );
   const remaining = subtractDecimalStrings(receiptAmount || "0", totalSettled);
-  const isOverAllocated = parseFloat(remaining) < 0;
+  const isOverAllocated = new Decimal(String(remaining || "0")).toNumber() < 0;
 
   // ── Null partyLedgerId guard ─────────────────────────────────────────────
   if (!partyLedgerId) {
@@ -197,7 +198,7 @@ export function BillSettlementTable({
             {billRefs.map((row) => {
               const sel = selections.find((s) => s.billRefId === row.id);
               const isChecked = !!sel;
-              const maxAmount = parseFloat(row.outstandingAmount || "0");
+              const maxAmount = new Decimal(String(row.outstandingAmount || "0")).toNumber();
 
               return (
                 <tr

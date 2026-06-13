@@ -39,7 +39,7 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-import { scoreMatch, getBooksClosingBalance, runMatch, type MatchResult } from './MatchingEngine'
+import { scoreMatch, getBooksClosingBalance, runMatch } from './MatchingEngine'
 import { prisma } from '@/lib/prisma'
 
 // ---------------------------------------------------------------------------

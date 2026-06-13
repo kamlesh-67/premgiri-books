@@ -263,6 +263,7 @@ export function BankReconciliationPDF({
         <View style={styles.headerRow}>
           <View style={styles.companyBlock}>
             {company.logoUrl && (
+              // eslint-disable-next-line jsx-a11y/alt-text
               <Image
                 src={company.logoUrl}
                 style={{ width: 48, height: 48, objectFit: 'contain', marginBottom: 8 }}

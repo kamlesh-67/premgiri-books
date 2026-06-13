@@ -11,6 +11,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { writeLocalFile, buildPayslipFilename } from '@/lib/localFiles'
+import { Decimal } from 'decimal.js'
 
 export async function runPayroll(
   payRunId: string,
@@ -106,8 +107,23 @@ export async function runPayroll(
 
     // ── Step 4: Persist pay slips + write PDFs to local filesystem ────────
     const { renderToBuffer } = await import('@react-pdf/renderer')
-    const React = await import('react')
     const { PaySlipPDF } = await import('@/lib/services/PDFTemplates/PaySlipPDF')
+
+    // Same React 19 canary → React 18 reconciler $$typeof bridge as the PDF route.
+    const TRANSITIONAL = Symbol.for('react.transitional.element')
+    const STABLE = Symbol.for('react.element')
+    function patchElement(el: unknown): unknown {
+      if (el === null || el === undefined || typeof el !== 'object') return el
+      if (Array.isArray(el)) return el.map(patchElement)
+      const obj = el as Record<string, unknown>
+      if (obj['$$typeof'] !== TRANSITIONAL) return el
+      const patched: Record<string, unknown> = { ...obj, '$$typeof': STABLE }
+      if (patched.props && typeof patched.props === 'object') {
+        const props = patched.props as Record<string, unknown>
+        patched.props = { ...props, children: patchElement(props.children) }
+      }
+      return patched
+    }
 
     const company = await prisma.company.findUniqueOrThrow({
       where: { id: companyId },
@@ -133,15 +149,15 @@ export async function runPayroll(
           { name: 'PF (Employee)', amount: slip.pfEmployee },
           { name: 'ESI (Employee)', amount: slip.esiEmployee },
           { name: 'Professional Tax', amount: slip.professionalTax },
-        ].filter((d) => parseFloat(d.amount) > 0),
+        ].filter((d) => new Decimal(String(d.amount || '0')).toNumber() > 0),
         grossEarnings: slip.grossEarnings,
         totalDeductions: slip.totalDeductions,
         netPay: slip.netPay,
         employerContributions: { pfEmployer: slip.pfEmployer, esiEmployer: slip.esiEmployer },
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const element = React.createElement(PaySlipPDF as any, { data: pdfData }) as React.ReactElement
+      const rawElement = PaySlipPDF({ data: pdfData })
+      const element = patchElement(rawElement) as import('react').ReactElement
       const buffer = await renderToBuffer(element)
 
       // Write to local filesystem (no R2 — CLOUD-01)
@@ -197,7 +213,6 @@ export async function runPayroll(
 
     // ── Step 5: Post salary journal via VoucherEngine ────────────────────
     const { createVoucher } = await import('@/lib/services/VoucherEngine')
-    const { Decimal } = await import('decimal.js')
 
     // Fetch system ledgers — throw clearly if not seeded
     const [salaryExpenseLedger, pfPayableLedger, esiPayableLedger, ptPayableLedger] = await Promise.all([

@@ -1,5 +1,6 @@
 'use client'
 
+import { Decimal } from 'decimal.js'
 import { formatINR } from '@/lib/utils/format'
 import type { GSTTaxType } from '@/lib/services/GSTCalculator'
 
@@ -31,7 +32,7 @@ export function GSTSummaryPanel({
   const isSimple = uiMode === 'simple'
   const isIntra = taxType === 'INTRA_STATE'
   const isInter = taxType === 'INTER_STATE'
-  const hasRoundOff = parseFloat(roundOff) !== 0
+  const hasRoundOff = new Decimal(String(roundOff || '0')).toNumber() !== 0
 
   // GST label in Simple Mode
   const simpleGSTLabel = (() => {
@@ -40,12 +41,23 @@ export function GSTSummaryPanel({
     return 'GST'
   })()
 
+  // Helper to format with high precision if needed
+  const formatPrecise = (val: string) => {
+    const num = new Decimal(String(val || '0')).toNumber();
+    if (isNaN(num)) return "₹0.00";
+    const parts = val.split('.');
+    if (parts.length > 1 && parts[1].length > 2) {
+      return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: parts[1].length, maximumFractionDigits: parts[1].length })}`;
+    }
+    return formatINR(val);
+  };
+
   // GST total for simple mode display
   const totalGST = (() => {
-    const cgst = parseFloat(cgstTotal)
-    const sgst = parseFloat(sgstTotal)
-    const igst = parseFloat(igstTotal)
-    return (cgst + sgst + igst).toFixed(2)
+    const cgst = new Decimal(cgstTotal || '0')
+    const sgst = new Decimal(sgstTotal || '0')
+    const igst = new Decimal(igstTotal || '0')
+    return cgst.plus(sgst).plus(igst).toString()
   })()
 
   return (
@@ -64,7 +76,7 @@ export function GSTSummaryPanel({
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-500">{simpleGSTLabel}</span>
             <span className="text-sm text-gray-700 tabular-nums">
-              {formatINR(totalGST)}
+              {formatPrecise(totalGST)}
             </span>
           </div>
         ) : (
@@ -75,13 +87,13 @@ export function GSTSummaryPanel({
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">CGST</span>
                   <span className="text-sm text-gray-700 tabular-nums">
-                    {formatINR(cgstTotal)}
+                    {formatPrecise(cgstTotal)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">SGST</span>
                   <span className="text-sm text-gray-700 tabular-nums">
-                    {formatINR(sgstTotal)}
+                    {formatPrecise(sgstTotal)}
                   </span>
                 </div>
               </>
@@ -90,7 +102,7 @@ export function GSTSummaryPanel({
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-500">IGST</span>
                 <span className="text-sm text-gray-700 tabular-nums">
-                  {formatINR(igstTotal)}
+                  {formatPrecise(igstTotal)}
                 </span>
               </div>
             )}

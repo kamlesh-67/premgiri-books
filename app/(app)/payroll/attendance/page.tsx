@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { PageHeader } from "@/components/primitives/PageHeader"
 import { SectionCard } from "@/components/primitives/SectionCard"
 import { DataTable, type Column } from "@/components/primitives/DataTable"
+import { Decimal } from "decimal.js"
 
 type AttendanceRow = {
   id: string | null
@@ -81,9 +82,9 @@ export default function AttendancePage() {
     const locked = !!row.lockedAt
 
     function commit() {
-      const n = parseFloat(val)
+      const n = new Decimal(String(val || '0')).toNumber()
       if (isNaN(n)) return
-      const present = field === "presentDays" ? n : parseFloat(row.presentDays)
+      const present = field === "presentDays" ? n : new Decimal(String(row.presentDays || '0')).toNumber()
       const half = field === "halfDays" ? n : row.halfDays
       const leave = field === "leaveDays" ? n : row.leaveDays
       const absent = Math.max(0, 26 - present - half * 0.5 - leave)
@@ -116,7 +117,7 @@ export default function AttendancePage() {
     { key: "present", header: "Present", align: "right", cell: (r) => <EditableCell row={r} field="presentDays" /> },
     { key: "half", header: "Half-day", align: "right", cell: (r) => <EditableCell row={r} field="halfDays" /> },
     { key: "leave", header: "Leave", align: "right", cell: (r) => <EditableCell row={r} field="leaveDays" /> },
-    { key: "absent", header: "Absent", align: "right", cell: (r) => <span className="tabular-nums">{parseFloat(r.absentDays).toFixed(1)}</span> },
+    { key: "absent", header: "Absent", align: "right", cell: (r) => <span className="tabular-nums">{new Decimal(String(r.absentDays || '0')).toNumber().toFixed(1)}</span> },
     {
       key: "status", header: "Status",
       cell: (r) => r.lockedAt

@@ -15,6 +15,7 @@ import { KpiCard } from "@/components/primitives/KpiCard";
 import { RowActions } from "@/components/primitives/RowActions";
 import { MoneyMoveForm } from "@/components/voucher/MoneyMoveForm";
 import { formatINR, formatDate } from "@/lib/format";
+import { Decimal } from "decimal.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -76,7 +77,7 @@ async function cancelVoucher(id: string): Promise<void> {
 // KPI helpers
 // ---------------------------------------------------------------------------
 
-function computeKpis(vouchers: VoucherRow[], kind: Kind) {
+function computeKpis(vouchers: VoucherRow[], _kind: Kind) {
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
@@ -85,7 +86,7 @@ function computeKpis(vouchers: VoucherRow[], kind: Kind) {
 
   for (const v of vouchers) {
     const vDate = new Date(v.date);
-    const amt = parseFloat(v.totalAmount) || 0;
+    const amt = new Decimal(String(v.totalAmount || '0')).toNumber();
     if (v.status === "POSTED") {
       if (vDate.getMonth() === currentMonth && vDate.getFullYear() === currentYear) {
         mtdTotal += amt;
@@ -143,7 +144,7 @@ export function MoneyMoveList({
 
   // Footer total
   const grandTotal = vouchers.reduce(
-    (sum, v) => sum + (parseFloat(v.totalAmount) || 0),
+    (sum, v) => sum + new Decimal(String(v.totalAmount || '0')).toNumber(),
     0
   );
 
@@ -197,7 +198,7 @@ export function MoneyMoveList({
       align: "right",
       cell: (r) => (
         <span className="font-semibold tabular-nums">
-          {formatINR(parseFloat(r.totalAmount) || 0)}
+          {formatINR(new Decimal(String(r.totalAmount || '0')).toNumber())}
         </span>
       ),
     },

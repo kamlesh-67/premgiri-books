@@ -143,8 +143,8 @@ async function computeSalesChartData(
 
     months.push({
       month: d.toLocaleString('default', { month: 'short' }),
-      sales: Number(salesAgg._sum.totalAmount ?? 0),
-      purchases: Number(purchasesAgg._sum.totalAmount ?? 0),
+      sales: new Decimal((salesAgg._sum.totalAmount ?? 0).toString()).toNumber(),
+      purchases: new Decimal((purchasesAgg._sum.totalAmount ?? 0).toString()).toNumber(),
     })
   }
   return months
@@ -177,8 +177,8 @@ async function computeTopProducts(
     const existing = byItem.get(name) ?? { name, qty: 0, revenue: 0 }
     byItem.set(name, {
       name,
-      qty: existing.qty + Number(item.qty),
-      revenue: existing.revenue + Number(item.amount),
+      qty: existing.qty + new Decimal(item.qty.toString()).toNumber(),
+      revenue: existing.revenue + new Decimal(item.amount.toString()).toNumber(),
     })
   }
 

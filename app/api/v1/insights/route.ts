@@ -20,7 +20,6 @@ import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { getSessionFromRequest } from '@/lib/session'
 import { generateInsights } from '@/lib/services/InsightsService'
-import type { InsightsResponse } from '@/lib/services/InsightsService'
 
 // ─── Response type ────────────────────────────────────────────────────────────
 

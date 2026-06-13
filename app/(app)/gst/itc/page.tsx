@@ -36,6 +36,7 @@ import { SectionCard } from "@/components/primitives/SectionCard";
 import { KpiCard } from "@/components/primitives/KpiCard";
 import { formatINR } from "@/lib/format";
 import { useUiStore } from "@/lib/stores/uiStore";
+import { Decimal } from "decimal.js";
 
 // ─── Types matching /api/v1/gst/itc response ─────────────────────────────────
 
@@ -421,7 +422,7 @@ export default function ItcReconciliationPage() {
                         }`}
                       >
                         {row.books ? (
-                          formatINR(parseFloat(row.books.taxableValue))
+                          formatINR(new Decimal(String(row.books.taxableValue || '0')).toNumber())
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
@@ -433,7 +434,7 @@ export default function ItcReconciliationPage() {
                         }`}
                       >
                         {row.books ? (
-                          formatINR(parseFloat(row.books.cgst))
+                          formatINR(new Decimal(String(row.books.cgst || '0')).toNumber())
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
@@ -445,7 +446,7 @@ export default function ItcReconciliationPage() {
                         }`}
                       >
                         {row.books ? (
-                          formatINR(parseFloat(row.books.sgst))
+                          formatINR(new Decimal(String(row.books.sgst || '0')).toNumber())
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
@@ -453,7 +454,7 @@ export default function ItcReconciliationPage() {
                       {/* Taxable (2A) */}
                       <td className="px-4 py-3 text-right tabular-nums text-sm text-gray-700">
                         {row.portal ? (
-                          formatINR(parseFloat(row.portal.taxableValue))
+                          formatINR(new Decimal(String(row.portal.taxableValue || '0')).toNumber())
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
@@ -461,7 +462,7 @@ export default function ItcReconciliationPage() {
                       {/* CGST (2A) */}
                       <td className="px-4 py-3 text-right tabular-nums text-sm text-gray-700">
                         {row.portal ? (
-                          formatINR(parseFloat(row.portal.cgst))
+                          formatINR(new Decimal(String(row.portal.cgst || '0')).toNumber())
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}

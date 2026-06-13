@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Decimal } from "decimal.js";
-import { Loader2, Plus, UserPlus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 
 import { salesInvoiceSchema, type SalesInvoiceInput } from "@/lib/schemas/vouchers";
 import { calculateGST } from "@/lib/services/GSTCalculator";
@@ -168,7 +168,7 @@ async function postVoucherAPI(data: SalesInvoiceInput): Promise<{ id: string; vo
 // InvoiceForm
 // ---------------------------------------------------------------------------
 
-export default function InvoiceForm({ voucherType, onSuccess, defaultValues, linkedVoucherId: _linkedVoucherId }: InvoiceFormProps) {
+export default function InvoiceForm({ voucherType: _voucherType, onSuccess, defaultValues, linkedVoucherId: _linkedVoucherId }: InvoiceFormProps) {
   const queryClient = useQueryClient();
   const { uiMode } = useUiStore();
 
@@ -318,13 +318,13 @@ export default function InvoiceForm({ voucherType, onSuccess, defaultValues, lin
     setShowNewCustomer(false);
   }
 
-  const customers = parties.filter((p) => p.partyType === "Customer" && p.name !== "Walk-in Customer");
+  const customers = parties.filter((p) => p.partyType === "Customer");
 
   return (
     <div className="space-y-6">
       {/* ── Invoice Details ── */}
       <SectionCard title="Invoice Details">
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {/* Party picker */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">

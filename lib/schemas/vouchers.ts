@@ -92,6 +92,12 @@ export const salesInvoiceSchema = z.object({
   voucherType: z.literal('SALES'),
   partyLedgerId: requiredString('Please select a customer').cuid('Please select a customer'),
   date: voucherDateSchema,
+  dueDate: z.string().optional(),
+  paymentTerms: z.string().optional(),
+  placeOfSupply: z.string().max(50).optional(),
+  reverseCharge: z.boolean().default(false),
+  billingAddress: z.string().optional(),
+  shippingAddress: z.string().optional(),
   narration: z.string().max(500).optional(),
   items: z.array(lineItemSchema).min(1, 'Add at least one item'),
   // costCentreId: optional — visible in Advanced Mode only (ROADMAP SC #2)

@@ -12,6 +12,7 @@ import { DataTable, type Column } from "@/components/primitives/DataTable"
 import { StatusBadge } from "@/components/primitives/StatusBadge"
 import { FormDialog } from "@/components/primitives/FormDialog"
 import { formatINR } from "@/lib/format"
+import { Decimal } from "decimal.js"
 
 type PayRun = {
   id: string; month: string; status: string
@@ -111,8 +112,8 @@ export default function PayRunPage() {
   const cols: Column<PayRun>[] = [
     { key: "month", header: "Period", cell: (r) => <span className="font-medium tabular-nums">{r.month}</span> },
     { key: "employees", header: "Employees", align: "right", cell: (r) => r._count.paySlips },
-    { key: "gross", header: "Gross", align: "right", cell: (r) => <span className="tabular-nums">{r.totalGross ? formatINR(parseFloat(r.totalGross)) : "—"}</span> },
-    { key: "net", header: "Net Pay", align: "right", cell: (r) => <span className="font-semibold tabular-nums">{r.totalNet ? formatINR(parseFloat(r.totalNet)) : "—"}</span> },
+    { key: "gross", header: "Gross", align: "right", cell: (r) => <span className="tabular-nums">{r.totalGross ? formatINR(new Decimal(String(r.totalGross || '0')).toNumber()) : "—"}</span> },
+    { key: "net", header: "Net Pay", align: "right", cell: (r) => <span className="font-semibold tabular-nums">{r.totalNet ? formatINR(new Decimal(String(r.totalNet || '0')).toNumber()) : "—"}</span> },
     { key: "status", header: "Status", cell: (r) => <StatusBadge status={r.status} /> },
     {
       key: "actions", header: "", align: "right",
@@ -127,9 +128,9 @@ export default function PayRunPage() {
   const slipCols: Column<PaySlipSummary>[] = [
     { key: "code", header: "Code", cell: (r) => <span className="font-mono text-xs">{r.employee.employeeCode}</span> },
     { key: "name", header: "Employee", cell: (r) => <span className="font-medium">{r.employee.name}</span> },
-    { key: "gross", header: "Gross", align: "right", cell: (r) => <span className="tabular-nums">{formatINR(parseFloat(r.grossEarnings))}</span> },
-    { key: "deductions", header: "Deductions", align: "right", cell: (r) => <span className="tabular-nums">{formatINR(parseFloat(r.totalDeductions))}</span> },
-    { key: "net", header: "Net Pay", align: "right", cell: (r) => <span className="font-semibold tabular-nums">{formatINR(parseFloat(r.netPay))}</span> },
+    { key: "gross", header: "Gross", align: "right", cell: (r) => <span className="tabular-nums">{formatINR(new Decimal(String(r.grossEarnings || '0')).toNumber())}</span> },
+    { key: "deductions", header: "Deductions", align: "right", cell: (r) => <span className="tabular-nums">{formatINR(new Decimal(String(r.totalDeductions || '0')).toNumber())}</span> },
+    { key: "net", header: "Net Pay", align: "right", cell: (r) => <span className="font-semibold tabular-nums">{formatINR(new Decimal(String(r.netPay || '0')).toNumber())}</span> },
     {
       key: "pdf", header: "Pay Slip", align: "right",
       cell: (r) => r.pdfKey
@@ -200,8 +201,8 @@ export default function PayRunPage() {
           <div className="space-y-3">
             <div className="flex items-center gap-4 text-sm">
               <span>Status: <StatusBadge status={detailRun.status} /></span>
-              {detail?.totalGross && <span>Gross: <strong>{formatINR(parseFloat(detail.totalGross))}</strong></span>}
-              {detail?.totalNet && <span>Net: <strong>{formatINR(parseFloat(detail.totalNet))}</strong></span>}
+              {detail?.totalGross && <span>Gross: <strong>{formatINR(new Decimal(String(detail.totalGross || '0')).toNumber())}</strong></span>}
+              {detail?.totalNet && <span>Net: <strong>{formatINR(new Decimal(String(detail.totalNet || '0')).toNumber())}</strong></span>}
             </div>
 
             {(detailRun.status === "PENDING" || detailRun.status === "FAILED") && (

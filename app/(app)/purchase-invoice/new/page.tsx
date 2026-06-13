@@ -256,6 +256,128 @@ async function postVoucherAPI(data: PurchaseInvoiceInput): Promise<{ id: string;
 }
 
 // ---------------------------------------------------------------------------
+// Quick Stock Item Create Dialog
+// ---------------------------------------------------------------------------
+
+interface QuickStockItemDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onCreated: (item: StockItemOption) => void;
+  initialName?: string;
+  uoms: UomOption[];
+}
+
+function QuickStockItemDialog({ open, onClose, onCreated, initialName, uoms }: QuickStockItemDialogProps) {
+  const [name, setName] = useState(initialName || "");
+  const [gstRate, setGstRate] = useState("18");
+  const [uomId, setUomId] = useState("");
+  const [hsnCode, setHsnCode] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  // Set default UOM when uoms load
+  useState(() => {
+    if (uoms.length > 0 && !uomId) setUomId(uoms[0].id);
+  });
+
+  async function handleSave() {
+    if (!name.trim() || !uomId) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/v1/masters/stock-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          gstRate: new Decimal(String(gstRate || '0')).toNumber(),
+          uomId,
+          hsnCode: hsnCode.trim() || undefined,
+          openingRate: "0",
+          openingQty: "0",
+          reorderQty: "0",
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.error ?? "Failed to create item");
+        return;
+      }
+      const item = await res.json();
+      toast.success(`Item "${item.name}" created`);
+      onCreated({
+        id: item.id,
+        name: item.name,
+        gstRate: new Decimal(String(item.gstRate || '0')).toNumber(),
+        openingRate: item.openingRate,
+        currentQty: item.currentQty,
+        hsnCode: item.hsnCode ?? "",
+        uom: uoms.find(u => u.id === uomId)?.symbol
+      });
+      setName(""); setGstRate("18"); setHsnCode("");
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { onClose(); } }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>New Stock Item</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label>Name <span className="text-red-500">*</span></Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Item name" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>GST Rate (%)</Label>
+              <select
+                value={gstRate}
+                onChange={(e) => setGstRate(e.target.value)}
+                className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-purple-600"
+              >
+                {["0", "0.1", "0.25", "1", "1.5", "3", "5", "6", "7.5", "12", "18", "28"].map(r => (
+                  <option key={r} value={r}>{r}%</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>UOM <span className="text-red-500">*</span></Label>
+              <select
+                value={uomId}
+                onChange={(e) => setUomId(e.target.value)}
+                className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-purple-600"
+              >
+                <option value="">Select...</option>
+                {uoms.map(u => (
+                  <option key={u.id} value={u.id}>{u.symbol} ({u.name})</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>HSN Code</Label>
+            <Input value={hsnCode} onChange={(e) => setHsnCode(e.target.value)} placeholder="8-digit HSN" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+            onClick={handleSave}
+            disabled={saving || !name.trim() || !uomId}
+          >
+            {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</> : "Create Item"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page component
 // ---------------------------------------------------------------------------
 
@@ -267,6 +389,9 @@ export default function PurchaseInvoiceNewPage() {
 
   const [defaultGodownId, setDefaultGodownId] = useState("");
   const [showSupplierDialog, setShowSupplierDialog] = useState(false);
+  const [showItemDialog, setShowItemDialog] = useState(false);
+  const [pendingItemIndex, setPendingItemIndex] = useState<number | null>(null);
+  const [pendingItemName, setPendingItemName] = useState("");
 
   // ── Form ────────────────────────────────────────────────────────────────
   const form = useForm<PurchaseInvoiceInput>({
@@ -334,7 +459,7 @@ export default function PurchaseInvoiceNewPage() {
   // ── Watched form values ───────────────────────────────────────────────────
   const watchedPartyId = watch("partyLedgerId");
   const watchedItems = useWatch({ control, name: "items" });
-  const watchedHeaderDiscounts = useWatch({ control, name: "headerDiscounts" }) ?? [];
+  const watchedHeaderDiscounts = useWatch({ control, name: "headerDiscounts" });
   const watchedFreightAmount = useWatch({ control, name: "freightAmount" }) ?? "0";
   const watchedFreightGstRate = useWatch({ control, name: "freightGstRate" }) ?? 18;
   const watchedTcsRate = useWatch({ control, name: "tcsRate" }) ?? "0";
@@ -377,6 +502,11 @@ export default function PurchaseInvoiceNewPage() {
       igst = igst.plus(gstResult.igst);
     }
 
+    // --- FIX: Round ledger-level totals to 2 decimal places to ensure accounting balance ---
+    cgst = cgst.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+    sgst = sgst.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+    igst = igst.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+
     // 2. Header discounts (CR-004) — reduce goods cost, GST base unchanged
     let headerDiscountTotal = new Decimal(0);
     let runningTaxable = taxable;
@@ -392,14 +522,20 @@ export default function PurchaseInvoiceNewPage() {
       }
     }
     if (runningTaxable.lt(0)) runningTaxable = new Decimal(0);
+    runningTaxable = runningTaxable.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
     // 3. Freight (CR-014)
-    const freightAmt = new Decimal(String(watchedFreightAmount || "0"));
+    const freightAmt = new Decimal(String(watchedFreightAmount || "0")).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
     const freightGstRate = new Decimal(String(watchedFreightGstRate ?? 18));
-    const freightGstResult = freightAmt.gt(0)
+    const freightGstResultRaw = freightAmt.gt(0)
       ? calculateGST({ taxableValue: freightAmt, gstRate: freightGstRate, companyStateCode, partyStateCode })
       : { cgst: new Decimal(0), sgst: new Decimal(0), igst: new Decimal(0) };
-    const freightGstAmt = freightGstResult.cgst.plus(freightGstResult.sgst).plus(freightGstResult.igst);
+    
+    // Round freight GST buckets
+    const freightCgst = freightGstResultRaw.cgst.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+    const freightSgst = freightGstResultRaw.sgst.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+    const freightIgst = freightGstResultRaw.igst.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+    const freightGstAmt = freightCgst.plus(freightSgst).plus(freightIgst);
 
     // 4. Sub-total before TCS
     const subBeforeTcs = runningTaxable
@@ -408,7 +544,7 @@ export default function PurchaseInvoiceNewPage() {
 
     // 5. TCS (CR-015)
     const tcsRate = new Decimal(String(watchedTcsRate || "0"));
-    const tcsAmt = subBeforeTcs.times(tcsRate.dividedBy(100));
+    const tcsAmt = subBeforeTcs.times(tcsRate.dividedBy(100)).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
     // 6. Pre-round-off total
     const preRoundOff = subBeforeTcs.plus(tcsAmt);
@@ -424,9 +560,9 @@ export default function PurchaseInvoiceNewPage() {
     const grand = preRoundOff.plus(roundOff);
 
     const taxType = (
-      cgst.gt(0) || freightGstResult.cgst.gt(0)
+      cgst.gt(0) || freightCgst.gt(0)
         ? "INTRA_STATE"
-        : igst.gt(0) || freightGstResult.igst.gt(0)
+        : igst.gt(0) || freightIgst.gt(0)
         ? "INTER_STATE"
         : "EXEMPT"
     ) as GSTTaxType;
@@ -438,6 +574,7 @@ export default function PurchaseInvoiceNewPage() {
       cgst, sgst, igst,
       freightAmt,
       freightGstAmt,
+      freightCgst, freightSgst, freightIgst, // Pass rounded freight components
       tcsAmt,
       roundOff,
       grand,
@@ -504,67 +641,40 @@ export default function PurchaseInvoiceNewPage() {
   }
 
   function handleRequestCreate(name: string, rowIndex: number) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (setValue as any)(`items.${rowIndex}._newItemName`, name);
-    setValue(`items.${rowIndex}.itemId`, "");
+    setPendingItemName(name);
+    setPendingItemIndex(rowIndex);
+    setShowItemDialog(true);
   }
 
-  async function createPendingItems(): Promise<boolean> {
-    const defaultUomId = uoms[0]?.id;
-    if (!defaultUomId) {
-      toast.error("No unit of measure found. Add a UoM in Masters first.");
-      return false;
-    }
-    const rawItems = form.getValues("items") as Array<Record<string, unknown>>;
-    for (let i = 0; i < rawItems.length; i++) {
-      const newName = (rawItems[i]._newItemName as string | undefined)?.trim();
-      if (!newName || rawItems[i].itemId) continue;
-      try {
-        const res = await fetch("/api/v1/masters/stock-items", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: newName,
-            gstRate: Number(rawItems[i]._gstRate ?? 0),
-            uomId: defaultUomId,
-            hsnCode: String(rawItems[i].hsnCode ?? ""),
-            openingRate: String(rawItems[i].rate ?? "0"),
-            openingQty: "0",
-            reorderQty: "0",
-          }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          toast.error(`Failed to create "${newName}": ${err?.error ?? "Unknown error"}`);
-          return false;
-        }
-        const created = await res.json();
-        setValue(`items.${i}.itemId`, created.id);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (setValue as any)(`items.${i}._newItemName`, "");
-        queryClient.setQueryData<StockItemOption[]>(["stock-items"], (old = []) => [
-          ...old,
-          { id: created.id, name: created.name, gstRate: parseFloat(created.gstRate), openingRate: created.openingRate, hsnCode: created.hsnCode ?? "" },
-        ]);
-        queryClient.invalidateQueries({ queryKey: ["stock-items"] });
-        toast.success(`Item "${created.name}" created`);
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : `Failed to create "${newName}"`);
-        return false;
+  function handleItemCreated(item: StockItemOption) {
+    if (pendingItemIndex !== null) {
+      setValue(`items.${pendingItemIndex}.itemId`, item.id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (setValue as any)(`items.${pendingItemIndex}._gstRate`, item.gstRate);
+      setValue(`items.${pendingItemIndex}.rate`, item.openingRate);
+      setValue(`items.${pendingItemIndex}.hsnCode`, item.hsnCode ?? "");
+      
+      let uomSymbol = "";
+      if (typeof item.uom === "string") uomSymbol = item.uom;
+      else if (item.uom && typeof item.uom === "object" && "symbol" in item.uom) {
+        uomSymbol = (item.uom as { symbol: string }).symbol;
       }
+      setValue(`items.${pendingItemIndex}.unit`, uomSymbol);
     }
-    return true;
+    queryClient.setQueryData<StockItemOption[]>(["stock-items"], (old = []) => [
+      ...old,
+      item,
+    ]);
+    queryClient.invalidateQueries({ queryKey: ["stock-items"] });
+    setPendingItemIndex(null);
+    setPendingItemName("");
   }
 
   async function onSaveDraft() {
-    const ok = await createPendingItems();
-    if (!ok) return;
     handleSubmit((data) => draftMutation.mutate(data), onFormError)();
   }
 
   async function onPost() {
-    const ok = await createPendingItems();
-    if (!ok) return;
     handleSubmit((data) => postMutation.mutate(data), onFormError)();
   }
 
@@ -596,10 +706,10 @@ export default function PurchaseInvoiceNewPage() {
       {/* ── Section 1: Invoice Details ── */}
       <SectionCard title={isSimple ? "Supplier Details" : "Invoice Details"}>
         {/* Row 1: core fields */}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
 
-          {/* Supplier / party picker + quick-create */}
-          <div className="space-y-2">
+          {/* Supplier / party picker + quick-create — xl:col-span-2 gives the flex row enough width */}
+          <div className="space-y-2 xl:col-span-2">
             <Label className="text-sm font-medium text-gray-700">
               {isSimple ? "Supplier" : "Party"} <span className="text-red-500">*</span>
             </Label>
@@ -677,7 +787,7 @@ export default function PurchaseInvoiceNewPage() {
 
         {/* Row 2: Advanced fields — CR-001/009/013/017 */}
         {!isSimple && (
-          <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+          <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
 
             {/* CR-001: Invoice type */}
             <div className="space-y-2">
@@ -768,6 +878,7 @@ export default function PurchaseInvoiceNewPage() {
           partyStateCode={partyStateCode}
           stockItems={stockItems}
           godowns={godowns}
+          uoms={uoms}
           defaultGodownId={defaultGodownId}
           onRequestCreate={handleRequestCreate}
         />
@@ -780,11 +891,11 @@ export default function PurchaseInvoiceNewPage() {
         taxableRaw={totals.taxable.toFixed(2)}
         headerDiscountTotal={totals.headerDiscountTotal.toFixed(2)}
         taxableAfterDiscounts={totals.taxableAfterDiscounts.toFixed(2)}
-        cgstTotal={totals.cgst.toFixed(2)}
-        sgstTotal={totals.sgst.toFixed(2)}
-        igstTotal={totals.igst.toFixed(2)}
-        freightGstAmt={totals.freightGstAmt.toFixed(2)}
-        tcsAmt={totals.tcsAmt.toFixed(2)}
+        cgstTotal={totals.cgst.toString()}
+        sgstTotal={totals.sgst.toString()}
+        igstTotal={totals.igst.toString()}
+        freightGstAmt={totals.freightGstAmt.toString()}
+        tcsAmt={totals.tcsAmt.toString()}
         roundOff={totals.roundOff.toFixed(2)}
         grandTotal={totals.grand.toFixed(2)}
         taxType={totals.taxType}
@@ -928,6 +1039,15 @@ export default function PurchaseInvoiceNewPage() {
         open={showSupplierDialog}
         onClose={() => setShowSupplierDialog(false)}
         onCreated={handleSupplierCreated}
+      />
+
+      {/* ── Quick Stock Item Create dialog ── */}
+      <QuickStockItemDialog
+        open={showItemDialog}
+        onClose={() => setShowItemDialog(false)}
+        onCreated={handleItemCreated}
+        initialName={pendingItemName}
+        uoms={uoms}
       />
 
     </div>

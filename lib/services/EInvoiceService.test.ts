@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // These tests run BEFORE EInvoiceService is implemented — they should FAIL (RED)

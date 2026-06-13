@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/primitives/PageHeader'
 import { SectionCard } from '@/components/primitives/SectionCard'
 import { DataTable, type Column } from '@/components/primitives/DataTable'
 import { formatINR, formatDate } from '@/lib/utils/format'
+import { Decimal } from 'decimal.js'
 
 interface DayBookRow {
   id: string
@@ -57,7 +58,7 @@ export default function DayBookPage() {
 
   const rows = data?.rows ?? []
 
-  const totalAmount = rows.reduce((sum, r) => sum + parseFloat(r.totalAmount), 0)
+  const totalAmount = rows.reduce((sum, r) => sum.plus(r.totalAmount), new Decimal(0)).toNumber()
 
   const columns: Column<DayBookRow>[] = [
     {

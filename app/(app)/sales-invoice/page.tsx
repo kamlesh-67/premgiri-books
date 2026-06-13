@@ -14,6 +14,7 @@ import { StatusBadge } from "@/components/primitives/StatusBadge";
 import { KpiCard } from "@/components/primitives/KpiCard";
 import { RowActions } from "@/components/primitives/RowActions";
 import { formatINR, formatDate } from "@/lib/format";
+import { Decimal } from "decimal.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,11 +74,11 @@ function computeKpis(vouchers: VoucherRow[]) {
   let totalBilled = 0;
   let outstanding = 0;
   let mtdCount = 0;
-  let overdueCount = 0;
+  const overdueCount = 0;
 
   for (const v of vouchers) {
     const vDate = new Date(v.date);
-    const total = parseFloat(v.totalAmount) || 0;
+    const total = new Decimal(String(v.totalAmount || '0')).toNumber();
 
     if (v.status === "POSTED") {
       totalBilled += total;
@@ -88,7 +89,7 @@ function computeKpis(vouchers: VoucherRow[]) {
 
     // Outstanding from unsettled bill refs
     for (const br of v.billRefs) {
-      const amt = parseFloat(br.outstandingAmount) || 0;
+      const amt = new Decimal(String(br.outstandingAmount || '0')).toNumber();
       if (amt > 0) outstanding += amt;
     }
   }
@@ -101,22 +102,22 @@ function computeKpis(vouchers: VoucherRow[]) {
 // ---------------------------------------------------------------------------
 
 function getRowOutstanding(v: VoucherRow): number {
-  return v.billRefs.reduce((sum, br) => sum + (parseFloat(br.outstandingAmount) || 0), 0);
+  return v.billRefs.reduce((sum, br) => sum + new Decimal(String(br.outstandingAmount || '0')).toNumber(), 0);
 }
 
 function getTaxable(v: VoucherRow): number {
-  const total = parseFloat(v.totalAmount) || 0;
-  const cgst = parseFloat(v.cgstAmount) || 0;
-  const sgst = parseFloat(v.sgstAmount) || 0;
-  const igst = parseFloat(v.igstAmount) || 0;
+  const total = new Decimal(String(v.totalAmount || '0')).toNumber();
+  const cgst = new Decimal(String(v.cgstAmount || '0')).toNumber();
+  const sgst = new Decimal(String(v.sgstAmount || '0')).toNumber();
+  const igst = new Decimal(String(v.igstAmount || '0')).toNumber();
   return total - cgst - sgst - igst;
 }
 
 function getGst(v: VoucherRow): number {
   return (
-    (parseFloat(v.cgstAmount) || 0) +
-    (parseFloat(v.sgstAmount) || 0) +
-    (parseFloat(v.igstAmount) || 0)
+    new Decimal(String(v.cgstAmount || '0')).toNumber() +
+    new Decimal(String(v.sgstAmount || '0')).toNumber() +
+    new Decimal(String(v.igstAmount || '0')).toNumber()
   );
 }
 
@@ -151,7 +152,7 @@ export default function SalesInvoiceList() {
     (acc, v) => ({
       taxable: acc.taxable + getTaxable(v),
       gst: acc.gst + getGst(v),
-      total: acc.total + (parseFloat(v.totalAmount) || 0),
+      total: acc.total + new Decimal(String(v.totalAmount || '0')).toNumber(),
     }),
     { taxable: 0, gst: 0, total: 0 }
   );
@@ -199,7 +200,7 @@ export default function SalesInvoiceList() {
       align: "right",
       cell: (r) => (
         <span className="font-semibold tabular-nums">
-          {formatINR(parseFloat(r.totalAmount) || 0)}
+          {formatINR(new Decimal(String(r.totalAmount || '0')).toNumber())}
         </span>
       ),
     },

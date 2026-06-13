@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { Decimal } from 'decimal.js'
 // getGstr1Sections, getGstr3bSummary do not exist yet (RED)
 import { getGstr1Sections, getGstr3bSummary } from '@/lib/services/GSTService'
 
@@ -13,7 +14,6 @@ describe('GSTService — getGstr1Sections', () => {
 
 describe('GSTN JSON export formatting', () => {
   it('amounts must be toFixed(2) strings not JS numbers', () => {
-    const { Decimal } = require('decimal.js')
     const val = new Decimal('5000.1')
     // GSTN format: string with 2 decimal places
     expect(val.toFixed(2)).toBe('5000.10')
@@ -28,7 +28,6 @@ describe('GSTN JSON export formatting', () => {
 
 describe('ITC reconciliation tolerance', () => {
   it('within 1 rupee tolerance is considered matched', () => {
-    const { Decimal } = require('decimal.js')
     const books = new Decimal('5000.50')
     const portal = new Decimal('5001.00')
     const diff = books.minus(portal).abs()
@@ -36,7 +35,6 @@ describe('ITC reconciliation tolerance', () => {
   })
 
   it('beyond 1 rupee tolerance is a mismatch', () => {
-    const { Decimal } = require('decimal.js')
     const books = new Decimal('5000.00')
     const portal = new Decimal('5002.00')
     const diff = books.minus(portal).abs()

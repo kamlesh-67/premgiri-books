@@ -6,7 +6,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import type { GSTTaxType } from '@/lib/services/GSTCalculator'
 import { formatINR } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import { Decimal } from 'decimal.js'
 import { Input } from '@/components/ui/input'
 
 // Freight GST options (only the common rates used for freight)
@@ -65,12 +65,23 @@ export function PurchaseSummaryPanel({
   const isIntra = taxType === 'INTRA_STATE'
   const isInter = taxType === 'INTER_STATE'
 
-  const hasHeaderDiscount = parseFloat(headerDiscountTotal) !== 0
-  const hasFreightGst = parseFloat(freightGstAmt) !== 0
-  const hasTcs = parseFloat(tcsAmt) !== 0
-  const hasRoundOff = parseFloat(roundOff) !== 0
+  const hasHeaderDiscount = new Decimal(String(headerDiscountTotal || '0')).toNumber() !== 0
+  const hasFreightGst = new Decimal(String(freightGstAmt || '0')).toNumber() !== 0
+  const hasTcs = new Decimal(String(tcsAmt || '0')).toNumber() !== 0
+  const hasRoundOff = new Decimal(String(roundOff || '0')).toNumber() !== 0
 
-  const totalGst = (parseFloat(cgstTotal) + parseFloat(sgstTotal) + parseFloat(igstTotal)).toFixed(2)
+  const totalGst = new Decimal(String(cgstTotal || '0')).plus(String(sgstTotal || '0')).plus(String(igstTotal || '0')).toString()
+
+  // Helper to format with high precision if needed
+  const formatPrecise = (val: string) => {
+    const num = new Decimal(String(val || '0')).toNumber();
+    if (isNaN(num)) return "₹0.00";
+    const parts = val.split('.');
+    if (parts.length > 1 && parts[1].length > 2) {
+      return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: parts[1].length, maximumFractionDigits: parts[1].length })}`;
+    }
+    return formatINR(val);
+  };
 
   // Header discounts field array — CR-004
   const { fields: discountFields, append: appendDiscount, remove: removeDiscount } = useFieldArray({
@@ -90,7 +101,7 @@ export function PurchaseSummaryPanel({
 
       {/* ── CR-004: Header Discounts (advanced) ──────────────────────── */}
       {!isSimple && (
-        <div className="mb-4 space-y-2">
+        <div className="mb-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
               Header Discounts
@@ -112,7 +123,7 @@ export function PurchaseSummaryPanel({
           )}
 
           {discountFields.map((disc, i) => (
-            <div key={disc.id} className="flex items-center gap-2">
+            <div key={disc.id} className="flex items-center gap-3">
               <Controller
                 control={control}
                 name={`headerDiscounts.${i}.label`}
@@ -121,7 +132,7 @@ export function PurchaseSummaryPanel({
                     {...f}
                     value={f.value ?? 'Discount'}
                     placeholder="Label"
-                    className="h-7 text-xs flex-1"
+                    className="h-8 text-sm flex-1"
                   />
                 )}
               />
@@ -132,7 +143,7 @@ export function PurchaseSummaryPanel({
                   <select
                     value={(f.value as string) ?? 'PERCENT'}
                     onChange={(e) => f.onChange(e.target.value)}
-                    className="h-7 border border-gray-200 rounded px-1.5 text-xs text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-purple-500 w-10"
+                    className="h-8 border border-gray-200 rounded px-1.5 text-sm text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-purple-500 w-12"
                   >
                     <option value="PERCENT">%</option>
                     <option value="FLAT_INR">₹</option>
@@ -150,7 +161,7 @@ export function PurchaseSummaryPanel({
                     min="0"
                     step="any"
                     placeholder="0"
-                    className="h-7 text-xs w-20 text-right"
+                    className="h-8 text-sm w-24 text-right"
                   />
                 )}
               />
@@ -159,7 +170,7 @@ export function PurchaseSummaryPanel({
                 onClick={() => removeDiscount(i)}
                 className="text-gray-400 hover:text-red-500 transition-colors shrink-0"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-4 w-4" />
               </button>
             </div>
           ))}
@@ -195,26 +206,26 @@ export function PurchaseSummaryPanel({
         {isSimple ? (
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-500">{simpleGstLabel}</span>
-            <span className="text-sm text-gray-700 tabular-nums">{formatINR(totalGst)}</span>
+            <span className="text-sm text-gray-700 tabular-nums">{formatPrecise(totalGst)}</span>
           </div>
         ) : (
           <>
-            {isIntra && parseFloat(cgstTotal) > 0 && (
+            {isIntra && new Decimal(String(cgstTotal || '0')).toNumber() > 0 && (
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-500">CGST</span>
-                <span className="text-sm text-gray-700 tabular-nums">{formatINR(cgstTotal)}</span>
+                <span className="text-sm text-gray-700 tabular-nums">{formatPrecise(cgstTotal)}</span>
               </div>
             )}
-            {isIntra && parseFloat(sgstTotal) > 0 && (
+            {isIntra && new Decimal(String(sgstTotal || '0')).toNumber() > 0 && (
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-500">SGST</span>
-                <span className="text-sm text-gray-700 tabular-nums">{formatINR(sgstTotal)}</span>
+                <span className="text-sm text-gray-700 tabular-nums">{formatPrecise(sgstTotal)}</span>
               </div>
             )}
-            {isInter && parseFloat(igstTotal) > 0 && (
+            {isInter && new Decimal(String(igstTotal || '0')).toNumber() > 0 && (
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-500">IGST</span>
-                <span className="text-sm text-gray-700 tabular-nums">{formatINR(igstTotal)}</span>
+                <span className="text-sm text-gray-700 tabular-nums">{formatPrecise(igstTotal)}</span>
               </div>
             )}
             {!isIntra && !isInter && (
@@ -229,7 +240,7 @@ export function PurchaseSummaryPanel({
         {/* ── CR-014: Freight ── (advanced) */}
         {!isSimple && (
           <div className="border-t border-gray-100 pt-2 mt-1 space-y-1.5">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <span className="text-sm text-gray-500 w-20 shrink-0">Freight ₹</span>
               <Controller
                 control={control}
@@ -242,7 +253,7 @@ export function PurchaseSummaryPanel({
                     min="0"
                     step="any"
                     placeholder="0.00"
-                    className="h-7 text-xs w-24 text-right"
+                    className="h-8 text-sm w-28 text-right"
                   />
                 )}
               />
@@ -253,8 +264,8 @@ export function PurchaseSummaryPanel({
                 render={({ field: f }) => (
                   <select
                     value={String(f.value ?? 18)}
-                    onChange={(e) => f.onChange(parseFloat(e.target.value))}
-                    className="h-7 border border-gray-200 rounded px-1.5 text-xs text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    onChange={(e) => f.onChange(new Decimal(String(e.target.value || '0')).toNumber())}
+                    className="h-8 border border-gray-200 rounded px-1.5 text-sm text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-purple-500"
                   >
                     {FREIGHT_GST_RATES.map((r) => (
                       <option key={r} value={r}>{r}%</option>
@@ -264,7 +275,7 @@ export function PurchaseSummaryPanel({
               />
               {hasFreightGst && (
                 <span className="text-xs text-gray-500 ml-auto tabular-nums">
-                  +{formatINR(freightGstAmt)} tax
+                  +{formatPrecise(freightGstAmt)} tax
                 </span>
               )}
             </div>
@@ -273,7 +284,7 @@ export function PurchaseSummaryPanel({
 
         {/* ── CR-015: TCS ── (advanced) */}
         {!isSimple && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500 w-20 shrink-0">TCS %</span>
             <Controller
               control={control}
@@ -287,13 +298,13 @@ export function PurchaseSummaryPanel({
                   max="100"
                   step="0.01"
                   placeholder="0"
-                  className="h-7 text-xs w-20 text-right"
+                  className="h-8 text-sm w-24 text-right"
                 />
               )}
             />
             {hasTcs && (
               <span className="text-sm text-gray-700 tabular-nums ml-auto">
-                {formatINR(tcsAmt)}
+                {formatPrecise(tcsAmt)}
               </span>
             )}
           </div>
@@ -301,7 +312,7 @@ export function PurchaseSummaryPanel({
 
         {/* ── CR-016: Round off ── */}
         {!isSimple && (
-          <div className="flex items-center gap-2 border-t border-gray-100 pt-2">
+          <div className="flex items-center gap-3 border-t border-gray-100 pt-2">
             <span className="text-sm text-gray-500 w-20 shrink-0">Round off</span>
             <Controller
               control={control}
@@ -310,7 +321,7 @@ export function PurchaseSummaryPanel({
                 <select
                   value={(f.value as string) ?? 'AUTO'}
                   onChange={(e) => f.onChange(e.target.value)}
-                  className="h-7 border border-gray-200 rounded px-1.5 text-xs text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  className="h-8 border border-gray-200 rounded px-1.5 text-sm text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-purple-500"
                 >
                   <option value="AUTO">Auto</option>
                   <option value="MANUAL">Manual</option>
@@ -328,7 +339,7 @@ export function PurchaseSummaryPanel({
                     type="number"
                     step="0.01"
                     placeholder="0.00"
-                    className="h-7 text-xs w-20 text-right"
+                    className="h-8 text-sm w-24 text-right"
                   />
                 )}
               />
@@ -336,9 +347,9 @@ export function PurchaseSummaryPanel({
               hasRoundOff && (
                 <span className={cn(
                   'text-sm tabular-nums ml-auto',
-                  parseFloat(roundOff) > 0 ? 'text-gray-700' : 'text-gray-500'
+                  new Decimal(String(roundOff || '0')).toNumber() > 0 ? 'text-gray-700' : 'text-gray-500'
                 )}>
-                  {parseFloat(roundOff) > 0 ? '+' : ''}{formatINR(roundOff)}
+                  {new Decimal(String(roundOff || '0')).toNumber() > 0 ? '+' : ''}{formatINR(roundOff)}
                 </span>
               )
             )}
@@ -350,7 +361,7 @@ export function PurchaseSummaryPanel({
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-500">Round Off</span>
             <span className="text-sm text-gray-700 tabular-nums">
-              {parseFloat(roundOff) > 0 ? '+' : ''}{formatINR(roundOff)}
+              {new Decimal(String(roundOff || '0')).toNumber() > 0 ? '+' : ''}{formatINR(roundOff)}
             </span>
           </div>
         )}

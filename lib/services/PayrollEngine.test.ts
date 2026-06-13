@@ -8,7 +8,6 @@ import {
   calcProfessionalTax,
   computePaySlip,
   PayrollValidationError,
-  type SalaryComponent,
   type EmployeeInput,
   type StructureInput,
   type AttendanceInput,

@@ -47,8 +47,6 @@ vi.mock('@/lib/prisma', () => ({
 import {
   generateInsights,
   InsightsResponseSchema,
-  InsightSchema,
-  type Insight,
   type InsightsResponse,
 } from './InsightsService'
 

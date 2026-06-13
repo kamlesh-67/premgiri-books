@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { formatINR } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
+import { Decimal } from 'decimal.js'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,12 +33,12 @@ export function AccountingEntriesPanel({
   // Compute DR and CR totals for footer
   const drTotal = entries
     .filter((e) => e.drCr === 'DR')
-    .reduce((sum, e) => sum + parseFloat(e.amount), 0)
+    .reduce((sum, e) => sum.plus(e.amount), new Decimal(0))
     .toFixed(2)
 
   const crTotal = entries
     .filter((e) => e.drCr === 'CR')
-    .reduce((sum, e) => sum + parseFloat(e.amount), 0)
+    .reduce((sum, e) => sum.plus(e.amount), new Decimal(0))
     .toFixed(2)
 
   return (

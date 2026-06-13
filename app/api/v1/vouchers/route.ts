@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
       where: { companyId, id: { in: itemIds } },
       select: { id: true, gstRate: true },
     })
-    const rateByItemId = Object.fromEntries(stockItems.map((s) => [s.id, Number(s.gstRate)]))
+    const rateByItemId = Object.fromEntries(stockItems.map((s) => [s.id, new Decimal(s.gstRate.toString()).toNumber()]))
 
     // Determine intra vs inter-state using company and party state codes
     const [company, partyLedger] = await Promise.all([

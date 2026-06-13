@@ -12,10 +12,7 @@ import {
   parseCsvToRows,
   normalizeAmount,
   type BankName,
-  type BankParserConfig,
-  type ParsedRow,
 } from './bankParsers'
-import { Decimal } from 'decimal.js'
 
 // ---------------------------------------------------------------------------
 // normalizeAmount

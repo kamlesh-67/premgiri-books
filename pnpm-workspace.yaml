@@ -1,0 +1,13 @@
+packages:
+  - "."
+
+allowBuilds:
+  '@prisma/engines': true
+  better-sqlite3: true
+  core-js-pure: true
+  electron: true
+  electron-winstaller: true
+  esbuild: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true

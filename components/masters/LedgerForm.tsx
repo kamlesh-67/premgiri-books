@@ -197,6 +197,7 @@ export function LedgerForm({ open, onOpenChange, ledger, onSave }: LedgerFormPro
                       <FormControl>
                         <button
                           type="button"
+                          // eslint-disable-next-line jsx-a11y/role-has-required-aria-props
                           role="combobox"
                           aria-expanded={groupPopoverOpen}
                           className={cn(

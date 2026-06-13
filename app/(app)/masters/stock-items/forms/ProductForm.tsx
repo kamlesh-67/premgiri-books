@@ -30,6 +30,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { stockItemSchema, type StockItemInput } from '@/lib/schemas/masters'
 import { cn } from '@/lib/utils'
+import { Decimal } from 'decimal.js'
 
 interface StockItem {
   id: string
@@ -63,7 +64,7 @@ export function ProductForm({ item, uoms, onClose, onSuccess }: ProductFormProps
     resolver: zodResolver(stockItemSchema),
     defaultValues: {
       name: item?.name ?? '',
-      gstRate: item ? parseFloat(item.gstRate) : 18,
+      gstRate: item ? new Decimal(String(item.gstRate || '0')).toNumber() : 18,
       hsnCode: item?.hsnCode ?? '',
       uomId: item?.uomId ?? (uoms[0]?.id ?? ''),
       openingRate: item?.openingRate ?? '0',

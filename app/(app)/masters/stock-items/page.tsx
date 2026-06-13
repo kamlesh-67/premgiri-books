@@ -11,26 +11,26 @@ export default async function StockItemsPage() {
   const companyId = session.companyId
   const uiMode = session.uiMode
 
-  const [itemsRaw, inwardRows, outwardRows] = await Promise.all([
-    prisma.stockItem.findMany({
-      where: { companyId, isActive: true },
-      include: { uom: { select: { name: true, symbol: true } } },
-      orderBy: { name: 'asc' },
-    }),
-    prisma.voucherItem.groupBy({
-      by: ['itemId'],
-      where: { voucher: { companyId, voucherType: 'PURCHASE', status: 'POSTED' } },
-      _sum: { qty: true },
-    }),
-    prisma.voucherItem.groupBy({
-      by: ['itemId'],
-      where: { voucher: { companyId, voucherType: 'SALES', status: 'POSTED' } },
-      _sum: { qty: true },
-    }),
-  ])
+  const itemsRaw = await prisma.stockItem.findMany({
+    where: { companyId, isActive: true },
+    include: { uom: { select: { name: true, symbol: true } } },
+    orderBy: { name: 'asc' },
+  })
 
-  const inwardMap = new Map(inwardRows.map((r) => [r.itemId, r._sum.qty?.toString() ?? '0']))
-  const outwardMap = new Map(outwardRows.map((r) => [r.itemId, r._sum.qty?.toString() ?? '0']))
+  const inwardRows = await prisma.voucherItem.groupBy({
+    by: ['itemId'],
+    where: { voucher: { companyId, voucherType: 'PURCHASE', status: 'POSTED' } },
+    _sum: { qty: true },
+  })
+
+  const outwardRows = await prisma.voucherItem.groupBy({
+    by: ['itemId'],
+    where: { voucher: { companyId, voucherType: 'SALES', status: 'POSTED' } },
+    _sum: { qty: true },
+  })
+
+  const inwardMap = new Map<string, string>(inwardRows.map((r) => [r.itemId, r._sum.qty?.toString() ?? '0']))
+  const outwardMap = new Map<string, string>(outwardRows.map((r) => [r.itemId, r._sum.qty?.toString() ?? '0']))
 
   const initialItems = itemsRaw.map((i) => {
     const opening = new Decimal(i.openingQty.toString())

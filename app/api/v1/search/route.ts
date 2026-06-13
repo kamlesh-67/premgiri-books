@@ -25,7 +25,7 @@ interface SearchResult {
 
 const VALID_TYPES: SearchResultType[] = ['ledger', 'voucher', 'party', 'stockItem']
 
-const TYPE_ORDER: Record<SearchResultType, number> = {
+const _TYPE_ORDER: Record<SearchResultType, number> = {
   ledger: 0,
   voucher: 1,
   party: 2,
@@ -98,7 +98,10 @@ export async function GET(request: NextRequest) {
 
   // Online check — skip embedQuery when Electron reports offline (AI-01)
   let isOnline = true
-  try { isOnline = require('electron').net.isOnline() } catch {}
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    isOnline = (require('electron') as { net: { isOnline: () => boolean } }).net.isOnline()
+  } catch {}
 
   // Performance timer for slow-query monitoring
   const t0 = performance.now()

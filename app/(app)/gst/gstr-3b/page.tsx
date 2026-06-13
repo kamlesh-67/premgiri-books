@@ -31,6 +31,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { formatINR } from "@/lib/utils/format";
 import { useUiStore } from "@/lib/stores/uiStore";
+import { Decimal } from "decimal.js";
 
 // ─── Types matching GSTService Gstr3bSummary ──────────────────────────────────
 
@@ -91,7 +92,7 @@ function generatePeriodOptions(): { value: string; label: string }[] {
 
 function formatAmount(val: string | undefined): string {
   if (!val) return "₹0.00";
-  const n = parseFloat(val);
+  const n = new Decimal(String(val || '0')).toNumber();
   return Number.isFinite(n) ? formatINR(n) : "₹0.00";
 }
 
@@ -294,11 +295,11 @@ export default function Gstr3bPage() {
   const hasNoData =
     !isLoading &&
     data &&
-    parseFloat(data.outwardTaxable.taxable) === 0 &&
-    parseFloat(data.rcmInward.taxable) === 0 &&
-    parseFloat(data.itcAvailable.cgst) === 0 &&
-    parseFloat(data.itcAvailable.sgst) === 0 &&
-    parseFloat(data.itcAvailable.igst) === 0;
+    new Decimal(String(data.outwardTaxable.taxable || '0')).toNumber() === 0 &&
+    new Decimal(String(data.rcmInward.taxable || '0')).toNumber() === 0 &&
+    new Decimal(String(data.itcAvailable.cgst || '0')).toNumber() === 0 &&
+    new Decimal(String(data.itcAvailable.sgst || '0')).toNumber() === 0 &&
+    new Decimal(String(data.itcAvailable.igst || '0')).toNumber() === 0;
 
   const periodOptions = generatePeriodOptions();
 

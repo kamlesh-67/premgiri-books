@@ -20,6 +20,7 @@ import { SectionCard } from "@/components/primitives/SectionCard";
 import { KpiCard } from "@/components/primitives/KpiCard";
 import { formatINR } from "@/lib/format";
 import { useUiStore } from "@/lib/stores/uiStore";
+import { Decimal } from "decimal.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -190,19 +191,19 @@ export default function TdsRegisterPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <KpiCard
           title="Total Gross Paid"
-          value={totals ? formatINR(parseFloat(totals.gross)) : "₹0.00"}
+          value={totals ? formatINR(new Decimal(String(totals.gross || '0')).toNumber()) : "₹0.00"}
           icon={IndianRupee}
           iconTone="primary"
         />
         <KpiCard
           title="Total TDS Deducted"
-          value={totals ? formatINR(parseFloat(totals.tds)) : "₹0.00"}
+          value={totals ? formatINR(new Decimal(String(totals.tds || '0')).toNumber()) : "₹0.00"}
           icon={Receipt}
           iconTone="destructive"
         />
         <KpiCard
           title="Net Paid"
-          value={totals ? formatINR(parseFloat(totals.net)) : "₹0.00"}
+          value={totals ? formatINR(new Decimal(String(totals.net || '0')).toNumber()) : "₹0.00"}
           icon={Wallet}
           iconTone="success"
         />
@@ -281,17 +282,17 @@ export default function TdsRegisterPage() {
                       ([sectionKey, sectionRows]) => {
                         // Subtotals for this section
                         const subGross = sectionRows.reduce(
-                          (s, r) => s + parseFloat(r.grossAmount),
-                          0
-                        );
+                          (s, r) => s.plus(r.grossAmount),
+                          new Decimal(0)
+                        ).toNumber();
                         const subTds = sectionRows.reduce(
-                          (s, r) => s + parseFloat(r.tdsAmount),
-                          0
-                        );
+                          (s, r) => s.plus(r.tdsAmount),
+                          new Decimal(0)
+                        ).toNumber();
                         const subNet = sectionRows.reduce(
-                          (s, r) => s + parseFloat(r.netPaid),
-                          0
-                        );
+                          (s, r) => s.plus(r.netPaid),
+                          new Decimal(0)
+                        ).toNumber();
 
                         return [
                           // Section header row
@@ -349,13 +350,13 @@ export default function TdsRegisterPage() {
                     TOTAL
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums text-sm font-bold text-gray-900">
-                    {formatINR(parseFloat(totals.gross))}
+                    {formatINR(new Decimal(String(totals.gross || '0')).toNumber())}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums text-sm font-bold text-red-700">
-                    {formatINR(parseFloat(totals.tds))}
+                    {formatINR(new Decimal(String(totals.tds || '0')).toNumber())}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums text-sm font-bold text-gray-900">
-                    {formatINR(parseFloat(totals.net))}
+                    {formatINR(new Decimal(String(totals.net || '0')).toNumber())}
                   </td>
                 </tr>
               )}
@@ -396,13 +397,13 @@ function TdsDataRow({ row }: { row: TdsRow }) {
         {row.tdsRate}%
       </td>
       <td className="px-4 py-3 text-right tabular-nums text-sm font-semibold text-gray-900">
-        {formatINR(parseFloat(row.grossAmount))}
+        {formatINR(new Decimal(String(row.grossAmount || '0')).toNumber())}
       </td>
       <td className="px-4 py-3 text-right tabular-nums text-sm font-semibold text-red-700">
-        {formatINR(parseFloat(row.tdsAmount))}
+        {formatINR(new Decimal(String(row.tdsAmount || '0')).toNumber())}
       </td>
       <td className="px-4 py-3 text-right tabular-nums text-sm font-semibold text-gray-900">
-        {formatINR(parseFloat(row.netPaid))}
+        {formatINR(new Decimal(String(row.netPaid || '0')).toNumber())}
       </td>
     </tr>
   );

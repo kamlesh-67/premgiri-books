@@ -1,465 +1,697 @@
 /**
- * SalesInvoicePDF.tsx
+ * SalesInvoicePDF.tsx — react-pdf v4 compatible
  *
- * @react-pdf/renderer component for generating Sales Invoice PDFs.
- *
- * IMPORTANT: This file MUST NOT be imported in any "use client" component.
- * It uses Node.js-only modules via @react-pdf/renderer.
- *
- * Only import in: app/api/v1/vouchers/[id]/pdf/route.ts
+ * react-pdf v4 rules strictly followed:
+ *  - fontWeight / fontStyle only on <Text>, never on <View>
+ *  - transform is a CSS string ('rotate(-45deg)'), not an array
+ *  - No && short-circuit rendering — always ternary with null fallback
+ *  - No empty <Text></Text> — use <Text>{' '}</Text> for spacers
+ *  - Nested <Text> for inline bold/italic spans (supported by yoga-layout)
+ *  - All style values are plain primitives
  */
-import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer'
-import { Decimal } from 'decimal.js'
-import { amountToWords } from '@/lib/utils/amountToWords'
+
+import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
 import path from 'path'
+import { Decimal } from 'decimal.js'
 
-// Register fonts at module scope — called once when Node.js loads this module.
-// NEVER use Google Fonts CDN URLs — ENOTFOUND risk in Vercel serverless (T-03-04-03).
-Font.register({
-  family: 'Inter',
-  fonts: [
-    { src: path.join(process.cwd(), 'public', 'fonts', 'Inter-Regular.ttf'), fontWeight: 400 },
-    { src: path.join(process.cwd(), 'public', 'fonts', 'Inter-Bold.ttf'), fontWeight: 700 },
-  ],
-})
+// ── Font Registration ────────────────────────────────────────────────────────
+try {
+  Font.register({
+    family: 'Inter',
+    fonts: [
+      {
+        src: path.join(process.cwd(), 'public', 'fonts', 'Inter-Regular.ttf'),
+        fontWeight: 400,
+      },
+      {
+        src: path.join(process.cwd(), 'public', 'fonts', 'Inter-Bold.ttf'),
+        fontWeight: 700,
+      },
+    ],
+  })
+} catch (_) {
+  // Non-fatal: falls back to Helvetica built-in
+}
 
-const styles = StyleSheet.create({
+// ── Indian Lakh Number Formatter ─────────────────────────────────────────────
+// e.g. 123456.78 → "1,23,456.78"
+function fmtINR(value: string): string {
+  const num = parseFloat(value)
+  if (isNaN(num)) return value
+  const [intPart, decPart] = num.toFixed(2).split('.')
+  if (intPart.length <= 3) return `${intPart}.${decPart}`
+  const last3 = intPart.slice(-3)
+  const rest = intPart.slice(0, -3)
+  const grouped = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',')
+  return `${grouped},${last3}.${decPart}`
+}
+
+// ── Colour palette ───────────────────────────────────────────────────────────
+const CLR = {
+  black:      '#000000',
+  dark:       '#111111',
+  body:       '#333333',
+  muted:      '#666666',
+  light:      '#999999',
+  border:     '#000000',
+  rowBorder:  '#DDDDDD',
+  headerBg:   '#F5F5F5',
+  redBg:      '#B91C1C',
+  white:      '#FFFFFF',
+}
+
+// ── StyleSheet ───────────────────────────────────────────────────────────────
+const S = StyleSheet.create({
   // Page
-  page: { backgroundColor: '#FFFFFF', padding: 40, fontFamily: 'Inter', fontSize: 9 },
+  page: {
+    backgroundColor: CLR.white,
+    paddingTop: 22,
+    paddingBottom: 44,      // room for absolute footer
+    paddingHorizontal: 30,
+    fontFamily: 'Inter',
+    fontSize: 8,
+    color: CLR.dark,
+    flexDirection: 'column',
+  },
 
-  // Header
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, alignItems: 'flex-start' },
-  companyName: { fontSize: 20, fontWeight: 'bold', color: '#111827', marginBottom: 4 },
-  companyDetail: { fontSize: 9, color: '#6B7280', marginBottom: 2 },
-  logo: { width: 80, height: 40, objectFit: 'contain' },
-
-  // Title bar
-  titleBar: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#111827',
+  // ── "Original Copy" label
+  originalCopy: {
+    fontSize: 7,
+    color: CLR.light,
     textAlign: 'center',
-    paddingVertical: 8,
-    borderBottom: '1px solid #E5E7EB',
-    borderTop: '1px solid #E5E7EB',
-    marginBottom: 12,
+    marginBottom: 8,
   },
 
-  // Invoice meta (number + date)
-  invoiceMetaRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 32, marginBottom: 16 },
-  metaBlock: { alignItems: 'flex-end' },
-  metaLabel: { fontSize: 8, color: '#6B7280', marginBottom: 2 },
-  metaValue: { fontSize: 9, color: '#374151', fontWeight: 'bold' },
-
-  // Bill To
-  billRow: {
+  // ── Company header row
+  headerRow: {
     flexDirection: 'row',
-    gap: 40,
-    marginBottom: 16,
-    borderBottom: '1px solid #E5E7EB',
-    paddingBottom: 12,
+    marginBottom: 8,
   },
-  billSection: { flex: 1 },
-  billTitle: { fontSize: 8, fontWeight: 'bold', color: '#6B7280', textTransform: 'uppercase', marginBottom: 6 },
-  billName: { fontSize: 10, fontWeight: 'bold', color: '#111827', marginBottom: 3 },
-  billDetail: { fontSize: 9, color: '#374151', marginBottom: 2 },
-
-  // Line items table
-  tableHeaderRow: {
-    flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-    borderTop: '1px solid #E5E7EB',
-    borderBottom: '1px solid #E5E7EB',
+  headerLeft: {
+    flex: 1,
   },
-  tableHeaderCell: { fontSize: 8, color: '#6B7280', fontWeight: 'bold', textTransform: 'uppercase' },
-  tableHeaderCellRight: { fontSize: 8, color: '#6B7280', fontWeight: 'bold', textTransform: 'uppercase', textAlign: 'right' },
-  tableRow: { flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 4, borderBottom: '1px solid #F3F4F6' },
-  tableRowAlt: {
-    flexDirection: 'row',
+  companyName: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: CLR.black,
+    marginBottom: 3,
+  },
+  companyMeta: {
+    fontSize: 8,
+    color: CLR.body,
+    marginBottom: 1,
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  companyAddress: {
+    fontSize: 7.5,
+    color: CLR.muted,
+    textAlign: 'right',
+    maxWidth: 220,
+    lineHeight: 1.4,
+  },
+
+  // ── Title bar
+  titleBar: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    letterSpacing: 0.8,
     paddingVertical: 5,
-    paddingHorizontal: 4,
-    backgroundColor: '#F9FAFB',
-    borderBottom: '1px solid #F3F4F6',
+    borderTopWidth: 1,
+    borderTopColor: CLR.border,
+    borderTopStyle: 'solid',
+    borderBottomWidth: 1,
+    borderBottomColor: CLR.border,
+    borderBottomStyle: 'solid',
+    marginBottom: 0,
   },
-  tableBodyCell: { fontSize: 9, color: '#374151' },
-  tableBodyCellRight: { fontSize: 9, color: '#374151', textAlign: 'right' },
 
-  // GST summary block
-  summaryContainer: { marginTop: 8, alignItems: 'flex-end' },
-  summaryRow: { flexDirection: 'row', justifyContent: 'flex-end', paddingVertical: 3 },
-  summaryLabel: { fontSize: 9, color: '#374151', width: 130, textAlign: 'right', paddingRight: 8 },
-  summaryValue: { fontSize: 9, color: '#374151', width: 90, textAlign: 'right' },
-  totalRow: {
+  // ── Billing / Shipping address section
+  addressSection: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingVertical: 6,
-    borderTop: '2px solid #374151',
-    marginTop: 2,
+    paddingTop: 10,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: CLR.border,
+    borderBottomStyle: 'solid',
+    marginBottom: 0,
   },
-  totalLabel: { fontSize: 11, fontWeight: 'bold', color: '#374151', width: 130, textAlign: 'right', paddingRight: 8 },
-  totalValue: { fontSize: 11, fontWeight: 'bold', color: '#111827', width: 90, textAlign: 'right' },
-
-  // Amount in words
-  amountWordsBox: {
-    borderTop: '1px solid #E5E7EB',
-    borderBottom: '1px solid #E5E7EB',
-    paddingVertical: 6,
-    marginVertical: 8,
+  addressCol: {
+    flex: 1,
+    paddingRight: 8,
   },
-  amountWordsLabel: { fontSize: 8, color: '#6B7280', marginBottom: 2 },
-  amountWordsText: { fontSize: 9, color: '#374151', fontStyle: 'italic' },
+  addressLabel: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: CLR.black,
+    marginBottom: 3,
+  },
+  addressName: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: CLR.dark,
+    marginBottom: 2,
+  },
+  addressMeta: {
+    fontSize: 7.5,
+    color: CLR.muted,
+    marginBottom: 1,
+  },
+  addressText: {
+    fontSize: 7.5,
+    color: CLR.muted,
+    lineHeight: 1.4,
+  },
 
-  // IRN QR code block (rendered below totals when irnQrCode is present)
-  qrBlock: { alignItems: 'center', marginTop: 12 },
-  qrLabel: { fontSize: 8, color: '#6B7280', marginBottom: 4 },
-  qrImage: { width: 80, height: 80 },
-  irnText: { fontSize: 7, color: '#9CA3AF', marginTop: 4, textAlign: 'center' },
+  // ── Invoice meta details (stacked single-column list)
+  metaSection: {
+    paddingTop: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: CLR.border,
+    borderBottomStyle: 'solid',
+    marginBottom: 10,
+  },
+  metaLine: {
+    fontSize: 8,
+    color: CLR.body,
+    marginBottom: 3,
+    lineHeight: 1.3,
+  },
+  metaBold: {
+    fontWeight: 'bold',
+    color: CLR.dark,
+  },
 
-  // Bank details + terms
-  bottomRow: { flexDirection: 'row', gap: 40, marginTop: 12 },
-  bankSection: { flex: 1 },
-  bankTitle: { fontSize: 8, fontWeight: 'bold', color: '#6B7280', textTransform: 'uppercase', marginBottom: 6 },
-  bankDetail: { fontSize: 9, color: '#374151', marginBottom: 2 },
+  // ── Items table
+  tableHeader: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: CLR.border,
+    borderTopStyle: 'solid',
+    borderBottomWidth: 1,
+    borderBottomColor: CLR.border,
+    borderBottomStyle: 'solid',
+    paddingVertical: 4,
+    backgroundColor: CLR.headerBg,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 0.5,
+    borderBottomColor: CLR.rowBorder,
+    borderBottomStyle: 'solid',
+    paddingVertical: 4,
+  },
+  tableTotalRow: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: CLR.border,
+    borderTopStyle: 'solid',
+    borderBottomWidth: 1,
+    borderBottomColor: CLR.border,
+    borderBottomStyle: 'solid',
+    paddingVertical: 4,
+  },
 
-  // Footer
-  footerRow: {
+  // Table column widths — must sum to 100%
+  colNo:   { width: '5%',  paddingLeft: 2 },
+  colDesc: { width: '30%' },
+  colQty:  { width: '7%',  textAlign: 'right' },
+  colUnit: { width: '7%',  textAlign: 'center' },
+  colRate: { width: '11%', textAlign: 'right' },
+  colDisc: { width: '13%', textAlign: 'right' },
+  colTax:  { width: '9%',  textAlign: 'right' },
+  colAmt:  { width: '18%', textAlign: 'right', paddingRight: 2 },
+
+  thText:   { fontWeight: 'bold', fontSize: 8, color: CLR.dark },
+  itemName: { fontStyle: 'italic', fontSize: 7.5, color: CLR.body },
+  hsnText:  { fontSize: 6.5, color: CLR.light, marginTop: 1 },
+
+  // ── Flex spacer (pushes red bar to bottom)
+  flexSpacer: { flex: 1, minHeight: 10 },
+
+  // ── Amount-in-words red bar
+  redBar: {
+    backgroundColor: CLR.redBg,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginTop: 20,
-    borderTop: '1px solid #E5E7EB',
-    paddingTop: 12,
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginTop: 12,
   },
-  footerLeft: { fontSize: 9, color: '#374151' },
-  footerRight: { fontSize: 8, color: '#9CA3AF', textAlign: 'right', flex: 1 },
+  redBarLeft: {
+    color: CLR.white,
+    fontSize: 9,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  redBarRight: {
+    color: CLR.white,
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
 
-  // CANCELLED watermark
-  watermark: {
+  // ── Totals block (right-aligned)
+  totalsWrapper: {
+    alignSelf: 'flex-end',
+    width: 250,
+    marginTop: 10,
+    marginBottom: 14,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 3,
+    borderBottomWidth: 0.5,
+    borderBottomColor: CLR.rowBorder,
+    borderBottomStyle: 'solid',
+  },
+  grandTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 5,
+    borderTopWidth: 1,
+    borderTopColor: CLR.border,
+    borderTopStyle: 'solid',
+    borderBottomWidth: 1,
+    borderBottomColor: CLR.border,
+    borderBottomStyle: 'solid',
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  balanceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 3,
+  },
+  totalLabel:   { fontSize: 8, color: CLR.muted },
+  totalValue:   { fontSize: 8, color: CLR.dark },
+  grandLabel:   { fontSize: 9, fontWeight: 'bold', color: CLR.dark },
+  grandValue:   { fontSize: 9, fontWeight: 'bold', color: CLR.dark },
+  balanceLabel: { fontSize: 8, color: CLR.muted },
+  balanceValue: { fontSize: 8, color: CLR.dark },
+
+  // ── Terms & Signatory section
+  bottomSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: CLR.border,
+    borderTopStyle: 'solid',
+  },
+  termsBlock: {
+    flex: 1,
+    paddingRight: 16,
+  },
+  termsTitle: {
+    fontWeight: 'bold',
+    fontSize: 8,
+    color: CLR.dark,
+    marginBottom: 6,
+  },
+  termLine: {
+    fontSize: 7.5,
+    color: CLR.muted,
+    marginBottom: 3,
+    lineHeight: 1.4,
+  },
+  signatoryBlock: {
+    width: 180,
+    alignItems: 'flex-end',
+  },
+  signatoryFor: {
+    fontWeight: 'bold',
+    fontSize: 8,
+    color: CLR.dark,
+    marginBottom: 32,
+  },
+  signatoryLine: {
+    borderTopWidth: 0.5,
+    borderTopColor: CLR.border,
+    borderTopStyle: 'solid',
+    paddingTop: 3,
+    width: 130,
+    textAlign: 'center',
+    fontSize: 8,
+    fontStyle: 'italic',
+    color: CLR.body,
+  },
+
+  // ── CANCELLED watermark
+  watermarkWrapper: {
     position: 'absolute',
-    top: '38%',
-    left: '5%',
-    fontSize: 60,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  watermarkText: {
+    fontSize: 80,
     fontWeight: 'bold',
     color: '#EF4444',
-    opacity: 0.1,
+    opacity: 0.12,
     transform: 'rotate(-45deg)',
+  },
+
+  // ── Page footer (absolute — always at bottom)
+  pageFooter: {
+    position: 'absolute',
+    bottom: 16,
+    left: 30,
+    right: 30,
+    textAlign: 'center',
+    fontSize: 7,
+    color: CLR.light,
   },
 })
 
-// Column widths — must sum to 100%
-const COL = {
-  num: '4%',
-  desc: '22%',
-  hsn: '9%',
-  qty: '7%',
-  rate: '10%',
-  taxable: '11%',
-  gstPct: '7%',
-  tax: '10%',
-  total: '10%',
-  // disc column removed from display (kept in data) to save space; absorbed into taxable
-} as const
-
-/**
- * Format a Decimal (or string/number) as Indian lakh currency string.
- * Cannot use lib/utils/format.ts `formatINR` here because it references browser APIs.
- * This is a pure Node.js-safe equivalent.
- */
-function formatAmount(value: Decimal | string | number): string {
-  const d = new Decimal(value.toString())
-  const negative = d.lt(0)
-  const abs = d.abs()
-  const [intPart, decPart] = abs.toFixed(2).split('.')
-
-  let formatted: string
-  if (intPart.length > 3) {
-    const last3 = intPart.slice(-3)
-    const rest = intPart.slice(0, -3)
-    formatted = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3
-  } else {
-    formatted = intPart
-  }
-
-  return (negative ? '-' : '') + '₹' + formatted + '.' + decPart
-}
-
-// ---- Types ------------------------------------------------------------------
-
-export interface VoucherForPDF {
+// ── Types ────────────────────────────────────────────────────────────────────
+export interface InvoiceItem {
   id: string
-  voucherNo: string
-  date: Date
-  status: 'DRAFT' | 'POSTED' | 'CANCELLED'
-  totalAmount: Decimal
-  cgstAmount: Decimal
-  sgstAmount: Decimal
-  igstAmount: Decimal
-  roundOff: Decimal
-  narration?: string | null
-  irn?: string | null
-  partyLedger?: {
-    name: string
-    gstin?: string | null
-    stateCode?: string | null
-    // Note: Ledger model has no `address` field in the schema
-  } | null
-  voucherItems: Array<{
-    id: string
-    qty: Decimal
-    rate: Decimal
-    amount: Decimal
-    discountAmt?: Decimal | null
-    cgstRate?: Decimal | null
-    cgstAmt?: Decimal | null
-    sgstRate?: Decimal | null
-    sgstAmt?: Decimal | null
-    igstRate?: Decimal | null
-    igstAmt?: Decimal | null
-    hsnCode?: string | null
-    item: { name: string }
-  }>
-}
-
-export interface CompanyForPDF {
+  index: string
   name: string
-  gstin?: string | null
-  stateCode: string
-  address?: string | null
-  logoUrl?: string | null
-  bankName?: string | null
-  bankAccount?: string | null
-  ifsc?: string | null
+  hsnCode: string
+  qty: string
+  unit: string
+  rate: string
+  disc: string       // discount %
+  discAmt: string    // discount amount
+  taxRate: string    // combined tax % (CGST+SGST or IGST)
+  cgstRate: string
+  sgstRate: string
+  igstRate: string
+  cgstAmt: string
+  sgstAmt: string
+  igstAmt: string
+  amount: string     // taxable value (after discount, before tax)
 }
 
-interface SalesInvoicePDFProps {
-  voucher: VoucherForPDF
-  company: CompanyForPDF
+export interface VoucherPayload {
+  voucherNo: string
+  date: string
+  dueDate: string
+  paymentTerms: string
+  placeOfSupply: string
+  reverseCharge: string
+  subtotal: string      // sum of taxable amounts
+  cgstTotal: string
+  sgstTotal: string
+  igstTotal: string
+  roundOff: string
+  totalAmount: string
+  amountInWords: string
+  partyName: string
+  partyGstin: string
+  partyAddress: string
+  shippingAddress: string
+  isTaxInvoice: boolean
+  items: InvoiceItem[]
+}
+
+export interface CompanyPayload {
+  name: string
+  gstin: string
+  pan: string
+  address: string
+  logoUrl: string
+}
+
+interface Props {
+  voucher: VoucherPayload
+  company: CompanyPayload
   cancelled?: boolean
-  qrDataUrl?: string | null
 }
 
-// ---- Component --------------------------------------------------------------
+// ── Component ────────────────────────────────────────────────────────────────
+export function SalesInvoicePDF({ voucher, company, cancelled = false }: Props) {
+  const items: InvoiceItem[] = Array.isArray(voucher.items) ? voucher.items : []
 
-export function SalesInvoicePDF({ voucher, company, cancelled = false, qrDataUrl }: SalesInvoicePDFProps) {
-  const cgst = new Decimal(voucher.cgstAmount)
-  const sgst = new Decimal(voucher.sgstAmount)
-  const igst = new Decimal(voucher.igstAmount)
-  const total = new Decimal(voucher.totalAmount)
-  const roundOff = new Decimal(voucher.roundOff)
+  // ── Pre-compute all values at function scope (never inside JSX)
+  const totalQty = items
+    .reduce((acc, it) => acc.plus(new Decimal(it.qty || '0')), new Decimal(0))
+    .toFixed(2)
 
-  // taxable = total - cgst - sgst - igst - roundOff
-  const taxableValue = total.minus(cgst).minus(sgst).minus(igst).minus(roundOff)
+  const subtotalFmt  = fmtINR(voucher.subtotal || '0')
+  const cgstFmt      = fmtINR(voucher.cgstTotal || '0')
+  const sgstFmt      = fmtINR(voucher.sgstTotal || '0')
+  const igstFmt      = fmtINR(voucher.igstTotal || '0')
+  const totalFmt     = fmtINR(voucher.totalAmount || '0')
 
-  const invoiceDateStr = new Date(voucher.date).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
+  const cgstDec   = new Decimal(voucher.cgstTotal || '0')
+  const sgstDec   = new Decimal(voucher.sgstTotal || '0')
+  const igstDec   = new Decimal(voucher.igstTotal || '0')
+  const roundDec  = new Decimal(voucher.roundOff  || '0')
 
-  const isInterState = igst.gt(0)
+  const hasGst      = cgstDec.gt(0) || sgstDec.gt(0) || igstDec.gt(0)
+  const hasCgstSgst = cgstDec.gt(0) || sgstDec.gt(0)
+  const hasIgst     = igstDec.gt(0)
+  const hasRoundOff = !roundDec.isZero()
+  const roundFmt    = (roundDec.gte(0) ? '+' : '') + fmtINR(voucher.roundOff || '0')
+
+  // First non-zero CGST rate for the label (e.g. "9")
+  const cgstRateLabel = items.find((it) => parseFloat(it.cgstRate) > 0)?.cgstRate ?? '0'
+  const sgstRateLabel = items.find((it) => parseFloat(it.sgstRate) > 0)?.sgstRate ?? '0'
+  const igstRateLabel = items.find((it) => parseFloat(it.igstRate) > 0)?.igstRate ?? '0'
+
+  const hasPartyGstin = voucher.partyGstin && voucher.partyGstin.length > 0
+  const shippingAddr  = voucher.shippingAddress || voucher.partyAddress
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
-        {/* CANCELLED watermark — rendered behind content via position absolute */}
-        {cancelled && <Text style={styles.watermark}>CANCELLED</Text>}
+      <Page size="A4" style={S.page}>
 
-        {/* ── Header: Company info + optional logo ─────────────────────────── */}
-        <View style={styles.headerRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.companyName}>{company.name}</Text>
-            {company.gstin && (
-              <Text style={styles.companyDetail}>GSTIN: {company.gstin}</Text>
-            )}
-            {company.address && (
-              <Text style={styles.companyDetail}>{company.address}</Text>
-            )}
-            <Text style={styles.companyDetail}>State Code: {company.stateCode}</Text>
+        {/* ── "Original Copy" ────────────────────────────────────────────── */}
+        <Text style={S.originalCopy}>Original Copy</Text>
+
+        {/* ── Company Header ─────────────────────────────────────────────── */}
+        <View style={S.headerRow}>
+          <View style={S.headerLeft}>
+            <Text style={S.companyName}>{company.name}</Text>
+            {company.gstin ? (
+              <Text style={S.companyMeta}>{`GSTIN - ${company.gstin}`}</Text>
+            ) : null}
+            {company.pan ? (
+              <Text style={S.companyMeta}>{`PAN - ${company.pan}`}</Text>
+            ) : null}
           </View>
-          {company.logoUrl && (
-            <Image src={company.logoUrl} style={styles.logo} />
-          )}
-        </View>
-
-        {/* ── TAX INVOICE title ────────────────────────────────────────────── */}
-        <Text style={styles.titleBar}>TAX INVOICE</Text>
-
-        {/* ── Invoice meta: number + date ──────────────────────────────────── */}
-        <View style={styles.invoiceMetaRow}>
-          <View style={styles.metaBlock}>
-            <Text style={styles.metaLabel}>Invoice No.</Text>
-            <Text style={styles.metaValue}>{voucher.voucherNo}</Text>
-          </View>
-          <View style={styles.metaBlock}>
-            <Text style={styles.metaLabel}>Date</Text>
-            <Text style={styles.metaValue}>{invoiceDateStr}</Text>
+          <View style={S.headerRight}>
+            <Text style={S.companyAddress}>{company.address}</Text>
           </View>
         </View>
 
-        {/* ── Bill To ──────────────────────────────────────────────────────── */}
-        <View style={styles.billRow}>
-          <View style={styles.billSection}>
-            <Text style={styles.billTitle}>Bill To</Text>
-            <Text style={styles.billName}>{voucher.partyLedger?.name ?? '—'}</Text>
-            {voucher.partyLedger?.gstin && (
-              <Text style={styles.billDetail}>GSTIN: {voucher.partyLedger.gstin}</Text>
-            )}
-            {voucher.partyLedger?.stateCode && (
-              <Text style={styles.billDetail}>
-                Place of Supply: State Code {voucher.partyLedger.stateCode}
-              </Text>
-            )}
+        {/* ── Title Bar ──────────────────────────────────────────────────── */}
+        <Text style={S.titleBar}>
+          {voucher.isTaxInvoice ? 'TAX INVOICE' : 'BILL OF SUPPLY'}
+        </Text>
+
+        {/* ── Billing / Shipping Addresses ───────────────────────────────── */}
+        <View style={S.addressSection}>
+          <View style={S.addressCol}>
+            <Text style={S.addressLabel}>Billing Address:</Text>
+            <Text style={S.addressName}>{voucher.partyName}</Text>
+            {hasPartyGstin ? (
+              <Text style={S.addressMeta}>{`GSTIN: ${voucher.partyGstin}`}</Text>
+            ) : null}
+            <Text style={S.addressText}>{voucher.partyAddress}</Text>
           </View>
-          <View style={styles.billSection}>
-            <Text style={styles.billTitle}>Supply Type</Text>
-            <Text style={styles.billDetail}>{isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}</Text>
-          </View>
-        </View>
-
-        {/* ── Line Items Table ─────────────────────────────────────────────── */}
-        <View style={styles.tableHeaderRow}>
-          <Text style={[styles.tableHeaderCell, { width: COL.num }]}>#</Text>
-          <Text style={[styles.tableHeaderCell, { width: COL.desc }]}>Description</Text>
-          <Text style={[styles.tableHeaderCell, { width: COL.hsn }]}>HSN/SAC</Text>
-          <Text style={[styles.tableHeaderCellRight, { width: COL.qty }]}>Qty</Text>
-          <Text style={[styles.tableHeaderCellRight, { width: COL.rate }]}>Rate</Text>
-          <Text style={[styles.tableHeaderCellRight, { width: COL.taxable }]}>Taxable</Text>
-          <Text style={[styles.tableHeaderCellRight, { width: COL.gstPct }]}>GST%</Text>
-          <Text style={[styles.tableHeaderCellRight, { width: COL.tax }]}>Tax Amt</Text>
-          <Text style={[styles.tableHeaderCellRight, { width: COL.total }]}>Total</Text>
-        </View>
-
-        {voucher.voucherItems.map((item, idx) => {
-          const taxAmt = new Decimal(item.cgstAmt ?? 0)
-            .plus(item.sgstAmt ?? 0)
-            .plus(item.igstAmt ?? 0)
-          const gstPct = item.igstRate
-            ? new Decimal(item.igstRate)
-            : item.cgstRate
-              ? new Decimal(item.cgstRate).times(2)
-              : new Decimal(0)
-          const lineTotal = new Decimal(item.amount).plus(taxAmt)
-          const rowStyle = idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt
-
-          return (
-            <View key={item.id} style={rowStyle} wrap={false}>
-              <Text style={[styles.tableBodyCell, { width: COL.num }]}>{idx + 1}</Text>
-              <Text style={[styles.tableBodyCell, { width: COL.desc }]}>{item.item.name}</Text>
-              <Text style={[styles.tableBodyCell, { width: COL.hsn }]}>{item.hsnCode ?? ''}</Text>
-              <Text style={[styles.tableBodyCellRight, { width: COL.qty }]}>
-                {new Decimal(item.qty).toFixed(2)}
-              </Text>
-              <Text style={[styles.tableBodyCellRight, { width: COL.rate }]}>
-                {formatAmount(item.rate)}
-              </Text>
-              <Text style={[styles.tableBodyCellRight, { width: COL.taxable }]}>
-                {formatAmount(item.amount)}
-              </Text>
-              <Text style={[styles.tableBodyCellRight, { width: COL.gstPct }]}>
-                {gstPct.toFixed(0)}%
-              </Text>
-              <Text style={[styles.tableBodyCellRight, { width: COL.tax }]}>
-                {formatAmount(taxAmt)}
-              </Text>
-              <Text style={[styles.tableBodyCellRight, { width: COL.total }]}>
-                {formatAmount(lineTotal)}
-              </Text>
-            </View>
-          )
-        })}
-
-        {/* ── GST Summary ──────────────────────────────────────────────────── */}
-        <View style={styles.summaryContainer}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Taxable Value</Text>
-            <Text style={styles.summaryValue}>{formatAmount(taxableValue)}</Text>
-          </View>
-
-          {cgst.gt(0) && (
-            <>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>CGST</Text>
-                <Text style={styles.summaryValue}>{formatAmount(cgst)}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>SGST</Text>
-                <Text style={styles.summaryValue}>{formatAmount(sgst)}</Text>
-              </View>
-            </>
-          )}
-
-          {igst.gt(0) && (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>IGST</Text>
-              <Text style={styles.summaryValue}>{formatAmount(igst)}</Text>
-            </View>
-          )}
-
-          {roundOff.abs().gt(0) && (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Round Off</Text>
-              <Text style={styles.summaryValue}>{formatAmount(roundOff)}</Text>
-            </View>
-          )}
-
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>TOTAL</Text>
-            <Text style={styles.totalValue}>{formatAmount(total)}</Text>
+          <View style={S.addressCol}>
+            <Text style={S.addressLabel}>Shipping Address:</Text>
+            <Text style={S.addressName}>{voucher.partyName}</Text>
+            <Text style={S.addressText}>{shippingAddr}</Text>
           </View>
         </View>
 
-        {/* ── IRN QR Code (rendered only when irnQrCode is present) ────────── */}
-        {qrDataUrl && (
-          <View style={styles.qrBlock}>
-            <Text style={styles.qrLabel}>IRN QR Code</Text>
-            <Image src={qrDataUrl} style={styles.qrImage} />
-            {voucher.irn && (
-              <Text style={styles.irnText}>{voucher.irn}</Text>
-            )}
-          </View>
-        )}
-
-        {/* ── Amount in Words ──────────────────────────────────────────────── */}
-        <View style={styles.amountWordsBox}>
-          <Text style={styles.amountWordsLabel}>Amount in Words</Text>
-          <Text style={styles.amountWordsText}>{amountToWords(total)}</Text>
-        </View>
-
-        {/* ── Bank Details + Terms ─────────────────────────────────────────── */}
-        <View style={styles.bottomRow}>
-          {(company.bankName || company.bankAccount) && (
-            <View style={styles.bankSection}>
-              <Text style={styles.bankTitle}>Bank Details</Text>
-              {company.bankName && (
-                <Text style={styles.bankDetail}>Bank: {company.bankName}</Text>
-              )}
-              {company.bankAccount && (
-                <Text style={styles.bankDetail}>Account No: {company.bankAccount}</Text>
-              )}
-              {company.ifsc && (
-                <Text style={styles.bankDetail}>IFSC: {company.ifsc}</Text>
-              )}
-            </View>
-          )}
-          {voucher.narration && (
-            <View style={[styles.bankSection, { flex: 1 }]}>
-              <Text style={styles.bankTitle}>Terms &amp; Conditions</Text>
-              <Text style={styles.bankDetail}>{voucher.narration}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* ── Footer ───────────────────────────────────────────────────────── */}
-        <View style={styles.footerRow}>
-          <Text style={styles.footerLeft}>
-            Authorised Signatory{'\n'}{company.name}
+        {/* ── Invoice Meta Details ───────────────────────────────────────── */}
+        {/*
+          Inline nested <Text> for bold values — react-pdf supports this.
+          Pattern: <Text style={S.metaLine}>Label: <Text style={S.metaBold}>Value</Text></Text>
+        */}
+        <View style={S.metaSection}>
+          <Text style={S.metaLine}>
+            {'Invoice Number: '}
+            <Text style={S.metaBold}>{voucher.voucherNo}</Text>
           </Text>
-          <Text style={styles.footerRight}>
-            This is a computer generated invoice and does not require a physical signature.
+          <Text style={S.metaLine}>
+            {'Invoice Date: '}
+            <Text style={S.metaBold}>{voucher.date}</Text>
           </Text>
+          <Text style={S.metaLine}>
+            {'Due Date: '}
+            <Text style={S.metaBold}>{voucher.dueDate}</Text>
+          </Text>
+          <Text style={S.metaLine}>
+            {'Place of Supply: '}
+            <Text style={S.metaBold}>{voucher.placeOfSupply}</Text>
+          </Text>
+          <Text style={S.metaLine}>
+            {'Payment Terms: '}
+            <Text style={S.metaBold}>{voucher.paymentTerms}</Text>
+          </Text>
+          <Text style={S.metaLine}>
+            {'Reverse Charge: '}
+            <Text style={S.metaBold}>{voucher.reverseCharge}</Text>
+          </Text>
+          {company.pan ? (
+            <Text style={S.metaLine}>
+              {'PAN: '}
+              <Text style={S.metaBold}>{company.pan}</Text>
+            </Text>
+          ) : null}
         </View>
+
+        {/* ── Items Table ────────────────────────────────────────────────── */}
+
+        {/* Table Header */}
+        <View style={S.tableHeader}>
+          <Text style={[S.colNo,   S.thText]}>S. No.</Text>
+          <Text style={[S.colDesc, S.thText]}>Item Description</Text>
+          <Text style={[S.colQty,  S.thText]}>Qty</Text>
+          <Text style={[S.colUnit, S.thText]}>Unit</Text>
+          <Text style={[S.colRate, S.thText]}>List Price</Text>
+          <Text style={[S.colDisc, S.thText]}>Disc.</Text>
+          <Text style={[S.colTax,  S.thText]}>Tax %</Text>
+          <Text style={[S.colAmt,  S.thText]}>{'Amount(₹)'}</Text>
+        </View>
+
+        {/* Table Rows */}
+        {items.map((item) => (
+          <View key={item.id} style={S.tableRow}>
+            <Text style={S.colNo}>{item.index}</Text>
+            <View style={S.colDesc}>
+              <Text style={S.itemName}>{item.name}</Text>
+              {item.hsnCode ? (
+                <Text style={S.hsnText}>{`HSN: ${item.hsnCode}`}</Text>
+              ) : null}
+            </View>
+            <Text style={S.colQty}>{item.qty}</Text>
+            <Text style={S.colUnit}>{item.unit}</Text>
+            <Text style={S.colRate}>{item.rate}</Text>
+            <Text style={S.colDisc}>{`${item.disc} (%)`}</Text>
+            <Text style={S.colTax}>{item.taxRate}</Text>
+            <Text style={S.colAmt}>{item.amount}</Text>
+          </View>
+        ))}
+
+        {/* Table Footer / Total Row */}
+        <View style={S.tableTotalRow}>
+          <Text style={[S.colNo,   S.thText]}>{' '}</Text>
+          <Text style={[S.colDesc, S.thText]}>Total</Text>
+          <Text style={[S.colQty,  S.thText]}>{totalQty}</Text>
+          <Text style={S.colUnit}>{' '}</Text>
+          <Text style={S.colRate}>{' '}</Text>
+          <Text style={S.colDisc}>{' '}</Text>
+          <Text style={S.colTax}>{' '}</Text>
+          <Text style={[S.colAmt,  S.thText]}>{fmtINR(voucher.subtotal || '0')}</Text>
+        </View>
+
+        {/* ── Flex spacer: pushes red bar to page bottom ─────────────────── */}
+        <View style={S.flexSpacer} />
+
+        {/* ── Amount-in-Words Red Bar ────────────────────────────────────── */}
+        <View style={S.redBar}>
+          <Text style={S.redBarLeft}>{voucher.amountInWords}</Text>
+          <Text style={S.redBarRight}>{`₹${totalFmt}`}</Text>
+        </View>
+
+        {/* ── Totals Block ───────────────────────────────────────────────── */}
+        <View style={S.totalsWrapper}>
+
+          {/* Subtotal (shown only when GST is present) */}
+          {hasGst ? (
+            <View style={S.totalRow}>
+              <Text style={S.totalLabel}>Subtotal</Text>
+              <Text style={S.totalValue}>{`₹${subtotalFmt}`}</Text>
+            </View>
+          ) : null}
+
+          {/* CGST row */}
+          {hasCgstSgst ? (
+            <View style={S.totalRow}>
+              <Text style={S.totalLabel}>{`CGST @ ${cgstRateLabel}%`}</Text>
+              <Text style={S.totalValue}>{`₹${cgstFmt}`}</Text>
+            </View>
+          ) : null}
+
+          {/* SGST row */}
+          {hasCgstSgst ? (
+            <View style={S.totalRow}>
+              <Text style={S.totalLabel}>{`SGST @ ${sgstRateLabel}%`}</Text>
+              <Text style={S.totalValue}>{`₹${sgstFmt}`}</Text>
+            </View>
+          ) : null}
+
+          {/* IGST row */}
+          {hasIgst ? (
+            <View style={S.totalRow}>
+              <Text style={S.totalLabel}>{`IGST @ ${igstRateLabel}%`}</Text>
+              <Text style={S.totalValue}>{`₹${igstFmt}`}</Text>
+            </View>
+          ) : null}
+
+          {/* Round-off row */}
+          {hasRoundOff ? (
+            <View style={S.totalRow}>
+              <Text style={S.totalLabel}>Round Off</Text>
+              <Text style={S.totalValue}>{roundFmt}</Text>
+            </View>
+          ) : null}
+
+          {/* Grand Total */}
+          <View style={S.grandTotalRow}>
+            <Text style={S.grandLabel}>Grand Total</Text>
+            <Text style={S.grandValue}>{`₹${totalFmt}`}</Text>
+          </View>
+
+          {/* Invoice Balance */}
+          <View style={S.balanceRow}>
+            <Text style={S.balanceLabel}>Invoice Balance</Text>
+            <Text style={S.balanceValue}>{totalFmt}</Text>
+          </View>
+        </View>
+
+        {/* ── Terms & Signatory ──────────────────────────────────────────── */}
+        <View style={S.bottomSection}>
+          <View style={S.termsBlock}>
+            <Text style={S.termsTitle}>Terms {'&'} Conditions</Text>
+            <Text style={S.termLine}>1. Goods once sold will not be taken back.</Text>
+            <Text style={S.termLine}>
+              {'2. Interest @ 18% p.a. will be charged if payment is not made within the stipulated time.'}
+            </Text>
+            <Text style={S.termLine}>
+              {"3. Subject to 'Rajasthan' Jurisdiction only."}
+            </Text>
+          </View>
+          <View style={S.signatoryBlock}>
+            <Text style={S.signatoryFor}>{`For ${company.name}`}</Text>
+            <Text style={S.signatoryLine}>Authorised Signatory</Text>
+          </View>
+        </View>
+
+        {/* ── CANCELLED Watermark ────────────────────────────────────────── */}
+        {/*
+          ✅ Ternary with null, not &&
+          ✅ transform as CSS string on Text, not View
+          ✅ opacity on Text directly
+        */}
+        {cancelled ? (
+          <View style={S.watermarkWrapper}>
+            <Text style={S.watermarkText}>CANCELLED</Text>
+          </View>
+        ) : null}
+
+        {/* ── Page Footer (absolute — always at page bottom) ─────────────── */}
+        <Text
+          style={S.pageFooter}
+          render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+          fixed
+        />
       </Page>
     </Document>
   )

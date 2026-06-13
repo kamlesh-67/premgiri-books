@@ -74,7 +74,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
 
       {/* KPI Cards — D-07: 5 cards for business, D-08: 4 cards for accountant */}
       {view === 'business' ? (
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <KPICard
             title="Money Owed to You"
             value={formatINR(businessData.receivables)}
@@ -116,7 +116,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
           />
         </div>
       ) : (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <KPICard
             title="Total Assets"
             value={formatINR(accountantData?.totalAssets ?? '0')}
@@ -152,7 +152,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
       {view === 'accountant' && <SmartInsightsWidget />}
 
       {/* D-09: 2 charts below KPIs — both views show same charts */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Chart 1: Sales vs Purchases area chart */}
         <SectionCard title="Sales vs Purchases — Last 6 Months">
           <div className="h-[220px]">
@@ -238,7 +238,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
       {/* D-10: Getting Started section — shown only when no POSTED vouchers */}
       {showGettingStarted && (
         <SectionCard title="Getting Started">
-          <div className="grid grid-cols-3 gap-4 py-2">
+          <div className="grid grid-cols-1 gap-4 py-2 sm:grid-cols-2 md:grid-cols-3">
             {/* Card 1: Add Customer */}
             <div className="bg-white rounded-lg border border-dashed border-gray-200 p-5 flex flex-col items-center text-center gap-3">
               <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">

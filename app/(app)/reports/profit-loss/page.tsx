@@ -10,7 +10,7 @@ import type { ProfitLossGroup } from '@/lib/services/ReportEngine'
 
 function PLGroupRows({
   groups,
-  showCompare,
+  showCompare: _showCompare,
 }: {
   groups: ProfitLossGroup[]
   showCompare: boolean

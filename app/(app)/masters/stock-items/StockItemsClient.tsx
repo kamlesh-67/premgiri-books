@@ -1,9 +1,10 @@
 ﻿'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, PowerOff, Package } from 'lucide-react'
+import { Plus, Pencil, PowerOff, Package, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -59,14 +60,31 @@ export function StockItemsClient({ initialItems, uiMode, uoms }: StockItemsClien
   const [showForm, setShowForm] = useState(false)
   const [editItem, setEditItem] = useState<StockItem | null>(null)
   const [deactivateItem, setDeactivateItem] = useState<StockItem | null>(null)
+  
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('All')
 
-  const { data: items = initialItems } = useQuery<StockItem[]>({
+  const { data: rawItems = initialItems } = useQuery<StockItem[]>({
     queryKey: ['stock-items'],
     queryFn: () =>
       fetch('/api/v1/masters/stock-items').then((r) => r.json()),
     initialData: initialItems,
     staleTime: 30 * 1000,
   })
+
+  const items = useMemo(() => {
+    return rawItems.filter(item => {
+      const matchesSearch = !query || 
+        item.name.toLowerCase().includes(query.toLowerCase()) || 
+        (item.hsnCode && item.hsnCode.toLowerCase().includes(query.toLowerCase()));
+      
+      const matchesStatus = statusFilter === 'All' || 
+        (statusFilter === 'Active' && item.isActive) || 
+        (statusFilter === 'Inactive' && !item.isActive);
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [rawItems, query, statusFilter]);
 
   const deactivateMutation = useMutation({
     mutationFn: (id: string) =>
@@ -118,6 +136,28 @@ export function StockItemsClient({ initialItems, uiMode, uoms }: StockItemsClien
         />
 
         {/* Table or empty state */}
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between mb-2">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              type="text"
+              placeholder="Search by name or HSN..."
+              className="pl-9 bg-white"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full sm:w-auto h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-600"
+          >
+            <option value="All">All status</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+        </div>
+
         {items.length === 0 ? (
           <EmptyState
             icon={Package}

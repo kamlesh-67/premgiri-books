@@ -23,12 +23,18 @@ export default async function AppLayout({
   const headersList = await headers()
   const uiMode = (headersList.get('x-ui-mode') ?? 'simple') as UiMode
 
-  // Fetch user name from DB using userId from JWT payload
+  // Fetch user and company details from DB using userId and companyId from JWT payload
   const user = await authDb.user.findUnique({
     where: { id: session.userId, companyId: session.companyId },
-    select: { name: true },
+    select: { 
+      name: true,
+      company: {
+        select: { name: true }
+      }
+    },
   })
   const name = user?.name ?? 'User'
+  const companyName = user?.company?.name ?? 'PremGiri Books'
   const initials = name
     .split(' ')
     .map((n: string) => n[0])
@@ -44,7 +50,7 @@ export default async function AppLayout({
       <Topbar userName={name} userInitials={initials} />
 
       <AppSidebar
-        companyName="PremGiri Demo Co"
+        companyName={companyName}
         userName={name}
         userRole={session.role ?? ''}
         financialYear="2024-25"

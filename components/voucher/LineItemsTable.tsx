@@ -33,8 +33,9 @@ export interface StockItemOption {
   name: string
   gstRate: number
   openingRate: string
+  currentQty: string // Added to show available stock
   hsnCode?: string
-  uom?: string  // CR-002: unit symbol pre-populated on item select
+  uom?: string | { symbol: string } // CR-002: unit symbol or object
 }
 
 export interface GodownOption {
@@ -52,6 +53,7 @@ export interface LineItemsTableProps {
   partyStateCode: string
   stockItems: StockItemOption[]
   godowns?: GodownOption[]
+  uoms?: Array<{ id: string; name: string; symbol: string }>
   defaultGodownId?: string
   onRequestCreate?: (name: string, rowIndex: number) => void
 }
@@ -132,8 +134,20 @@ function ProductCombobox({
                       value === item.id ? 'opacity-100' : 'opacity-0'
                     )}
                   />
-                  <span className="flex-1">{item.name}</span>
-                  <span className="ml-2 text-xs text-gray-400">{item.gstRate}%</span>
+                  <div className="flex flex-col flex-1">
+                    <span className="text-sm font-medium">{item.name}</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded uppercase">
+                        {item.gstRate}% GST
+                      </span>
+                      <span className={cn(
+                        "text-[10px] px-1.5 py-0.5 rounded font-semibold",
+                        new Decimal(item.currentQty).gt(0) ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                      )}>
+                        Stock: {item.currentQty}
+                      </span>
+                    </div>
+                  </div>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -171,6 +185,8 @@ export function LineItemsTable({
   companyStateCode,
   partyStateCode,
   stockItems,
+  godowns: _godowns,
+  uoms = [],
   defaultGodownId,
   onRequestCreate,
 }: LineItemsTableProps) {
@@ -224,12 +240,28 @@ export function LineItemsTable({
   const anyInterState = rowAmounts.some((r) => r.taxType === 'INTER_STATE')
   const sgstIgstHeader = anyInterState ? 'IGST (₹)' : 'SGST (₹)'
 
+  const isSales = voucherType === 'SALES'
+
   function handleProductSelect(index: number, item: StockItemOption) {
     setValue(`items.${index}.itemId`, item.id)
     setValue(`items.${index}._gstRate`, item.gstRate)
-    setValue(`items.${index}.rate`, item.openingRate)
+    
+    // User Requirement: RATE PRICE + 5% MARGINE
+    let rate = new Decimal(item.openingRate)
+    if (isSales) {
+      rate = rate.times(1.05).toDecimalPlaces(2)
+    }
+    setValue(`items.${index}.rate`, rate.toString())
+    
     setValue(`items.${index}.hsnCode`, item.hsnCode ?? '')
-    setValue(`items.${index}.unit`, item.uom ?? '')  // CR-002
+    setValue(`items.${index}._maxQty`, item.currentQty) // Store max available qty for validation
+    
+    // Handle UOM safely — if it's an object, get the symbol
+    let uomSymbol = ''
+    if (typeof item.uom === 'string') uomSymbol = item.uom
+    else if (item.uom && typeof item.uom === 'object' && 'symbol' in item.uom) uomSymbol = item.uom.symbol
+    
+    setValue(`items.${index}.unit`, uomSymbol)  // CR-002
     setValue(`items.${index}._newItemName`, '')
   }
 
@@ -244,6 +276,7 @@ export function LineItemsTable({
       discountAmt: '0',
       hsnCode: '',
       _gstRate: 0,
+      _maxQty: '999999',
       gstRateOverride: undefined,
       itcEligible: isPurchase,
       godownId: defaultGodownId ?? '',
@@ -261,38 +294,38 @@ export function LineItemsTable({
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-100">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1060px]">
+        <table className="w-full min-w-[1200px]">
           {/* ── Header ── */}
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide w-[160px]">
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide w-[200px]">
                 Product
               </th>
-              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[68px]">
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[90px]">
                 Qty
               </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide w-[55px]">
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide w-[100px]">
                 Unit
               </th>
-              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[88px]">
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[110px]">
                 Rate (₹)
               </th>
-              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[108px]">
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[120px]">
                 Disc
               </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide w-[78px]">
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide w-[90px]">
                 HSN
               </th>
-              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[60px]">
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[70px]">
                 GST %
               </th>
-              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[80px]">
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[100px]">
                 CGST (₹)
               </th>
-              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[80px]">
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[100px]">
                 {sgstIgstHeader}
               </th>
-              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[96px]">
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide w-[110px]">
                 Amount (₹)
               </th>
               <th className="px-3 py-3 w-[32px]" />
@@ -353,26 +386,40 @@ export function LineItemsTable({
                             type="number"
                             min="0"
                             step="any"
-                            className="text-right text-sm w-full"
+                            className={cn(
+                              "text-right text-sm w-full min-w-[60px]",
+                              isSales && new Decimal(f.value || "0").gt(new Decimal((watchedItems?.[index]?._maxQty as string) || "999999")) && "border-red-500 text-red-600 focus-visible:ring-red-500"
+                            )}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const max = new Decimal((watchedItems?.[index]?._maxQty as string) || "999999");
+                              if (isSales && new Decimal(val || "0").gt(max)) {
+                                import('sonner').then(({ toast }) => toast.error(`Only ${max} available in stock`));
+                                f.onChange(max.toString());
+                              } else {
+                                f.onChange(val);
+                              }
+                            }}
                           />
                         )}
                       />
                     </td>
 
-                    {/* Unit — CR-002 */}
+                    {/* Unit — CR-002: Dropdown */}
                     <td className="px-3 py-2">
                       <Controller
                         control={control}
                         name={`items.${index}.unit`}
                         render={({ field: f }) => (
-                          <Input
+                          <select
                             {...f}
-                            value={f.value ?? ''}
-                            type="text"
-                            placeholder="PCS"
-                            maxLength={15}
-                            className="text-sm w-full uppercase"
-                          />
+                            className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-purple-600 min-w-[80px]"
+                          >
+                            <option value="">—</option>
+                            {uoms.map(u => (
+                              <option key={u.id} value={u.symbol}>{u.symbol}</option>
+                            ))}
+                          </select>
                         )}
                       />
                     </td>
@@ -388,7 +435,7 @@ export function LineItemsTable({
                             type="number"
                             min="0"
                             step="any"
-                            className="text-right text-sm w-full"
+                            className="text-right text-sm w-full min-w-[80px]"
                           />
                         )}
                       />
@@ -427,7 +474,7 @@ export function LineItemsTable({
                                 type="number"
                                 min="0"
                                 step="any"
-                                className="text-right text-sm flex-1 min-w-0"
+                                className="text-right text-sm flex-1 min-w-[60px]"
                               />
                             )}
                           />
@@ -447,7 +494,7 @@ export function LineItemsTable({
                             type="text"
                             maxLength={12}
                             placeholder="HSN"
-                            className="text-sm w-full"
+                            className="text-sm w-full min-w-[70px]"
                           />
                         )}
                       />
@@ -466,8 +513,8 @@ export function LineItemsTable({
                           return (
                             <select
                               value={effectiveRate}
-                              onChange={(e) => f.onChange(parseFloat(e.target.value))}
-                              className="w-full border border-gray-200 rounded-md px-1.5 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-purple-600"
+                              onChange={(e) => f.onChange(new Decimal(String(e.target.value || '0')).toNumber())}
+                              className="w-full border border-gray-200 rounded-md px-1.5 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-purple-600 min-w-[60px]"
                             >
                               {ratesWithCurrent.map((r) => (
                                 <option key={r} value={r}>{r}%</option>
@@ -478,22 +525,34 @@ export function LineItemsTable({
                       />
                     </td>
 
-                    {/* CGST ₹ */}
-                    <td className="px-3 py-2 text-right text-sm tabular-nums">
+                    {/* CGST ₹ — Increase precision display if requested */}
+                    <td className="px-3 py-2 text-right text-sm tabular-nums min-w-[90px]">
                       {amounts && isIntra ? (
-                        <span className="text-gray-700">{formatINR(amounts.cgst.toFixed(2))}</span>
+                        <span className="text-gray-700">
+                          {amounts.cgst.gt(0) && amounts.cgst.decimalPlaces() > 2 
+                            ? amounts.cgst.toFixed(4) 
+                            : formatINR(amounts.cgst.toFixed(2))}
+                        </span>
                       ) : (
                         <span className="text-gray-300">₹0.00</span>
                       )}
                     </td>
 
-                    {/* SGST / IGST ₹ */}
-                    <td className="px-3 py-2 text-right text-sm tabular-nums">
+                    {/* SGST / IGST ₹ — Increase precision display if requested */}
+                    <td className="px-3 py-2 text-right text-sm tabular-nums min-w-[90px]">
                       {amounts ? (
                         isIntra ? (
-                          <span className="text-gray-700">{formatINR(amounts.sgst.toFixed(2))}</span>
+                          <span className="text-gray-700">
+                            {amounts.sgst.gt(0) && amounts.sgst.decimalPlaces() > 2 
+                              ? amounts.sgst.toFixed(4) 
+                              : formatINR(amounts.sgst.toFixed(2))}
+                          </span>
                         ) : (
-                          <span className="text-gray-700">{formatINR(amounts.igst.toFixed(2))}</span>
+                          <span className="text-gray-700">
+                            {amounts.igst.gt(0) && amounts.igst.decimalPlaces() > 2 
+                              ? amounts.igst.toFixed(4) 
+                              : formatINR(amounts.igst.toFixed(2))}
+                          </span>
                         )
                       ) : (
                         <span className="text-gray-300">₹0.00</span>
@@ -501,7 +560,7 @@ export function LineItemsTable({
                     </td>
 
                     {/* Amount */}
-                    <td className="px-3 py-2 text-right text-sm text-gray-900 font-medium tabular-nums">
+                    <td className="px-3 py-2 text-right text-sm text-gray-900 font-medium tabular-nums min-w-[100px]">
                       {amounts ? formatINR(amounts.total.toFixed(2)) : '₹0.00'}
                     </td>
 

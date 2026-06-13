@@ -115,7 +115,6 @@ export async function GET(
     ['Difference', brsData.difference],
   ]
 
-  let rowIndex = 7 // row 6 is blank
   for (const [label, amount] of brsRows) {
     const row = summarySheet.addRow([label, amount])
     row.getCell(1).font = {
@@ -124,7 +123,6 @@ export async function GET(
     if (typeof amount === 'string' && amount !== '' && amount !== null) {
       row.getCell(2).numFmt = '#,##0.00'
     }
-    rowIndex++
   }
 
   // Reconciliation status row

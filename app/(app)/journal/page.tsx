@@ -13,6 +13,7 @@ import { Toolbar } from "@/components/primitives/Toolbar";
 import { StatusBadge } from "@/components/primitives/StatusBadge";
 import { RowActions } from "@/components/primitives/RowActions";
 import { formatINR, formatDate } from "@/lib/format";
+import { Decimal } from "decimal.js";
 import { JournalForm } from "./forms/JournalForm";
 
 // ---------------------------------------------------------------------------
@@ -117,7 +118,7 @@ export default function Journal() {
       align: "right",
       cell: (r) => (
         <span className="font-semibold tabular-nums">
-          {formatINR(parseFloat(r.totalAmount) || 0)}
+          {formatINR(new Decimal(String(r.totalAmount || '0')).toNumber())}
         </span>
       ),
     },

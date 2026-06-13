@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Decimal } from "decimal.js";
 
 export const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
@@ -129,8 +130,8 @@ export const journalSchema = z
   })
   .refine(
     (v) => {
-      const d = v.lines.reduce((a, l) => a + Number(l.debit || 0), 0);
-      const c = v.lines.reduce((a, l) => a + Number(l.credit || 0), 0);
+      const d = v.lines.reduce((a, l) => a.plus(String(l.debit || 0)), new Decimal(0)).toNumber();
+      const c = v.lines.reduce((a, l) => a.plus(String(l.credit || 0)), new Decimal(0)).toNumber();
       return Math.abs(d - c) < 0.01 && d > 0;
     },
     { message: "Debits must equal credits and be greater than zero", path: ["lines"] },

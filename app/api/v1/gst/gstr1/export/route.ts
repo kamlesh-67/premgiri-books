@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
         hsn_sc: row.hsnCode,
         desc: row.description,
         uqc: row.uom,
-        cnt: parseFloat(row.qty),
+        cnt: new Decimal(String(row.qty || '0')).toNumber(),
         txval: new Decimal(row.taxableValue).toFixed(2),
         iamt: new Decimal(row.igst).toFixed(2),
         camt: new Decimal(row.cgst).toFixed(2),

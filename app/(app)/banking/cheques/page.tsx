@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { subDays } from "date-fns"
 import { Decimal } from "decimal.js"
 import { Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+// Button reserved for future actions
 import {
   Select,
   SelectContent,
@@ -17,7 +17,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { PageHeader } from "@/components/primitives/PageHeader"
 import { SectionCard } from "@/components/primitives/SectionCard"
-import { StatusBadge } from "@/components/primitives/StatusBadge"
 import { formatINR, formatDate } from "@/lib/format"
 import { useUiStore } from "@/lib/stores/uiStore"
 import { cn } from "@/lib/utils"
@@ -46,7 +45,8 @@ const STATUS_TABS: { label: string; value: StatusFilter }[] = [
   { label: "Cancelled", value: "CANCELLED" },
 ]
 
-/** Maps chequeStatus to StatusBadge variant */
+/** @unused — reserved for future StatusBadge integration */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function chequeStatusVariant(status: string) {
   switch (status) {
     case "ISSUED":

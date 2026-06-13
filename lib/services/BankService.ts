@@ -21,7 +21,7 @@
  *   - D-06: confidence scoring delegated to MatchingEngine.runMatch
  */
 
-import { parseCsvToRows, BANK_PARSERS, type BankName } from '@/lib/banking/bankParsers'
+import { parseCsvToRows, type BankName } from '@/lib/banking/bankParsers'
 import { runMatch, getBooksClosingBalance } from '@/lib/banking/MatchingEngine'
 import { prisma } from '@/lib/prisma'
 import { Decimal } from 'decimal.js'

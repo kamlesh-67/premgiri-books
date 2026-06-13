@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Loader2, UserPlus } from "lucide-react";
 
 import { useUiStore } from "@/lib/stores/uiStore";
 import { salesInvoiceSchema, type SalesInvoiceInput } from "@/lib/schemas/vouchers";
@@ -15,6 +16,13 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import InvoiceForm from "./InvoiceForm";
 
 import { Decimal } from "decimal.js";
@@ -30,6 +38,7 @@ interface PartyOption {
   name: string;
   stateCode?: string;
   gstin?: string;
+  partyType?: string;
 }
 
 interface CompanySession {
@@ -39,6 +48,88 @@ interface CompanySession {
     name?: string;
   };
   stateCode?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Quick Customer Create Dialog (simple mode)
+// ---------------------------------------------------------------------------
+
+function QuickCustomerDialog({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: (party: PartyOption) => void;
+}) {
+  const [name, setName] = useState("");
+  const [gstin, setGstin] = useState("");
+  const [phone, setPhone] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/v1/masters/ledgers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          partyType: "customer",
+          name: name.trim(),
+          gstin: gstin.trim() || undefined,
+          phone: phone.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.issues?.[0]?.message ?? err?.error ?? "Failed to create customer");
+        return;
+      }
+      const ledger = await res.json();
+      toast.success(`Customer "${ledger.name}" created`);
+      onCreated({ id: ledger.id, name: ledger.name, partyType: "Customer" });
+      setName(""); setGstin(""); setPhone("");
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { onClose(); setName(""); setGstin(""); setPhone(""); } }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>New Customer</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label>Name <span className="text-red-500">*</span></Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Customer name" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>GSTIN <span className="text-gray-400 text-xs font-normal">(optional)</span></Label>
+            <Input value={gstin} onChange={(e) => setGstin(e.target.value)} placeholder="29ABCDE1234F1Z5" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Phone <span className="text-gray-400 text-xs font-normal">(optional)</span></Label>
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Mobile number" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+            onClick={handleSave}
+            disabled={saving || !name.trim()}
+          >
+            {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</> : "Create Customer"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -82,6 +173,7 @@ function SalesInvoiceWizard({ onSuccess }: { onSuccess: (id: string) => void }) 
   });
 
   const [selectedPartyId, setSelectedPartyId] = useState<string>("");
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
   const companyStateCode = sessionData?.user?.stateCode ?? "";
   const selectedParty = parties.find((p) => p.id === selectedPartyId);
   const partyStateCode = selectedParty?.stateCode ?? "";
@@ -161,27 +253,36 @@ function SalesInvoiceWizard({ onSuccess }: { onSuccess: (id: string) => void }) 
           <Label htmlFor="party" className="text-sm font-medium text-gray-700">
             Customer <span className="text-red-500">*</span>
           </Label>
-          <select
-            id="party"
-            className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-purple-600"
-            value={selectedPartyId}
-            onChange={(e) => {
-              setSelectedPartyId(e.target.value);
-              form.setValue("partyLedgerId", e.target.value);
-            }}
-          >
-            <option value="">Select a customer...</option>
-            {parties
-              .filter((p) => {
-                // Show only customers (Sundry Debtors group)
-                return true; // All parties shown — server filters by type
-              })
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-          </select>
+          <div className="flex gap-1.5">
+            <select
+              id="party"
+              className="flex-1 border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-purple-600"
+              value={selectedPartyId}
+              onChange={(e) => {
+                setSelectedPartyId(e.target.value);
+                form.setValue("partyLedgerId", e.target.value);
+              }}
+            >
+              <option value="">Select a customer...</option>
+              {parties
+                .filter((p) => p.partyType === "Customer")
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+            </select>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="px-2 shrink-0 text-gray-500 hover:text-purple-600 border-gray-200"
+              onClick={() => setShowNewCustomer(true)}
+              title="New customer"
+            >
+              <UserPlus className="h-4 w-4" />
+            </Button>
+          </div>
           {form.formState.errors.partyLedgerId && (
             <p className="text-xs text-red-500">
               {form.formState.errors.partyLedgerId.message}
@@ -290,11 +391,23 @@ function SalesInvoiceWizard({ onSuccess }: { onSuccess: (id: string) => void }) 
   };
 
   return (
-    <GuidedWizard
-      steps={[step1, step2, step3]}
-      onComplete={handleComplete}
-      title="Create Invoice"
-    />
+    <>
+      <GuidedWizard
+        steps={[step1, step2, step3]}
+        onComplete={handleComplete}
+        title="Create Invoice"
+      />
+      <QuickCustomerDialog
+        open={showNewCustomer}
+        onClose={() => setShowNewCustomer(false)}
+        onCreated={(party) => {
+          queryClient.invalidateQueries({ queryKey: ["parties"] });
+          setSelectedPartyId(party.id);
+          form.setValue("partyLedgerId", party.id);
+          setShowNewCustomer(false);
+        }}
+      />
+    </>
   );
 }
 

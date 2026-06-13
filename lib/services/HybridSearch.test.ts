@@ -144,7 +144,7 @@ describe('vectorSearch', () => {
     const mockQueryRaw = vi.mocked(prisma.$queryRaw)
 
     // Capture the raw SQL template tag calls to inspect
-    let capturedTemplates: string[] = []
+    const capturedTemplates: string[] = []
     mockQueryRaw.mockImplementation(((template: TemplateStringsArray, ..._values: unknown[]) => {
       // Join template parts to inspect the SQL skeleton
       capturedTemplates.push(template.join('?'))

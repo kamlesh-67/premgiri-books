@@ -4,7 +4,7 @@ import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Download } from "lucide-react";
+import { Loader2, Download, Printer, FileSpreadsheet } from "lucide-react";
 
 import { useUiStore } from "@/lib/stores/uiStore";
 import { formatINR } from "@/lib/utils/format";
@@ -141,8 +141,8 @@ export default function SalesInvoiceDetailPage({
   // ── Determine GST tax type ───────────────────────────────────────────────
   const gstTaxType = (() => {
     if (!voucher) return "EXEMPT" as const;
-    const cgst = parseFloat(voucher.cgstAmount || "0");
-    const igst = parseFloat(voucher.igstAmount || "0");
+    const cgst = new Decimal(String(voucher.cgstAmount || '0')).toNumber();
+    const igst = new Decimal(String(voucher.igstAmount || '0')).toNumber();
     if (cgst > 0) return "INTRA_STATE" as const;
     if (igst > 0) return "INTER_STATE" as const;
     return "EXEMPT" as const;
@@ -206,6 +206,40 @@ export default function SalesInvoiceDetailPage({
     }
   }
 
+  // ── Excel Export ─────────────────────────────────────────────────────────
+  const handleExportExcel = async () => {
+    const url = `/api/v1/sales-invoice/${id}/export`
+    window.open(url, '_blank')
+    toast.success('Excel export started.')
+  }
+
+  // ── Print PDF ─────────────────────────────────────────────────────────────
+  const handlePrintPDF = async () => {
+    setIsDownloading(true)
+    try {
+      const res = await fetch(`/api/v1/vouchers/${id}/pdf`)
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error ?? 'Could not generate PDF')
+      }
+      const { url } = await res.json()
+      // Create a hidden iframe for printing
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = url;
+      document.body.appendChild(iframe);
+      iframe.onload = () => {
+        iframe.contentWindow?.print();
+      };
+      toast.success('Print dialog opened.')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Could not open print dialog.'
+      toast.error(message)
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   // ── Map voucherEntries to AccountingEntryRow ─────────────────────────────
   const accountingEntries: AccountingEntryRow[] = voucher.voucherEntries.map((e) => ({
     ledgerId: e.ledgerId,
@@ -244,25 +278,46 @@ export default function SalesInvoiceDetailPage({
 
             {/* Download PDF — only for POSTED SALES invoices (per D-04) */}
             {isPosted && isSales && (
-              <Button
-                size="sm"
-                onClick={handleDownloadPDF}
-                disabled={isDownloading}
-                aria-label="Download invoice PDF"
-                className={isDownloading ? 'opacity-70 cursor-not-allowed' : ''}
-              >
-                {isDownloading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating PDF...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4 mr-2" />
-                    Download PDF
-                  </>
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportExcel}
+                  aria-label="Export invoice to Excel"
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Excel
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintPDF}
+                  disabled={isDownloading}
+                  aria-label="Print invoice PDF"
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleDownloadPDF}
+                  disabled={isDownloading}
+                  aria-label="Download invoice PDF"
+                  className={isDownloading ? 'opacity-70 cursor-not-allowed' : ''}
+                >
+                  {isDownloading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4 mr-2" />
+                      PDF
+                    </>
+                  )}
+                </Button>
+              </div>
             )}
           </div>
         }
@@ -334,9 +389,9 @@ export default function SalesInvoiceDetailPage({
               </thead>
               <tbody>
                 {voucher.voucherItems.map((item) => {
-                  const cgstAmt = parseFloat(item.cgstAmt ?? "0");
-                  const sgstAmt = parseFloat(item.sgstAmt ?? "0");
-                  const igstAmt = parseFloat(item.igstAmt ?? "0");
+                  const cgstAmt = new Decimal(String(item.cgstAmt ?? '0')).toNumber();
+                  const sgstAmt = new Decimal(String(item.sgstAmt ?? '0')).toNumber();
+                  const igstAmt = new Decimal(String(item.igstAmt ?? '0')).toNumber();
                   const totalGst = cgstAmt + sgstAmt + igstAmt;
                   return (
                     <tr key={item.id} className="border-b border-gray-50 hover:bg-gray-50">
@@ -365,11 +420,11 @@ export default function SalesInvoiceDetailPage({
       <SectionCard title="GST Summary">
         <GSTSummaryPanel
           taxableTotal={(() => {
-            const total = parseFloat(voucher.totalAmount || "0");
+            const total = new Decimal(String(voucher.totalAmount || '0')).toNumber();
             const gst =
-              parseFloat(voucher.cgstAmount || "0") +
-              parseFloat(voucher.sgstAmount || "0") +
-              parseFloat(voucher.igstAmount || "0");
+              new Decimal(String(voucher.cgstAmount || '0')).toNumber() +
+              new Decimal(String(voucher.sgstAmount || '0')).toNumber() +
+              new Decimal(String(voucher.igstAmount || '0')).toNumber();
             return (total - gst).toFixed(2);
           })()}
           cgstTotal={voucher.cgstAmount}

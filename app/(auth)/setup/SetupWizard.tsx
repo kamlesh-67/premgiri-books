@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { z } from 'zod'
+import { Decimal } from 'decimal.js'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -111,7 +112,7 @@ export function SetupWizard() {
     if (gstin && gstin.length >= 2) {
       companyForm.setValue('stateCode', gstin.substring(0, 2))
     }
-  }, [gstin])
+  }, [gstin, companyForm])
 
   function handleCompanyNext(data: CompanyFormData) {
     setCompanyData(data)
@@ -162,7 +163,7 @@ export function SetupWizard() {
 
       {/* RIGHT PANEL */}
       <div className="w-full md:w-1/2 bg-white flex items-center justify-center">
-        <div className="w-full max-w-sm px-8">
+        <div key={step} className="w-full max-w-sm px-8">
           <p className="text-xs text-gray-400 mb-1">
             Step {step === 'company' ? 1 : 2} of 2
           </p>
@@ -193,6 +194,7 @@ export function SetupWizard() {
                         <Input
                           placeholder="Sharma Trading Co."
                           className="border-gray-200"
+                          autoFocus
                           {...field}
                         />
                       </FormControl>
@@ -291,7 +293,7 @@ export function SetupWizard() {
                         Financial Year Start Month
                       </FormLabel>
                       <Select
-                        onValueChange={(val) => field.onChange(Number(val))}
+                        onValueChange={(val) => field.onChange(new Decimal(String(val || '0')).toNumber())}
                         defaultValue={String(field.value)}
                       >
                         <FormControl>
@@ -339,6 +341,8 @@ export function SetupWizard() {
                       <FormControl>
                         <Input
                           type="password"
+                          autoFocus
+                          autoComplete="new-password"
                           placeholder="••••••••"
                           className="border-gray-200"
                           {...field}
@@ -360,6 +364,7 @@ export function SetupWizard() {
                       <FormControl>
                         <Input
                           type="password"
+                          autoComplete="new-password"
                           placeholder="••••••••"
                           className="border-gray-200"
                           {...field}

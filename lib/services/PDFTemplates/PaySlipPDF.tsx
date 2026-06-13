@@ -10,6 +10,7 @@
  */
 import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer'
 import path from 'path'
+import { Decimal } from 'decimal.js'
 
 // Register fonts at module scope — once on Node.js module load
 // NEVER use Google Fonts CDN URLs — ENOTFOUND risk in Vercel serverless (T-06-05-04)
@@ -37,7 +38,7 @@ export interface PaySlipData {
 // Pure arithmetic Indian lakh formatter — no ICU locale data dependency (safe in Vercel serverless)
 // Copied from SalesInvoicePDF.tsx — do NOT use toLocaleString('en-IN') (breaks without full ICU)
 function formatAmount(value: string): string {
-  const num = parseFloat(value)
+  const num = new Decimal(String(value || '0')).toNumber()
   if (isNaN(num)) return '₹0.00'
   const [intPart, decPart = '00'] = num.toFixed(2).split('.')
   const lastThree = intPart.slice(-3)
@@ -145,6 +146,7 @@ export function PaySlipPDF({ data }: { data: PaySlipData }) {
         <View style={styles.header}>
           <View style={styles.companyBlock}>
             {data.company.logoUrl && (
+              // eslint-disable-next-line jsx-a11y/alt-text
               <Image
                 src={data.company.logoUrl}
                 style={{ width: 48, height: 48, objectFit: 'contain', marginBottom: 8 }}

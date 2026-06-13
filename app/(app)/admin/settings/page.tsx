@@ -37,7 +37,7 @@ export default function Settings() {
         </SectionCard>
         <SectionCard title="Demo data">
           <p className="mb-3 text-sm text-muted-foreground">
-            Restore all sample masters and transactions to their original state. This wipes any records you've added or edited.
+            Restore all sample masters and transactions to their original state. This wipes any records you&apos;ve added or edited.
           </p>
           <Button
             variant="outline"

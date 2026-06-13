@@ -103,9 +103,10 @@ export async function embedBatch(texts: string[]): Promise<number[][]> {
  */
 export async function persistEmbedding(
   table: 'vouchers' | 'ledgers',
-  id: string,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  embedding: number[]
+  _id: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _embedding: number[]
 ): Promise<void> {
   if (table === 'vouchers') {
     // Phase 11 (AI embedding) deferred — SQLite has no vector type; these calls are no-ops until re-enabled

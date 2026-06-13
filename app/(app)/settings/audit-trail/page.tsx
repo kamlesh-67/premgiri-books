@@ -195,6 +195,34 @@ export default function AuditTrailPage() {
   const [prevCursors, setPrevCursors] = useState<(string | null)[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
+  // ── Data fetching (hooks must be called before any early return) ─────────────
+  const { data, isLoading } = useQuery<AuditLogsResponse>({
+    queryKey: ['audit-logs', userFilter, dateRange, entityFilter, cursor],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (userFilter !== 'all') params.set('userId', userFilter)
+      if (dateRange?.from) params.set('dateFrom', dateRange.from.toISOString())
+      if (dateRange?.to) params.set('dateTo', dateRange.to.toISOString())
+      if (entityFilter) params.set('entity', entityFilter)
+      if (cursor) params.set('cursor', cursor)
+      return fetch(`/api/v1/audit-logs?${params.toString()}`).then((r) => {
+        if (!r.ok) throw new Error('Failed to load audit logs')
+        return r.json() as Promise<AuditLogsResponse>
+      })
+    },
+    enabled: isAdmin,
+  })
+
+  const { data: usersData } = useQuery<UserListItem[]>({
+    queryKey: ['users-list'],
+    queryFn: () =>
+      fetch('/api/v1/users').then((r) => {
+        if (!r.ok) throw new Error('Failed to load users')
+        return r.json() as Promise<UserListItem[]>
+      }),
+    enabled: isAdmin,
+  })
+
   // ── Permission gate ──────────────────────────────────────────────────────────
   if (!isAdmin) {
     return (
@@ -209,34 +237,6 @@ export default function AuditTrailPage() {
       </div>
     )
   }
-
-  // ── Data fetching ────────────────────────────────────────────────────────────
-  const params = new URLSearchParams()
-  if (userFilter !== 'all') params.set('userId', userFilter)
-  if (dateRange?.from) params.set('dateFrom', dateRange.from.toISOString())
-  if (dateRange?.to) params.set('dateTo', dateRange.to.toISOString())
-  if (entityFilter) params.set('entity', entityFilter)
-  if (cursor) params.set('cursor', cursor)
-
-  const { data, isLoading } = useQuery<AuditLogsResponse>({
-    queryKey: ['audit-logs', userFilter, dateRange, entityFilter, cursor],
-    queryFn: () =>
-      fetch(`/api/v1/audit-logs?${params.toString()}`).then((r) => {
-        if (!r.ok) throw new Error('Failed to load audit logs')
-        return r.json() as Promise<AuditLogsResponse>
-      }),
-    enabled: isAdmin,
-  })
-
-  const { data: usersData } = useQuery<UserListItem[]>({
-    queryKey: ['users-list'],
-    queryFn: () =>
-      fetch('/api/v1/users').then((r) => {
-        if (!r.ok) throw new Error('Failed to load users')
-        return r.json() as Promise<UserListItem[]>
-      }),
-    enabled: isAdmin,
-  })
 
   // ── Filter helpers ───────────────────────────────────────────────────────────
   const hasActiveFilters = !!(userFilter !== 'all' || dateRange?.from || dateRange?.to || entityFilter)

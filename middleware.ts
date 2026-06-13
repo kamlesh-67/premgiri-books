@@ -28,7 +28,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/v1/auth/logout') ||
     pathname.startsWith('/dev') ||
     pathname.startsWith('/setup') ||
-    pathname.startsWith('/api/v1/setup')
+    pathname.startsWith('/api/v1/setup') ||
+    pathname.startsWith('/api/v1/health')
 
   // No token and not a public path → block
   if (!token && !isPublicPath) {

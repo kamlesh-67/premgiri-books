@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
+import { Decimal } from "decimal.js";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Download, Loader2, FileText, IndianRupee, Receipt } from "lucide-react";
@@ -223,20 +224,20 @@ export default function Gstr1Page() {
   const b2bCount = data?.b2b.length ?? 0;
 
   const totalTaxable = [
-    ...(data?.b2b ?? []).map((r) => parseFloat(r.totalTaxable)),
-    ...(data?.b2cs ?? []).map((r) => parseFloat(r.taxableValue)),
+    ...(data?.b2b ?? []).map((r) => new Decimal(String(r.totalTaxable || '0')).toNumber()),
+    ...(data?.b2cs ?? []).map((r) => new Decimal(String(r.taxableValue || '0')).toNumber()),
   ].reduce((a, v) => a + v, 0);
 
   const totalGst = [
     ...(data?.b2b ?? []).flatMap((r) => [
-      parseFloat(r.totalCgst),
-      parseFloat(r.totalSgst),
-      parseFloat(r.totalIgst),
+      new Decimal(String(r.totalCgst || '0')).toNumber(),
+      new Decimal(String(r.totalSgst || '0')).toNumber(),
+      new Decimal(String(r.totalIgst || '0')).toNumber(),
     ]),
     ...(data?.b2cs ?? []).flatMap((r) => [
-      parseFloat(r.cgst),
-      parseFloat(r.sgst),
-      parseFloat(r.igst),
+      new Decimal(String(r.cgst || '0')).toNumber(),
+      new Decimal(String(r.sgst || '0')).toNumber(),
+      new Decimal(String(r.igst || '0')).toNumber(),
     ]),
   ].reduce((a, v) => a + v, 0);
 
@@ -291,7 +292,7 @@ export default function Gstr1Page() {
       />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
         <KpiCard
           title="B2B Invoices"
           value={isLoading ? "—" : String(b2bCount)}
@@ -428,28 +429,28 @@ export default function Gstr1Page() {
                           {row.invoices.length}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                          {formatINR(parseFloat(row.totalTaxable))}
+                          {formatINR(new Decimal(String(row.totalTaxable || '0')).toNumber())}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                          {parseFloat(row.totalCgst) > 0
-                            ? formatINR(parseFloat(row.totalCgst))
+                          {new Decimal(String(row.totalCgst || '0')).toNumber() > 0
+                            ? formatINR(new Decimal(String(row.totalCgst || '0')).toNumber())
                             : <span className="text-gray-400">—</span>}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                          {parseFloat(row.totalSgst) > 0
-                            ? formatINR(parseFloat(row.totalSgst))
+                          {new Decimal(String(row.totalSgst || '0')).toNumber() > 0
+                            ? formatINR(new Decimal(String(row.totalSgst || '0')).toNumber())
                             : <span className="text-gray-400">—</span>}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                          {parseFloat(row.totalIgst) > 0
-                            ? formatINR(parseFloat(row.totalIgst))
+                          {new Decimal(String(row.totalIgst || '0')).toNumber() > 0
+                            ? formatINR(new Decimal(String(row.totalIgst || '0')).toNumber())
                             : <span className="text-gray-400">—</span>}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums font-semibold text-gray-900">
                           {formatINR(
-                            parseFloat(row.totalCgst) +
-                              parseFloat(row.totalSgst) +
-                              parseFloat(row.totalIgst)
+                            new Decimal(String(row.totalCgst || '0')).toNumber() +
+                              new Decimal(String(row.totalSgst || '0')).toNumber() +
+                              new Decimal(String(row.totalIgst || '0')).toNumber()
                           )}
                         </td>
                         <td className="px-4 py-3">
@@ -534,21 +535,21 @@ export default function Gstr1Page() {
                           {row.placeOfSupply}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                          {formatINR(parseFloat(row.taxableValue))}
+                          {formatINR(new Decimal(String(row.taxableValue || '0')).toNumber())}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                          {parseFloat(row.igst) > 0
-                            ? formatINR(parseFloat(row.igst))
+                          {new Decimal(String(row.igst || '0')).toNumber() > 0
+                            ? formatINR(new Decimal(String(row.igst || '0')).toNumber())
                             : <span className="text-gray-400">—</span>}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                          {parseFloat(row.cgst) > 0
-                            ? formatINR(parseFloat(row.cgst))
+                          {new Decimal(String(row.cgst || '0')).toNumber() > 0
+                            ? formatINR(new Decimal(String(row.cgst || '0')).toNumber())
                             : <span className="text-gray-400">—</span>}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                          {parseFloat(row.sgst) > 0
-                            ? formatINR(parseFloat(row.sgst))
+                          {new Decimal(String(row.sgst || '0')).toNumber() > 0
+                            ? formatINR(new Decimal(String(row.sgst || '0')).toNumber())
                             : <span className="text-gray-400">—</span>}
                         </td>
                       </tr>
@@ -671,21 +672,21 @@ export default function Gstr1Page() {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                            {formatINR(parseFloat(note.taxableValue))}
+                            {formatINR(new Decimal(String(note.taxableValue || '0')).toNumber())}
                           </td>
                           <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                            {parseFloat(note.cgst) > 0
-                              ? formatINR(parseFloat(note.cgst))
+                            {new Decimal(String(note.cgst || '0')).toNumber() > 0
+                              ? formatINR(new Decimal(String(note.cgst || '0')).toNumber())
                               : <span className="text-gray-400">—</span>}
                           </td>
                           <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                            {parseFloat(note.sgst) > 0
-                              ? formatINR(parseFloat(note.sgst))
+                            {new Decimal(String(note.sgst || '0')).toNumber() > 0
+                              ? formatINR(new Decimal(String(note.sgst || '0')).toNumber())
                               : <span className="text-gray-400">—</span>}
                           </td>
                           <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                            {parseFloat(note.igst) > 0
-                              ? formatINR(parseFloat(note.igst))
+                            {new Decimal(String(note.igst || '0')).toNumber() > 0
+                              ? formatINR(new Decimal(String(note.igst || '0')).toNumber())
                               : <span className="text-gray-400">—</span>}
                           </td>
                         </tr>
@@ -789,24 +790,24 @@ export default function Gstr1Page() {
                           {row.uom}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                          {parseFloat(row.qty).toFixed(3)}
+                          {new Decimal(String(row.qty || '0')).toNumber().toFixed(3)}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                          {formatINR(parseFloat(row.taxableValue))}
+                          {formatINR(new Decimal(String(row.taxableValue || '0')).toNumber())}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                          {parseFloat(row.cgst) > 0
-                            ? formatINR(parseFloat(row.cgst))
+                          {new Decimal(String(row.cgst || '0')).toNumber() > 0
+                            ? formatINR(new Decimal(String(row.cgst || '0')).toNumber())
                             : <span className="text-gray-400">—</span>}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                          {parseFloat(row.sgst) > 0
-                            ? formatINR(parseFloat(row.sgst))
+                          {new Decimal(String(row.sgst || '0')).toNumber() > 0
+                            ? formatINR(new Decimal(String(row.sgst || '0')).toNumber())
                             : <span className="text-gray-400">—</span>}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                          {parseFloat(row.igst) > 0
-                            ? formatINR(parseFloat(row.igst))
+                          {new Decimal(String(row.igst || '0')).toNumber() > 0
+                            ? formatINR(new Decimal(String(row.igst || '0')).toNumber())
                             : <span className="text-gray-400">—</span>}
                         </td>
                       </tr>
@@ -871,7 +872,7 @@ export default function Gstr1Page() {
                           {row.placeOfSupply}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums font-semibold text-gray-900">
-                          {formatINR(parseFloat(row.taxableValue))}
+                          {formatINR(new Decimal(String(row.taxableValue || '0')).toNumber())}
                         </td>
                       </tr>
                     ))}

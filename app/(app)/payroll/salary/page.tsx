@@ -17,6 +17,7 @@ import { StatusBadge } from "@/components/primitives/StatusBadge"
 import { FormDialog } from "@/components/primitives/FormDialog"
 import { ConfirmDelete } from "@/components/primitives/ConfirmDelete"
 import { formatINR } from "@/lib/format"
+import { Decimal } from "decimal.js"
 
 const componentSchema = z.object({
   name: z.string().min(1, "Required"),
@@ -121,7 +122,7 @@ export default function SalaryStructuresPage() {
   function computeGross(components: SalaryStructure["components"]): string {
     const total = components
       .filter((c) => c.type === "earning" && c.amount)
-      .reduce((sum, c) => sum + parseFloat(c.amount ?? "0"), 0)
+      .reduce((sum, c) => sum.plus(c.amount ?? "0"), new Decimal(0)).toNumber()
     return total > 0 ? formatINR(total) : "—"
   }
 

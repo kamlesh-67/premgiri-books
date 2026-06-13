@@ -12,13 +12,13 @@ export default function DashboardLoading() {
         <Skeleton className="h-9 w-40" />
       </div>
       {/* 5 KPI card skeletons */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-[100px] rounded-lg" />
         ))}
       </div>
       {/* 2 chart skeletons */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Skeleton className="h-[280px] rounded-lg" />
         <Skeleton className="h-[280px] rounded-lg" />
       </div>

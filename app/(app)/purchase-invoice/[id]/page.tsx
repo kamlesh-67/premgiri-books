@@ -77,6 +77,18 @@ function formatDisplayDate(dateStr: string): string {
   return `${String(d.getDate()).padStart(2, "0")}-${months[d.getMonth()]}-${d.getFullYear()}`;
 }
 
+// Helper to format with high precision if needed
+const formatPrecise = (val: string | number) => {
+  const str = String(val);
+  const num = new Decimal(String(str || '0')).toNumber();
+  if (isNaN(num)) return "₹0.00";
+  const parts = str.split('.');
+  if (parts.length > 1 && parts[1].length > 2) {
+    return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: parts[1].length, maximumFractionDigits: parts[1].length })}`;
+  }
+  return formatINR(str);
+};
+
 export default function PurchaseInvoiceDetailPage({
   params,
 }: {
@@ -119,8 +131,8 @@ export default function PurchaseInvoiceDetailPage({
 
   const gstTaxType = (() => {
     if (!voucher) return "EXEMPT" as const;
-    const cgst = parseFloat(voucher.cgstAmount || "0");
-    const igst = parseFloat(voucher.igstAmount || "0");
+    const cgst = new Decimal(String(voucher.cgstAmount || '0')).toNumber();
+    const igst = new Decimal(String(voucher.igstAmount || '0')).toNumber();
     if (cgst > 0) return "INTRA_STATE" as const;
     if (igst > 0) return "INTER_STATE" as const;
     return "EXEMPT" as const;
@@ -159,6 +171,9 @@ export default function PurchaseInvoiceDetailPage({
   }
 
   const isPosted = voucher.status === "POSTED";
+  const isCancelled = voucher.status === "CANCELLED";
+  const diffDays = (Date.now() - new Date(voucher.date).getTime()) / (1000 * 60 * 60 * 24);
+  const canEdit = !isCancelled && (!isPosted || diffDays <= 15);
 
   const accountingEntries: AccountingEntryRow[] = voucher.voucherEntries.map((e) => ({
     ledgerId: e.ledgerId,
@@ -180,6 +195,16 @@ export default function PurchaseInvoiceDetailPage({
       <PageHeader
         title={voucher.voucherNo}
         subtitle={`Purchase Invoice · ${formatDisplayDate(voucher.date)}`}
+        action={
+          canEdit && (
+            <Button
+              onClick={() => router.push(`/purchase-invoice/${voucher.id}/edit`)}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              Edit Invoice
+            </Button>
+          )
+        }
       />
 
       <SectionCard title="Invoice Details">
@@ -260,10 +285,10 @@ export default function PurchaseInvoiceDetailPage({
               </thead>
               <tbody>
                 {voucher.voucherItems.map((item) => {
-                  const cgstAmt = parseFloat(item.cgstAmt ?? "0");
-                  const sgstAmt = parseFloat(item.sgstAmt ?? "0");
-                  const igstAmt = parseFloat(item.igstAmt ?? "0");
-                  const totalGst = cgstAmt + sgstAmt + igstAmt;
+                  const cgstAmt = new Decimal(item.cgstAmt ?? "0");
+                  const sgstAmt = new Decimal(item.sgstAmt ?? "0");
+                  const igstAmt = new Decimal(item.igstAmt ?? "0");
+                  const totalGst = cgstAmt.plus(sgstAmt).plus(igstAmt);
                   return (
                     <tr key={item.id} className="border-b border-gray-50 hover:bg-gray-50">
                       <td className="px-4 py-3 text-gray-900 font-medium">{item.item.name}</td>
@@ -273,7 +298,7 @@ export default function PurchaseInvoiceDetailPage({
                         {formatINR(item.rate)}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                        {totalGst > 0 ? formatINR(totalGst.toFixed(2)) : "—"}
+                        {totalGst.gt(0) ? formatPrecise(totalGst.toString()) : "—"}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-gray-900 font-medium">
                         {formatINR(item.amount)}
@@ -290,12 +315,14 @@ export default function PurchaseInvoiceDetailPage({
       <SectionCard title="GST Summary">
         <GSTSummaryPanel
           taxableTotal={(() => {
-            const total = parseFloat(voucher.totalAmount || "0");
-            const gst =
-              parseFloat(voucher.cgstAmount || "0") +
-              parseFloat(voucher.sgstAmount || "0") +
-              parseFloat(voucher.igstAmount || "0");
-            return (total - gst).toFixed(2);
+            const total = new Decimal(voucher.totalAmount || "0");
+            const cgst = new Decimal(voucher.cgstAmount || "0");
+            const sgst = new Decimal(voucher.sgstAmount || "0");
+            const igst = new Decimal(voucher.igstAmount || "0");
+            const roundOff = new Decimal(voucher.roundOff || "0");
+            // Taxable = Grand Total - GST - RoundOff (approximately)
+            // But better: taxable = Grand Total - RoundOff - (CGST+SGST+IGST)
+            return total.minus(roundOff).minus(cgst).minus(sgst).minus(igst).toFixed(2);
           })()}
           cgstTotal={voucher.cgstAmount}
           sgstTotal={voucher.sgstAmount}
