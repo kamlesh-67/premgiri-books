@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { useUiStore } from "@/lib/stores/uiStore";
 import { formatINR } from "@/lib/utils/format";
 import { Decimal } from "decimal.js";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -77,18 +76,6 @@ function formatDisplayDate(dateStr: string): string {
   return `${String(d.getDate()).padStart(2, "0")}-${months[d.getMonth()]}-${d.getFullYear()}`;
 }
 
-// Helper to format with high precision if needed
-const formatPrecise = (val: string | number) => {
-  const str = String(val);
-  const num = new Decimal(String(str || '0')).toNumber();
-  if (isNaN(num)) return "₹0.00";
-  const parts = str.split('.');
-  if (parts.length > 1 && parts[1].length > 2) {
-    return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: parts[1].length, maximumFractionDigits: parts[1].length })}`;
-  }
-  return formatINR(str);
-};
-
 export default function PurchaseInvoiceDetailPage({
   params,
 }: {
@@ -97,7 +84,6 @@ export default function PurchaseInvoiceDetailPage({
   const { id } = use(params);
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { uiMode } = useUiStore();
 
   const { data: voucher, isLoading, isError } = useQuery<Voucher>({
     queryKey: ["voucher", id],
@@ -276,19 +262,12 @@ export default function PurchaseInvoiceDetailPage({
                     Rate (₹)
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    GST
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">
                     Amount (₹)
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {voucher.voucherItems.map((item) => {
-                  const cgstAmt = new Decimal(item.cgstAmt ?? "0");
-                  const sgstAmt = new Decimal(item.sgstAmt ?? "0");
-                  const igstAmt = new Decimal(item.igstAmt ?? "0");
-                  const totalGst = cgstAmt.plus(sgstAmt).plus(igstAmt);
                   return (
                     <tr key={item.id} className="border-b border-gray-50 hover:bg-gray-50">
                       <td className="px-4 py-3 text-gray-900 font-medium">{item.item.name}</td>
@@ -297,9 +276,6 @@ export default function PurchaseInvoiceDetailPage({
                       <td className="px-4 py-3 text-right tabular-nums text-gray-700">
                         {formatINR(item.rate)}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-gray-700">
-                        {totalGst.gt(0) ? formatPrecise(totalGst.toString()) : "—"}
-                      </td>
                       <td className="px-4 py-3 text-right tabular-nums text-gray-900 font-medium">
                         {formatINR(item.amount)}
                       </td>
@@ -307,6 +283,19 @@ export default function PurchaseInvoiceDetailPage({
                   );
                 })}
               </tbody>
+              <tfoot>
+                <tr className="border-t border-gray-200 bg-gray-50">
+                  <td className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide" colSpan={2}>
+                    Total Qty
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-sm font-semibold text-gray-900">
+                    {voucher.voucherItems
+                      .reduce((sum, item) => sum.plus(new Decimal(String(item.qty || "0"))), new Decimal(0))
+                      .toString()}
+                  </td>
+                  <td colSpan={2} />
+                </tr>
+              </tfoot>
             </table>
           </div>
         </SectionCard>
@@ -330,7 +319,10 @@ export default function PurchaseInvoiceDetailPage({
           roundOff={voucher.roundOff}
           grandTotal={voucher.totalAmount}
           taxType={gstTaxType}
-          uiMode={uiMode}
+          uiMode="advanced"
+          cgstRate={voucher.voucherItems.find((i) => i.cgstRate)?.cgstRate}
+          sgstRate={voucher.voucherItems.find((i) => i.sgstRate)?.sgstRate}
+          igstRate={voucher.voucherItems.find((i) => i.igstRate)?.igstRate}
         />
       </SectionCard>
 

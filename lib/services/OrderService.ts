@@ -11,11 +11,11 @@
  *  - Soft delete only: status → CANCELLED, never hard-delete (CLAUDE.md rule 6)
  */
 
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { Decimal } from 'decimal.js'
 import { Prisma } from '@prisma/client'
 import type { CreateOrderInput, ConvertOrderInput } from '@/lib/schemas/orders'
-import { getNextVoucherNo, validateBalance } from '@/lib/services/VoucherEngine'
+import { getNextVoucherNo, validateBalance, applyRoundOffToPartyEntry } from '@/lib/services/VoucherEngine'
 import { getFY } from '@/lib/utils/fy'
 
 // ─── Error classes (mirror VoucherEngine pattern) ─────────────────────────────
@@ -97,7 +97,7 @@ export const OrderService = {
     const companyId = session.companyId ?? session.user?.companyId ?? ''
     const userId = session.userId ?? session.user?.id ?? ''
 
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: TransactionClient) => {
       const orderNo = await getNextOrderNo(input.orderType, companyId, tx)
 
       const totalAmount = input.items.reduce(
@@ -174,7 +174,7 @@ export const OrderService = {
       throw new ForbiddenError('Only Admin or Owner can approve orders')
     }
 
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: TransactionClient) => {
       // Cross-tenant guard (T-04-06-06)
       const order = await tx.order.findFirst({
         where: { id: orderId, companyId },
@@ -213,7 +213,7 @@ export const OrderService = {
     const companyId = session.companyId ?? session.user?.companyId ?? ''
     const userId = session.userId ?? session.user?.id ?? ''
 
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: TransactionClient) => {
       // Cross-tenant guard (T-04-06-06)
       const order = await tx.order.findFirst({
         where: { id: orderId, companyId },
@@ -252,7 +252,7 @@ export const OrderService = {
     const companyId = session.companyId ?? session.user?.companyId ?? ''
     const userId = session.userId ?? session.user?.id ?? ''
 
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: TransactionClient) => {
       // Cross-tenant guard (T-04-06-06)
       const order = await tx.order.findFirst({
         where: { id: orderId, companyId },
@@ -303,7 +303,7 @@ export const OrderService = {
     const companyId = session.companyId ?? session.user?.companyId ?? ''
     const userId = session.userId ?? session.user?.id ?? ''
 
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: TransactionClient) => {
       // 1. Fetch order with items (cross-tenant guard — T-04-07-02)
       const order = await tx.order.findFirst({
         where: { id: orderId, companyId },
@@ -369,11 +369,18 @@ export const OrderService = {
 
       // 4. Build voucher accounting entries
       const voucherType = order.orderType === 'PURCHASE_ORDER' ? ('PURCHASE' as const) : ('SALES' as const)
-      const totalAmount = itemsToConvert.reduce(
+      const rawTotal = itemsToConvert.reduce(
         (sum, { orderItem, requestedQty }) =>
           sum.plus(requestedQty.times(new Decimal(orderItem.rate.toString()))),
         new Decimal(0),
       )
+
+      // Round to the nearest rupee (standard Indian invoicing convention) and
+      // carry the remainder as roundOff — same convention as VoucherEngine's
+      // computeVoucherTotals, so order-converted invoices round consistently
+      // with manually-created ones.
+      const totalAmount = rawTotal.toDecimalPlaces(0, Decimal.ROUND_HALF_UP)
+      const roundOff = totalAmount.minus(rawTotal)
 
       // Party ledger must exist on the order
       const partyLedgerId = order.partyLedgerId
@@ -387,16 +394,20 @@ export const OrderService = {
       // Double-entry legs
       // Purchase: DR tradeLedger (purchases/stock a/c), CR party (creditor)
       // Sales:    DR party (debtor),                    CR tradeLedger (sales a/c)
-      const entries =
+      const rawEntries =
         voucherType === 'PURCHASE'
           ? [
-              { ledgerId: tradeLedgerId, drCr: 'DR' as const, amount: totalAmount },
-              { ledgerId: partyLedgerId, drCr: 'CR' as const, amount: totalAmount },
+              { ledgerId: tradeLedgerId, drCr: 'DR' as const, amount: rawTotal },
+              { ledgerId: partyLedgerId, drCr: 'CR' as const, amount: rawTotal },
             ]
           : [
-              { ledgerId: partyLedgerId, drCr: 'DR' as const, amount: totalAmount },
-              { ledgerId: tradeLedgerId, drCr: 'CR' as const, amount: totalAmount },
+              { ledgerId: partyLedgerId, drCr: 'DR' as const, amount: rawTotal },
+              { ledgerId: tradeLedgerId, drCr: 'CR' as const, amount: rawTotal },
             ]
+
+      // Absorb the round-off into both the party entry and the trade-ledger
+      // entry (the only two legs here) so SUM(DR) === SUM(CR) === totalAmount.
+      const entries = applyRoundOffToPartyEntry(rawEntries, partyLedgerId, roundOff)
 
       validateBalance(entries)
 
@@ -416,6 +427,7 @@ export const OrderService = {
           narration: `Converted from ${order.orderNo}`,
           partyLedgerId,
           totalAmount,
+          roundOff,
           status: 'POSTED',
           createdBy: userId,
           voucherEntries: {

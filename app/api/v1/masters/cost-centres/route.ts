@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { z } from 'zod'
 
 const costCentreSchema = z.object({
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: TransactionClient) => {
       const costCentre = await tx.costCentre.create({
         data: {
           companyId,

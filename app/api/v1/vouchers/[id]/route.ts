@@ -37,7 +37,7 @@ export async function GET(
       voucherItems: {
         include: { item: { select: { id: true, name: true } } },
       },
-      partyLedger: { select: { id: true, name: true, gstin: true } },
+      partyLedger: { select: { id: true, name: true, gstin: true, address: true } },
       billRefs: true,
     },
   })

@@ -1,5 +1,5 @@
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse, NextRequest } from 'next/server'
 import { stockItemSchema } from '@/lib/schemas/masters'
 import { Decimal } from 'decimal.js'
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     create: { companyId, name: 'General' },
   })
 
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: TransactionClient) => {
     const item = await tx.stockItem.create({
       data: {
         name: parsed.data.name,

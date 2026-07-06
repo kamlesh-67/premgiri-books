@@ -6,7 +6,7 @@
  * Skips employees whose attendance is locked (lockedAt is set).
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -43,7 +43,7 @@ export async function PATCH(request: NextRequest) {
 
   // Wrap all upserts + audit log in a single $transaction (CLAUDE.md Rule 7)
   let updated = 0
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: TransactionClient) => {
     for (const emp of employees) {
       const existing = await tx.attendanceRecord.findFirst({
         where: { companyId, employeeId: emp.id, month },

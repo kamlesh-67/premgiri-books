@@ -29,10 +29,14 @@ export default async function StockItemsPage() {
     _sum: { qty: true },
   })
 
-  const inwardMap = new Map<string, string>(inwardRows.map((r) => [r.itemId, r._sum.qty?.toString() ?? '0']))
-  const outwardMap = new Map<string, string>(outwardRows.map((r) => [r.itemId, r._sum.qty?.toString() ?? '0']))
+  const inwardMap = new Map<string, string>(
+    inwardRows.map((r: (typeof inwardRows)[number]) => [r.itemId, r._sum.qty?.toString() ?? '0'])
+  )
+  const outwardMap = new Map<string, string>(
+    outwardRows.map((r: (typeof outwardRows)[number]) => [r.itemId, r._sum.qty?.toString() ?? '0'])
+  )
 
-  const initialItems = itemsRaw.map((i) => {
+  const initialItems = itemsRaw.map((i: (typeof itemsRaw)[number]) => {
     const opening = new Decimal(i.openingQty.toString())
     const inward = new Decimal(inwardMap.get(i.id) ?? '0')
     const outward = new Decimal(outwardMap.get(i.id) ?? '0')

@@ -1,3 +1,4 @@
+dev.db
 # Environment files — secrets stay local
 .env
 .env.local

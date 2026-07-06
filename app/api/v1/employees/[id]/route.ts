@@ -6,7 +6,7 @@
  * structureEffectiveFrom: date the structure takes effect
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -69,7 +69,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     data.structureEffectiveFrom = structureEffectiveFrom ? new Date(structureEffectiveFrom) : null
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx: TransactionClient) => {
     const record = await tx.employee.update({
       where: { id, companyId },
       data,

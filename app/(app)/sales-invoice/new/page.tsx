@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -136,7 +136,13 @@ function QuickCustomerDialog({
 // SalesInvoiceWizard — Simple Mode only (not exported)
 // ---------------------------------------------------------------------------
 
-function SalesInvoiceWizard({ onSuccess }: { onSuccess: (id: string) => void }) {
+function SalesInvoiceWizard({
+  onSuccess,
+  onStepChange,
+}: {
+  onSuccess: (id: string) => void;
+  onStepChange?: (index: number) => void;
+}) {
   const queryClient = useQueryClient();
 
   const form = useForm<SalesInvoiceInput>({
@@ -174,11 +180,15 @@ function SalesInvoiceWizard({ onSuccess }: { onSuccess: (id: string) => void }) 
 
   const [selectedPartyId, setSelectedPartyId] = useState<string>("");
   const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [walkInName, setWalkInName] = useState("");
+  const [walkInMobile, setWalkInMobile] = useState("");
+  const [walkInAddress, setWalkInAddress] = useState("");
   const companyStateCode = sessionData?.user?.stateCode ?? "";
   const selectedParty = parties.find((p) => p.id === selectedPartyId);
   const partyStateCode = selectedParty?.stateCode ?? "";
+  const isWalkIn = selectedParty?.name === "Walk-in Customer";
 
-  const watchedItems = form.watch("items");
+  const watchedItems = useWatch({ control: form.control, name: "items" });
 
   const totals = useMemo(() => {
     let taxable = new Decimal(0);
@@ -289,6 +299,29 @@ function SalesInvoiceWizard({ onSuccess }: { onSuccess: (id: string) => void }) 
             </p>
           )}
         </div>
+        {isWalkIn && (
+          <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3">
+            <p className="text-xs font-medium text-amber-700">Walk-in customer details (optional)</p>
+            <Input
+              placeholder="Customer name"
+              value={walkInName}
+              onChange={(e) => setWalkInName(e.target.value)}
+              className="text-sm bg-white"
+            />
+            <Input
+              placeholder="Mobile number"
+              value={walkInMobile}
+              onChange={(e) => setWalkInMobile(e.target.value)}
+              className="text-sm bg-white"
+            />
+            <Input
+              placeholder="Address"
+              value={walkInAddress}
+              onChange={(e) => setWalkInAddress(e.target.value)}
+              className="text-sm bg-white"
+            />
+          </div>
+        )}
         <div className="space-y-2">
           <Label htmlFor="date" className="text-sm font-medium text-gray-700">
             Invoice Date <span className="text-red-500">*</span>
@@ -360,6 +393,28 @@ function SalesInvoiceWizard({ onSuccess }: { onSuccess: (id: string) => void }) 
               {parties.find((p) => p.id === form.getValues("partyLedgerId"))?.name ?? "—"}
             </span>
           </div>
+          {isWalkIn && (walkInName || walkInMobile || walkInAddress) && (
+            <>
+              {walkInName && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Name</span>
+                  <span className="font-medium text-gray-900">{walkInName}</span>
+                </div>
+              )}
+              {walkInMobile && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Mobile</span>
+                  <span className="font-medium text-gray-900">{walkInMobile}</span>
+                </div>
+              )}
+              {walkInAddress && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Address</span>
+                  <span className="font-medium text-gray-900 text-right max-w-[60%]">{walkInAddress}</span>
+                </div>
+              )}
+            </>
+          )}
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Date</span>
             <span className="font-medium text-gray-900">{form.getValues("date")}</span>
@@ -387,6 +442,19 @@ function SalesInvoiceWizard({ onSuccess }: { onSuccess: (id: string) => void }) 
 
   const handleComplete = async () => {
     const data = form.getValues();
+    if (isWalkIn) {
+      const details = [
+        walkInName.trim() ? `Name: ${walkInName.trim()}` : null,
+        walkInMobile.trim() ? `Mobile: ${walkInMobile.trim()}` : null,
+      ].filter(Boolean).join(", ");
+      if (details) {
+        data.narration = `Walk-in (${details}). ${data.narration ?? ""}`.trim();
+      }
+      if (walkInAddress.trim()) {
+        data.billingAddress = walkInAddress.trim();
+        data.shippingAddress = walkInAddress.trim();
+      }
+    }
     await postMutation.mutateAsync(data);
   };
 
@@ -395,6 +463,7 @@ function SalesInvoiceWizard({ onSuccess }: { onSuccess: (id: string) => void }) 
       <GuidedWizard
         steps={[step1, step2, step3]}
         onComplete={handleComplete}
+        onStepChange={onStepChange}
         title="Create Invoice"
       />
       <QuickCustomerDialog
@@ -418,8 +487,12 @@ function SalesInvoiceWizard({ onSuccess }: { onSuccess: (id: string) => void }) 
 export default function SalesInvoiceNewPage() {
   const router = useRouter();
   const { uiMode } = useUiStore();
+  const [wizardStep, setWizardStep] = useState(0);
 
   if (uiMode === "simple") {
+    // Items step (index 1) needs the full-width line-items table; Customer/Confirm
+    // steps read better narrower, matching a typical single-column mobile form.
+    const isItemsStep = wizardStep === 1;
     return (
       <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
         <PageHeader
@@ -431,8 +504,11 @@ export default function SalesInvoiceNewPage() {
             </Button>
           }
         />
-        <div className="max-w-2xl mx-auto">
-          <SalesInvoiceWizard onSuccess={(id) => router.push(`/sales-invoice/${id}`)} />
+        <div className={isItemsStep ? "w-full" : "max-w-2xl mx-auto"}>
+          <SalesInvoiceWizard
+            onSuccess={(id) => router.push(`/sales-invoice/${id}`)}
+            onStepChange={setWizardStep}
+          />
         </div>
       </div>
     );

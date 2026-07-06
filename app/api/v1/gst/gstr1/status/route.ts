@@ -1,5 +1,5 @@
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -37,7 +37,7 @@ export async function PATCH(request: NextRequest) {
   const { period, status } = parsed.data
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: TransactionClient) => {
       // Update all GstTransactions for this company and period
       const updated = await tx.gstTransaction.updateMany({
         where: { companyId, returnPeriod: period },

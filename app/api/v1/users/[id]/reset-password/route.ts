@@ -12,7 +12,7 @@
  * - Audit log: newValue is { passwordReset: true } — hash NEVER logged
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   const passwordHash = await bcrypt.hash(parsed.data.password, 12)
 
   // 8. Atomic update + audit log — password hash NEVER included in audit log
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: TransactionClient) => {
     await tx.user.update({
       where: { id: userId },
       data: { passwordHash },

@@ -72,6 +72,10 @@ const globalForPrisma = globalThis as unknown as { __prisma: PrismaClientExtende
 export const prisma: PrismaClientExtended =
   globalForPrisma.__prisma ?? createPrismaClient()
 
+export type TransactionClient = Parameters<
+  Parameters<PrismaClientExtended['$transaction']>[0]
+>[0]
+
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.__prisma = prisma
 }

@@ -4,7 +4,7 @@
  * DELETE /api/v1/salary-structures/[id]  — soft delete (isActive=false)
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -67,7 +67,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (parsed.data.name !== undefined) data.name = parsed.data.name
   if (parsed.data.components !== undefined) data.components = parsed.data.components as object
 
-  const updated = await prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx: TransactionClient) => {
     const record = await tx.salaryStructure.update({
       where: { id, companyId },
       data,
@@ -100,7 +100,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   // Soft delete — never hard delete (CLAUDE.md Rule 6)
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: TransactionClient) => {
     await tx.salaryStructure.update({
       where: { id, companyId },
       data: { isActive: false },

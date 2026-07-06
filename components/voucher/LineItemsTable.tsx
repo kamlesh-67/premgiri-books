@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Control, Controller, useFieldArray, useWatch } from 'react-hook-form'
 import { Decimal } from 'decimal.js'
 import { Plus, Trash2, ChevronsUpDown, Check, ChevronDown } from 'lucide-react'
@@ -348,7 +348,7 @@ export function LineItemsTable({
               const isExpanded = expandedRows.has(field.id)
 
               return (
-                <>
+                <Fragment key={field.id}>
                   <tr
                     key={field.id}
                     className="hover:bg-gray-50 border-b border-gray-100"
@@ -707,7 +707,7 @@ export function LineItemsTable({
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               )
             })}
           </tbody>

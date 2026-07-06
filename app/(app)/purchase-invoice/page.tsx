@@ -164,7 +164,7 @@ export default function PurchaseInvoiceList() {
     {
       key: "voucherNo",
       header: "Bill #",
-      width: "140px",
+      width: "160px",
       cell: (r) => (
         <Link
           href={`/purchase-invoice/${r.id}`}
@@ -177,12 +177,13 @@ export default function PurchaseInvoiceList() {
     {
       key: "date",
       header: "Date",
-      width: "110px",
+      width: "100px",
       cell: (r) => <span className="text-gray-700">{formatDate(r.date)}</span>,
     },
     {
       key: "party",
       header: "Supplier",
+      className: "whitespace-normal",
       cell: (r) => <span className="text-gray-700">{r.partyLedger?.name ?? "—"}</span>,
     },
     {
@@ -259,7 +260,7 @@ export default function PurchaseInvoiceList() {
   ];
 
   return (
-    <div>
+    <div className="p-3 sm:p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Purchase Invoices"
         subtitle="All inward GST bills with eligible ITC."
@@ -283,7 +284,7 @@ export default function PurchaseInvoiceList() {
       />
 
       {/* KPI Cards */}
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           title="Bills (MTD)"
           value={String(kpis.mtdCount)}

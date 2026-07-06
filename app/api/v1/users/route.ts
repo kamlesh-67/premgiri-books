@@ -5,7 +5,7 @@
  * Supports ?role=roleId and ?status=active|inactive query params.
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
 
   const passwordHash = await bcrypt.hash(password, 10)
 
-  const user = await prisma.$transaction(async (tx) => {
+  const user = await prisma.$transaction(async (tx: TransactionClient) => {
     const record = await tx.user.create({
       data: {
         companyId,

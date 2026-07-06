@@ -7,7 +7,7 @@
  * the company with zero roles that have settings.admin permission.
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { hasPermission } from '@/lib/services/PermissionService'
 import { NextResponse } from 'next/server'
@@ -72,7 +72,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const oldValue = { name: existing.name, permissions: existing.permissions }
 
-  const updated = await prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx: TransactionClient) => {
     const record = await tx.role.update({
       where: { id: roleId },
       data: parsed.data,
@@ -136,7 +136,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     where: { roleId, companyId, isActive: true },
   })
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: TransactionClient) => {
     // Null out roleId on all users assigned this role before deleting it
     // (Role → User relation is optional; this mirrors the plan's updateMany step)
     await tx.user.updateMany({

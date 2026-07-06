@@ -1,13 +1,16 @@
 ﻿"use client";
 
 import { use, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Download, Printer, FileSpreadsheet } from "lucide-react";
 
-import { useUiStore } from "@/lib/stores/uiStore";
 import { formatINR } from "@/lib/utils/format";
+import { exportPagesToPDF, printElements } from "@/lib/utils/exportPdf";
+import { getInvoicePrintPageIds } from "@/lib/utils/paginateInvoiceItems";
+import type { InvoiceCopyLabel } from "@/components/voucher/InvoicePrintTemplate";
 import { Decimal } from "decimal.js";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
@@ -15,6 +18,13 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { GSTSummaryPanel } from "@/components/voucher/GSTSummaryPanel";
 import { AccountingEntriesPanel, type AccountingEntryRow } from "@/components/voucher/AccountingEntriesPanel";
 import { EInvoicePanel } from "@/components/voucher/EInvoicePanel";
+
+// Lazy-loaded — pulls in `to-words` (large) only when the invoice detail page
+// actually renders the hidden print template, not on every page load.
+const InvoicePrintTemplate = dynamic(
+  () => import("@/components/voucher/InvoicePrintTemplate").then((m) => m.InvoicePrintTemplate),
+  { ssr: false }
+);
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -26,6 +36,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -38,7 +54,9 @@ interface VoucherItem {
   qty: string;
   rate: string;
   amount: string;
+  unit?: string | null;
   discountPct?: string | null;
+  discountAmt?: string | null;
   cgstRate?: string | null;
   cgstAmt?: string | null;
   sgstRate?: string | null;
@@ -73,7 +91,10 @@ interface Voucher {
   irnGeneratedAt?: string | null;
   eWayBillNo?: string | null;
   eWayBillValidUntil?: string | null;
-  partyLedger?: { id: string; name: string; gstin?: string | null } | null;
+  placeOfSupply?: string | null;
+  billingAddress?: string | null;
+  shippingAddress?: string | null;
+  partyLedger?: { id: string; name: string; gstin?: string | null; address?: string | null } | null;
   voucherItems: VoucherItem[];
   voucherEntries: VoucherEntry[];
 }
@@ -101,7 +122,6 @@ export default function SalesInvoiceDetailPage({
   const { id } = use(params);
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { uiMode } = useUiStore();
   const [isDownloading, setIsDownloading] = useState(false);
 
   // ── Fetch voucher ────────────────────────────────────────────────────────
@@ -110,6 +130,21 @@ export default function SalesInvoiceDetailPage({
     queryFn: async () => {
       const res = await fetch(`/api/v1/vouchers/${id}`);
       if (!res.ok) throw new Error("Voucher not found");
+      return res.json();
+    },
+  });
+
+  // ── Fetch company (for the print/PDF invoice header + bank details) ─────
+  const { data: company } = useQuery<{
+    name: string;
+    gstin?: string | null;
+    address?: string | null;
+    defaultBankAccount?: { bankName: string | null; bankAccount: string | null; ifsc: string | null } | null;
+  }>({
+    queryKey: ["company"],
+    queryFn: async () => {
+      const res = await fetch(`/api/v1/company`);
+      if (!res.ok) throw new Error("Could not load company details");
       return res.json();
     },
   });
@@ -184,18 +219,17 @@ export default function SalesInvoiceDetailPage({
   const isPosted = voucher.status === "POSTED";
   const isSales = voucher.voucherType === "SALES";
 
-  // ── PDF Download ──────────────────────────────────────────────────────────
-  const handleDownloadPDF = async () => {
+  // ── PDF Download (client-side html2canvas + jsPDF — no server round-trip) ──
+  // idPrefix distinguishes the Original/Transport hidden template instances so
+  // each copy's pages can be captured independently.
+  const handleDownloadPDF = async (copyLabel: InvoiceCopyLabel) => {
     setIsDownloading(true)
     try {
-      const res = await fetch(`/api/v1/vouchers/${id}/pdf`)
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error ?? 'Could not generate PDF')
-      }
-      const { url } = await res.json()
-      window.open(url, '_blank')
-      toast.success('Invoice PDF ready.')
+      const idPrefix = copyLabel === "Original Copy" ? "invoice-print-original" : "invoice-print-transport"
+      const pageIds = getInvoicePrintPageIds(idPrefix, voucher.voucherItems.length)
+      const suffix = copyLabel === "Original Copy" ? "Original" : "Transport"
+      await exportPagesToPDF(pageIds, `Invoice_${voucher.voucherNo}_${suffix}.pdf`)
+      toast.success(`Invoice PDF (${copyLabel}) downloaded.`)
     } catch (err: unknown) {
       const message = err instanceof Error
         ? err.message
@@ -213,30 +247,16 @@ export default function SalesInvoiceDetailPage({
     toast.success('Excel export started.')
   }
 
-  // ── Print PDF ─────────────────────────────────────────────────────────────
-  const handlePrintPDF = async () => {
-    setIsDownloading(true)
+  // ── Print (native browser print dialog via hidden iframe) ───────────────
+  const handlePrintPDF = (copyLabel: InvoiceCopyLabel) => {
     try {
-      const res = await fetch(`/api/v1/vouchers/${id}/pdf`)
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error ?? 'Could not generate PDF')
-      }
-      const { url } = await res.json()
-      // Create a hidden iframe for printing
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = url;
-      document.body.appendChild(iframe);
-      iframe.onload = () => {
-        iframe.contentWindow?.print();
-      };
-      toast.success('Print dialog opened.')
+      const idPrefix = copyLabel === "Original Copy" ? "invoice-print-original" : "invoice-print-transport"
+      const pageIds = getInvoicePrintPageIds(idPrefix, voucher.voucherItems.length)
+      printElements(pageIds)
+      toast.success(`Print dialog opened (${copyLabel}).`)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Could not open print dialog.'
       toast.error(message)
-    } finally {
-      setIsDownloading(false)
     }
   }
 
@@ -276,7 +296,7 @@ export default function SalesInvoiceDetailPage({
               </Button>
             )}
 
-            {/* Download PDF — only for POSTED SALES invoices (per D-04) */}
+            {/* Download PDF / Print — only for POSTED SALES invoices (per D-04) */}
             {isPosted && isSales && (
               <div className="flex items-center gap-2">
                 <Button
@@ -288,41 +308,62 @@ export default function SalesInvoiceDetailPage({
                   <FileSpreadsheet className="h-4 w-4 mr-2" />
                   Excel
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrintPDF}
-                  disabled={isDownloading}
-                  aria-label="Print invoice PDF"
-                >
-                  <Printer className="h-4 w-4 mr-2" />
-                  Print
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleDownloadPDF}
-                  disabled={isDownloading}
-                  aria-label="Download invoice PDF"
-                  className={isDownloading ? 'opacity-70 cursor-not-allowed' : ''}
-                >
-                  {isDownloading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-4 w-4 mr-2" />
-                      PDF
-                    </>
-                  )}
-                </Button>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" disabled={isDownloading} aria-label="Print invoice">
+                      <Printer className="h-4 w-4 mr-2" />
+                      Print
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handlePrintPDF("Original Copy")}>
+                      Original Copy
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handlePrintPDF("Transport Copy")}>
+                      Transport Copy
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="sm"
+                      disabled={isDownloading}
+                      aria-label="Download invoice PDF"
+                      className={isDownloading ? 'opacity-70 cursor-not-allowed' : ''}
+                    >
+                      {isDownloading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4 mr-2" />
+                          PDF
+                        </>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleDownloadPDF("Original Copy")}>
+                      Original Copy
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDownloadPDF("Transport Copy")}>
+                      Transport Copy
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
           </div>
         }
       />
 
+      {/* ── On-screen Invoice Details + Line Items + GST Summary ── */}
+      <div className="space-y-4 sm:space-y-6">
       {/* ── Invoice Details ── */}
       <SectionCard title="Invoice Details">
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
@@ -411,6 +452,19 @@ export default function SalesInvoiceDetailPage({
                   );
                 })}
               </tbody>
+              <tfoot>
+                <tr className="border-t border-gray-200 bg-gray-50">
+                  <td className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide" colSpan={2}>
+                    Total Qty
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-sm font-semibold text-gray-900">
+                    {voucher.voucherItems
+                      .reduce((sum, item) => sum.plus(new Decimal(String(item.qty || "0"))), new Decimal(0))
+                      .toString()}
+                  </td>
+                  <td colSpan={3} />
+                </tr>
+              </tfoot>
             </table>
           </div>
         </SectionCard>
@@ -433,9 +487,29 @@ export default function SalesInvoiceDetailPage({
           roundOff={voucher.roundOff}
           grandTotal={voucher.totalAmount}
           taxType={gstTaxType}
-          uiMode={uiMode}
+          uiMode="advanced"
+          cgstRate={voucher.voucherItems.find((i) => i.cgstRate)?.cgstRate}
+          sgstRate={voucher.voucherItems.find((i) => i.sgstRate)?.sgstRate}
+          igstRate={voucher.voucherItems.find((i) => i.igstRate)?.igstRate}
         />
       </SectionCard>
+      </div>
+
+      {/* ── Hidden formal print/PDF templates — one instance per copy, captured by html2canvas via page ids ── */}
+      <div style={{ position: "fixed", top: 0, left: "-9999px", zIndex: -1 }}>
+        <InvoicePrintTemplate
+          idPrefix="invoice-print-original"
+          voucher={voucher}
+          company={company}
+          copyLabel="Original Copy"
+        />
+        <InvoicePrintTemplate
+          idPrefix="invoice-print-transport"
+          voucher={voucher}
+          company={company}
+          copyLabel="Transport Copy"
+        />
+      </div>
 
       {/* ── Accounting Entries ── */}
       {accountingEntries.length > 0 && (

@@ -22,6 +22,15 @@ type CompanyResponse = {
   address: string | null
   fyStart: number
   logoUrl: string | null
+  defaultBankLedgerId: string | null
+}
+
+type BankLedgerOption = {
+  id: string
+  name: string
+  bankName: string | null
+  bankAccount: string | null
+  ifsc: string | null
 }
 
 export default function CompanyProfilePage() {
@@ -30,6 +39,7 @@ export default function CompanyProfilePage() {
 
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
+  const [defaultBankLedgerId, setDefaultBankLedgerId] = useState<string>('')
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -50,6 +60,11 @@ export default function CompanyProfilePage() {
     queryFn: () => fetch('/api/v1/company').then((r) => r.json()),
   })
 
+  const { data: bankLedgers } = useQuery<BankLedgerOption[]>({
+    queryKey: ['ledgers', 'bank'],
+    queryFn: () => fetch('/api/v1/masters/ledgers?type=bank').then((r) => r.json()),
+  })
+
   const { data: appSettingsData, refetch: refetchSettings } = useQuery<{ key: string; value: string | null }>({
     queryKey: ['app-settings', 'file_output_folder'],
     queryFn: () =>
@@ -60,6 +75,7 @@ export default function CompanyProfilePage() {
     if (data) {
       setName(data.name ?? '')
       setAddress(data.address ?? '')
+      setDefaultBankLedgerId(data.defaultBankLedgerId ?? '')
     }
   }, [data])
 
@@ -111,7 +127,7 @@ export default function CompanyProfilePage() {
       const profileRes = await fetch('/api/v1/company', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, address }),
+        body: JSON.stringify({ name, address, defaultBankLedgerId: defaultBankLedgerId || null }),
       })
       if (!profileRes.ok) {
         const err = await profileRes.json().catch(() => ({ error: 'Failed to save profile' }))
@@ -284,6 +300,28 @@ export default function CompanyProfilePage() {
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder="Enter registered address"
                   />
+                </div>
+
+                {/* Default Bank Account — used on printed invoices */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="defaultBankLedger">Default Bank Account (for Invoices)</Label>
+                  <select
+                    id="defaultBankLedger"
+                    value={defaultBankLedgerId}
+                    onChange={(e) => setDefaultBankLedgerId(e.target.value)}
+                    className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+                  >
+                    <option value="">— None —</option>
+                    {(bankLedgers ?? []).map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name} {l.bankName ? `(${l.bankName})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">
+                    This ledger&apos;s bank name, account number, and IFSC print on sales invoice PDFs.
+                    Only ledgers with bank details filled in appear here — add them under Masters &gt; Ledgers.
+                  </p>
                 </div>
 
                 {/* Status messages */}

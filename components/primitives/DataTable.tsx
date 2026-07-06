@@ -55,7 +55,14 @@ export function DataTable<T>({ columns, rows, empty, footer, rowKey }: DataTable
                   className="border-t border-border transition-colors hover:bg-muted/40"
                 >
                   {columns.map((c) => (
-                    <td key={c.key} className={cn("px-4 py-3 text-foreground", alignClass(c.align), c.className)}>
+                    <td
+                      key={c.key}
+                      className={cn(
+                        "whitespace-nowrap px-4 py-3.5 text-foreground",
+                        alignClass(c.align),
+                        c.className
+                      )}
+                    >
                       {c.cell(row, idx)}
                     </td>
                   ))}

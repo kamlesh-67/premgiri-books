@@ -9,7 +9,6 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getSessionFromRequest } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
-import { uploadFile, getPresignedUrl, fileExists } from '@/lib/r2'
 import { amountToWords } from '@/lib/utils/amountToWords'
 import { Decimal } from 'decimal.js'
 import React from 'react'
@@ -72,12 +71,6 @@ export async function GET(
       },
     })
 
-    // ── R2 Cache (POSTED invoices only) ──────────────────────────────────
-    const r2Key = `invoices/${companyId}/${id}.pdf`
-    if (voucher.status === 'POSTED' && (await fileExists(r2Key))) {
-      const url = await getPresignedUrl(r2Key)
-      return NextResponse.json({ url })
-    }
 
     // ── Build Plain Payloads ─────────────────────────────────────────────
     const totalDec    = new Decimal(voucher.totalAmount.toString())
@@ -191,10 +184,17 @@ export async function GET(
 
     const buffer = await renderToBuffer(element)
 
-    // ── Upload to R2 & return pre-signed URL ─────────────────────────────
-    await uploadFile(r2Key, buffer, 'application/pdf')
-    const url = await getPresignedUrl(r2Key)
-    return NextResponse.json({ url })
+    // ── Stream PDF directly in the response ──────────────────────────────
+    const download = new URL(request.url).searchParams.get('download') === '1'
+    const disposition = download ? 'attachment' : 'inline'
+
+    return new NextResponse(new Uint8Array(buffer), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `${disposition}; filename="Invoice_${voucher.voucherNo}.pdf"`,
+      },
+    })
 
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err))

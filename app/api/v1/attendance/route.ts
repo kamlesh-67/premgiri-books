@@ -4,7 +4,7 @@
  *                                         Returns 409 if attendance is locked
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -128,7 +128,7 @@ export async function PUT(request: NextRequest) {
     )
   }
 
-  const record = await prisma.$transaction(async (tx) => {
+  const record = await prisma.$transaction(async (tx: TransactionClient) => {
     const upserted = await tx.attendanceRecord.upsert({
       where: { companyId_employeeId_month: { companyId, employeeId, month } },
       create: {

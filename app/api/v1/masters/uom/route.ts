@@ -1,5 +1,5 @@
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { uomSchema } from '@/lib/schemas/masters'
 import type { NextRequest } from 'next/server'
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: TransactionClient) => {
     const uom = await tx.unitOfMeasure.create({
       data: { companyId, name, symbol },
     })

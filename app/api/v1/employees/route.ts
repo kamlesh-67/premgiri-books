@@ -5,7 +5,7 @@
  * Supports ?include=salaryStructure to join the assigned salary structure.
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
   const existing = await prisma.employee.findFirst({ where: { companyId, employeeCode } })
   if (existing) return NextResponse.json({ error: 'Employee code already exists' }, { status: 409 })
 
-  const employee = await prisma.$transaction(async (tx) => {
+  const employee = await prisma.$transaction(async (tx: TransactionClient) => {
     const record = await tx.employee.create({
       data: {
         companyId,

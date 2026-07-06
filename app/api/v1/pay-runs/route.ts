@@ -3,7 +3,7 @@
  * POST /api/v1/pay-runs  — upsert PENDING PayRun + run payroll directly → 202
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { runPayroll } from '@/lib/services/PayrollRunner'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
   const { month } = parsed.data
 
   // Upsert PayRun — re-run overwrites previous run for same month
-  const payRun = await prisma.$transaction(async (tx) => {
+  const payRun = await prisma.$transaction(async (tx: TransactionClient) => {
     const run = await tx.payRun.upsert({
       where: { companyId_month: { companyId, month } },
       create: {

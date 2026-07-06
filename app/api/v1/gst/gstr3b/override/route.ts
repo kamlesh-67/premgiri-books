@@ -1,5 +1,5 @@
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -39,7 +39,7 @@ export async function PATCH(request: NextRequest) {
   const { period, cellKey, autoValue, userValue } = parsed.data
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: TransactionClient) => {
       // Upsert GstReturn record and merge the override into jsonData
       const existing = await tx.gstReturn.findFirst({
         where: { companyId, returnType: 'GSTR3B', returnPeriod: period },

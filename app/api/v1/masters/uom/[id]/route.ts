@@ -1,5 +1,5 @@
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { uomSchema } from '@/lib/schemas/masters'
 import type { NextRequest } from 'next/server'
@@ -49,7 +49,7 @@ export async function PATCH(
     }
   }
 
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: TransactionClient) => {
     const updated = await tx.unitOfMeasure.update({
       where: { id, companyId },
       data: { name, symbol },
@@ -102,7 +102,7 @@ export async function DELETE(
     )
   }
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: TransactionClient) => {
     await tx.unitOfMeasure.delete({ where: { id, companyId } })
 
     await tx.auditLog.create({

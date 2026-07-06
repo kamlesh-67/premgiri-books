@@ -3,7 +3,7 @@
  * POST /api/v1/salary-structures  — create new salary structure
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
   const { name, components } = parsed.data
 
   try {
-    const structure = await prisma.$transaction(async (tx) => {
+    const structure = await prisma.$transaction(async (tx: TransactionClient) => {
       const created = await tx.salaryStructure.create({
         data: { companyId, name, components: components as object },
       })

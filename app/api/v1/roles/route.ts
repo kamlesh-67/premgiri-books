@@ -3,7 +3,7 @@
  * POST /api/v1/roles  — create a new role (requires settings.admin)
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const role = await prisma.$transaction(async (tx) => {
+  const role = await prisma.$transaction(async (tx: TransactionClient) => {
     const record = await tx.role.create({
       data: { companyId, name, permissions },
     })

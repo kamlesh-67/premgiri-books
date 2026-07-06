@@ -195,6 +195,10 @@ export interface PrismaTx {
         narration?: string | null
         partyLedgerId?: string | null
         totalAmount?: Decimal
+        cgstAmount?: Decimal
+        sgstAmount?: Decimal
+        igstAmount?: Decimal
+        roundOff?: Decimal
         dueDate?: Date | null
         paymentTerms?: string | null
         placeOfSupply?: string | null
@@ -418,6 +422,71 @@ export function validateBalance(
   }
 }
 
+// ─── computeVoucherTotals ─────────────────────────────────────────────────────
+
+/**
+ * Aggregates voucher-level CGST/SGST/IGST from line items, and rounds the
+ * item+GST total to the nearest whole rupee — the standard Indian invoicing
+ * convention. roundOff is the ± remainder introduced by that rounding.
+ */
+export function computeVoucherTotals(
+  items: LineItemInput[]
+): { cgstAmount: Decimal; sgstAmount: Decimal; igstAmount: Decimal; roundOff: Decimal; roundedTotal: Decimal } {
+  const cgstAmount = items.reduce((sum, item) => sum.plus(item.cgstAmt ?? new Decimal(0)), new Decimal(0))
+  const sgstAmount = items.reduce((sum, item) => sum.plus(item.sgstAmt ?? new Decimal(0)), new Decimal(0))
+  const igstAmount = items.reduce((sum, item) => sum.plus(item.igstAmt ?? new Decimal(0)), new Decimal(0))
+  const itemsTotal = items.reduce((sum, item) => sum.plus(item.amount), new Decimal(0))
+
+  const rawTotal = itemsTotal.plus(cgstAmount).plus(sgstAmount).plus(igstAmount)
+  const roundedTotal = rawTotal.toDecimalPlaces(0, Decimal.ROUND_HALF_UP)
+  const roundOff = roundedTotal.minus(rawTotal)
+
+  return { cgstAmount, sgstAmount, igstAmount, roundOff, roundedTotal }
+}
+
+/**
+ * Applies roundOff to the party ledger's entry AND the opposite side's largest
+ * entry (the Sales/Purchase account line, not the smaller GST lines) so both
+ * SUM(DR) and SUM(CR) land on the rounded total — CLAUDE.md rule 3.
+ *
+ * Tally-style round-off: the party's payable/receivable moves by roundOff on
+ * its own side; the main expense/income line absorbs the same roundOff on the
+ * opposite side so both sides agree on the new rounded total. GST lines are
+ * never touched — they're fixed by tax law, not subject to rounding.
+ *
+ * No-op when roundOff is zero or no partyLedgerId is set (e.g. entry-only
+ * vouchers with no line items never reach this — see caller).
+ */
+export function applyRoundOffToPartyEntry(
+  entries: EntryInput[],
+  partyLedgerId: string | undefined,
+  roundOff: Decimal
+): EntryInput[] {
+  if (roundOff.isZero() || !partyLedgerId) return entries
+
+  const partyIndex = entries.findIndex((e) => e.ledgerId === partyLedgerId)
+  if (partyIndex === -1) return entries
+  const partySide = entries[partyIndex].drCr
+
+  // Largest entry on the opposite side = the Sales/Purchase account line (GST lines
+  // are always smaller fractions of the total, so this is a safe, name-independent heuristic).
+  let oppositeIndex = -1
+  let oppositeMax = new Decimal(-1)
+  entries.forEach((e, i) => {
+    if (e.drCr === partySide) return
+    if (e.amount.gt(oppositeMax)) {
+      oppositeMax = e.amount
+      oppositeIndex = i
+    }
+  })
+
+  return entries.map((e, i) => {
+    if (i === partyIndex) return { ...e, amount: e.amount.plus(roundOff) }
+    if (i === oppositeIndex) return { ...e, amount: e.amount.plus(roundOff) }
+    return e
+  })
+}
+
 // ─── getNextVoucherNo ─────────────────────────────────────────────────────────
 
 /**
@@ -506,23 +575,29 @@ export async function createVoucher(
   const companyId = session.companyId ?? session.user?.companyId ?? ""
   const userId = session.userId ?? session.user?.id ?? ""
 
-  // Validate entries before opening a transaction
-  const entries = input.entries ?? []
-  validateBalance(entries)
+  // Validate entries (as sent, pre-rounding) before opening a transaction
+  const rawEntries = input.entries ?? []
+  validateBalance(rawEntries)
 
   // Lazily import prisma singleton so tests can inject a mock prismaClient
   const db: { $transaction: (fn: (tx: PrismaTx) => Promise<unknown>) => Promise<unknown> } =
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     prismaClient ?? (await import('@/lib/prisma').then((m) => m.prisma as any))
 
-  return db.$transaction(async (tx) => {
+  return db.$transaction(async (tx: PrismaTx) => {
     const voucherDate = new Date(input.date)
     const fy = getFY(voucherDate)
 
     // 1. Generate next voucher number (SQLite $transaction serializes concurrency)
     const voucherNo = await getNextVoucherNo(tx, companyId, input.voucherType, fy)
 
-    // 2. Compute totals from entries
+    // 2. Aggregate GST + round the item+GST total to the nearest rupee (standard Indian
+    // invoicing convention). Round-off is absorbed into the party ledger entry so
+    // SUM(DR) === SUM(CR) still holds (CLAUDE.md rule 3).
+    const { cgstAmount, sgstAmount, igstAmount, roundOff } = computeVoucherTotals(input.items ?? [])
+    const entries = applyRoundOffToPartyEntry(rawEntries, input.partyLedgerId, roundOff)
+
+    // 2b. Compute final total from the (possibly rounding-adjusted) entries
     const totalAmount = entries
       .filter((e) => e.drCr === 'DR')
       .reduce((sum, e) => sum.plus(e.amount), new Decimal(0))
@@ -537,6 +612,10 @@ export async function createVoucher(
         narration: input.narration,
         partyLedgerId: input.partyLedgerId,
         totalAmount,
+        cgstAmount,
+        sgstAmount,
+        igstAmount,
+        roundOff,
         status: input.status === 'DRAFT' ? 'DRAFT' : 'POSTED',
         createdBy: userId,
         linkedVoucherId: input.linkedVoucherId,
@@ -793,7 +872,7 @@ export async function cancelVoucher(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     prismaClient ?? (await import('@/lib/prisma').then((m) => m.prisma as any))
 
-  return db.$transaction(async (tx) => {
+  return db.$transaction(async (tx: PrismaTx) => {
     // 1. Fetch voucher (tenant-scoped — multi-tenant rule)
     const existing = await tx.voucher.findUniqueOrThrow({
       where: { id: voucherId, companyId },
@@ -932,7 +1011,7 @@ export async function postVoucher(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     prismaClient ?? (await import('@/lib/prisma').then((m) => m.prisma as any))
 
-  return db.$transaction(async (tx) => {
+  return db.$transaction(async (tx: PrismaTx) => {
     // 1. Fetch voucher (tenant-scoped — multi-tenant rule)
     const existing = await tx.voucher.findUniqueOrThrow({
       where: { id: voucherId, companyId },
@@ -1085,15 +1164,15 @@ export async function updateVoucher(
   const companyId = session.companyId ?? session.user?.companyId ?? ""
   const userId = session.userId ?? session.user?.id ?? ""
 
-  // Validate balance before transaction
-  const entries = input.entries ?? []
-  validateBalance(entries)
+  // Validate balance (as sent, pre-rounding) before transaction
+  const rawEntries = input.entries ?? []
+  validateBalance(rawEntries)
 
   const db: { $transaction: (fn: (tx: PrismaTx) => Promise<unknown>) => Promise<unknown> } =
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     prismaClient ?? (await import('@/lib/prisma').then((m) => m.prisma as any))
 
-  return db.$transaction(async (tx) => {
+  return db.$transaction(async (tx: PrismaTx) => {
     // 1. Fetch existing voucher
     const existing = await tx.voucher.findUniqueOrThrow({
       where: { id: voucherId, companyId },
@@ -1148,10 +1227,13 @@ export async function updateVoucher(
 
     // 5. Update Voucher
     const voucherDate = new Date(input.date)
-    const totalAmount = entries.filter(e => e.drCr === 'DR').reduce((s, e) => s.plus(e.amount), new Decimal(0))
 
-    // Re-calculate GST if needed (similar to createVoucher)
-    // ... skipping full re-calc here for brevity, assuming API passes fully enriched items ...
+    // Re-aggregate GST + round the item+GST total — same as createVoucher, so edits
+    // don't leave stale/zeroed voucher-level cgstAmount/sgstAmount/igstAmount/roundOff,
+    // and round-off is re-absorbed into the party ledger entry (CLAUDE.md rule 3).
+    const { cgstAmount, sgstAmount, igstAmount, roundOff } = computeVoucherTotals(input.items ?? [])
+    const entries = applyRoundOffToPartyEntry(rawEntries, input.partyLedgerId, roundOff)
+    const totalAmount = entries.filter(e => e.drCr === 'DR').reduce((s, e) => s.plus(e.amount), new Decimal(0))
 
     const updated = await tx.voucher.update({
       where: { id: voucherId, companyId },
@@ -1160,6 +1242,10 @@ export async function updateVoucher(
         narration: input.narration,
         partyLedgerId: input.partyLedgerId,
         totalAmount,
+        cgstAmount,
+        sgstAmount,
+        igstAmount,
+        roundOff,
         status: input.status,
         dueDate: input.dueDate ? new Date(input.dueDate) : null,
         paymentTerms: input.paymentTerms,

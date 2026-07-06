@@ -23,7 +23,7 @@
 
 import { parseCsvToRows, type BankName } from '@/lib/banking/bankParsers'
 import { runMatch, getBooksClosingBalance } from '@/lib/banking/MatchingEngine'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { Decimal } from 'decimal.js'
 
 // ---------------------------------------------------------------------------
@@ -111,7 +111,7 @@ export async function importStatement(params: {
   let statementId: string
 
   try {
-    statementId = await prisma.$transaction(async (tx) => {
+    statementId = await prisma.$transaction(async (tx: TransactionClient) => {
       // Create the BankStatement record
       const stmt = await tx.bankStatement.create({
         data: {

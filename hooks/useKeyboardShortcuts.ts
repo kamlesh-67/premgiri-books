@@ -17,11 +17,11 @@ interface UseKeyboardShortcutsOptions {
 // ---------------------------------------------------------------------------
 
 const VOUCHER_SHORTCUTS: Record<string, string> = {
-  F5: '/vouchers/payment/new',
-  F6: '/vouchers/receipt/new',
-  F7: '/vouchers/journal/new',
-  F8: '/vouchers/sales/new',
-  F9: '/vouchers/purchase/new',
+  F5: '/payment/new',
+  F6: '/receipt/new',
+  F7: '/journal/new',
+  F8: '/sales-invoice/new',
+  F9: '/purchase-invoice/new',
 }
 
 // ---------------------------------------------------------------------------

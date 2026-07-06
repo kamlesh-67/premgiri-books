@@ -10,7 +10,7 @@
  *  - Audit log written in same $transaction as the update
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -71,7 +71,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   }
 
   // Update cheque fields + audit log in a single transaction
-  const updated = await prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx: TransactionClient) => {
     const voucher = await tx.voucher.update({
       where: {
         id: voucherId,

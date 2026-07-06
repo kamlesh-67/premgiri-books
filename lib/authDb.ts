@@ -32,3 +32,7 @@ export const authDb = globalForAuthDb.__authDb ?? createAuthDb()
 if (process.env.NODE_ENV !== 'production') {
   globalForAuthDb.__authDb = authDb
 }
+
+export type AuthDbTransactionClient = Parameters<
+  Parameters<typeof authDb.$transaction>[0]
+>[0]

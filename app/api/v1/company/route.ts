@@ -18,6 +18,7 @@ import { z } from 'zod'
 const patchSchema = z.object({
   name: z.string().min(1).optional(),
   address: z.string().optional(),
+  defaultBankLedgerId: z.string().nullable().optional(),
 })
 
 // ─── GET ─────────────────────────────────────────────────────────────────────
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest) {
       address: true,
       fyStart: true,
       logoUrl: true,
+      defaultBankLedgerId: true,
       createdAt: true,
     },
   })
@@ -52,7 +54,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Company not found' }, { status: 404 })
   }
 
-  return NextResponse.json(company)
+  // Resolve the default bank ledger's details for invoice printing, if set.
+  let defaultBankAccount: { bankName: string | null; bankAccount: string | null; ifsc: string | null } | null = null
+  if (company.defaultBankLedgerId) {
+    defaultBankAccount = await prisma.ledger.findFirst({
+      where: { id: company.defaultBankLedgerId, companyId },
+      select: { bankName: true, bankAccount: true, ifsc: true },
+    })
+  }
+
+  return NextResponse.json({ ...company, defaultBankAccount })
 }
 
 // ─── PATCH ───────────────────────────────────────────────────────────────────
@@ -86,26 +97,52 @@ export async function PATCH(request: NextRequest) {
   }
 
   // Nothing to update
-  if (parsed.data.name === undefined && parsed.data.address === undefined) {
+  if (
+    parsed.data.name === undefined &&
+    parsed.data.address === undefined &&
+    parsed.data.defaultBankLedgerId === undefined
+  ) {
     return NextResponse.json({ error: 'No updatable fields provided' }, { status: 400 })
+  }
+
+  // defaultBankLedgerId must reference a real ledger in THIS company with bank details set —
+  // never trust the client-supplied id blindly (IDOR / cross-tenant guard).
+  if (parsed.data.defaultBankLedgerId) {
+    const ledger = await prisma.ledger.findFirst({
+      where: { id: parsed.data.defaultBankLedgerId, companyId },
+      select: { bankAccount: true, ifsc: true },
+    })
+    if (!ledger || !ledger.bankAccount || !ledger.ifsc) {
+      return NextResponse.json(
+        { error: 'Selected ledger is not a valid bank account for this company' },
+        { status: 400 },
+      )
+    }
   }
 
   // Fetch existing to capture oldValue for audit log
   const existing = await prisma.company.findUnique({
     where: { id: companyId },
-    select: { name: true, address: true },
+    select: { name: true, address: true, defaultBankLedgerId: true },
   })
 
   if (!existing) {
     return NextResponse.json({ error: 'Company not found' }, { status: 404 })
   }
 
-  const oldValue = { name: existing.name, address: existing.address ?? null }
+  const oldValue = {
+    name: existing.name,
+    address: existing.address ?? null,
+    defaultBankLedgerId: existing.defaultBankLedgerId ?? null,
+  }
 
   // Build update data — only include fields that were provided
-  const updateData: { name?: string; address?: string } = {}
+  const updateData: { name?: string; address?: string; defaultBankLedgerId?: string | null } = {}
   if (parsed.data.name !== undefined) updateData.name = parsed.data.name
   if (parsed.data.address !== undefined) updateData.address = parsed.data.address
+  if (parsed.data.defaultBankLedgerId !== undefined) {
+    updateData.defaultBankLedgerId = parsed.data.defaultBankLedgerId
+  }
 
   const [updatedCompany] = await prisma.$transaction([
     prisma.company.update({
@@ -120,6 +157,7 @@ export async function PATCH(request: NextRequest) {
         address: true,
         fyStart: true,
         logoUrl: true,
+        defaultBankLedgerId: true,
         createdAt: true,
       },
     }),

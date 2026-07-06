@@ -15,6 +15,10 @@ export interface GSTSummaryPanelProps {
   grandTotal: string
   taxType: GSTTaxType
   uiMode: 'simple' | 'advanced'
+  /** GST rate percentages for display, e.g. "9" for CGST 9%. Optional — rate suffix is omitted when not provided. */
+  cgstRate?: string | null
+  sgstRate?: string | null
+  igstRate?: string | null
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -28,11 +32,20 @@ export function GSTSummaryPanel({
   grandTotal,
   taxType,
   uiMode,
+  cgstRate,
+  sgstRate,
+  igstRate,
 }: GSTSummaryPanelProps) {
   const isSimple = uiMode === 'simple'
   const isIntra = taxType === 'INTRA_STATE'
   const isInter = taxType === 'INTER_STATE'
   const hasRoundOff = new Decimal(String(roundOff || '0')).toNumber() !== 0
+
+  // Rate label suffix, e.g. "CGST 9%" — omitted when rate is unavailable/zero
+  const rateLabel = (label: string, rate?: string | null): string => {
+    const num = new Decimal(String(rate || '0'))
+    return num.gt(0) ? `${label} ${num.toString()}%` : label
+  }
 
   // GST label in Simple Mode
   const simpleGSTLabel = (() => {
@@ -85,13 +98,13 @@ export function GSTSummaryPanel({
             {isIntra && (
               <>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">CGST</span>
+                  <span className="text-sm text-gray-500">{rateLabel('CGST', cgstRate)}</span>
                   <span className="text-sm text-gray-700 tabular-nums">
                     {formatPrecise(cgstTotal)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">SGST</span>
+                  <span className="text-sm text-gray-500">{rateLabel('SGST', sgstRate)}</span>
                   <span className="text-sm text-gray-700 tabular-nums">
                     {formatPrecise(sgstTotal)}
                   </span>
@@ -100,7 +113,7 @@ export function GSTSummaryPanel({
             )}
             {isInter && (
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500">IGST</span>
+                <span className="text-sm text-gray-500">{rateLabel('IGST', igstRate)}</span>
                 <span className="text-sm text-gray-700 tabular-nums">
                   {formatPrecise(igstTotal)}
                 </span>

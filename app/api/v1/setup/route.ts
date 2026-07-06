@@ -19,7 +19,7 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
-import { authDb } from '@/lib/authDb'
+import { authDb, type AuthDbTransactionClient as TransactionClient } from '@/lib/authDb'
 import { signJWT, SESSION_COOKIE_NAME } from '@/lib/jwt'
 
 // ─── Owner Permissions ───────────────────────────────────────────────────────
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
   const passwordHash = await bcrypt.hash(adminPassword, 12)
 
   // TRANSACTION — Company + Role + AccountGroups + User in one atomic write
-  const result = await authDb.$transaction(async (tx) => {
+  const result = await authDb.$transaction(async (tx: TransactionClient) => {
     // 1. Company
     const company = await tx.company.create({
       data: {

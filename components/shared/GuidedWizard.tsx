@@ -22,17 +22,24 @@ export interface GuidedWizardProps {
   onComplete: (data: Record<string, unknown>) => Promise<void>;
   onCancel?: () => void;
   title?: string;
+  /** Notifies the parent when the active step changes — e.g. to widen the page container on a wider step. */
+  onStepChange?: (index: number) => void;
 }
 
 // ---------------------------------------------------------------------------
 // GuidedWizard component
 // ---------------------------------------------------------------------------
 
-export function GuidedWizard({ steps, onComplete, onCancel, title }: GuidedWizardProps) {
+export function GuidedWizard({ steps, onComplete, onCancel, title, onStepChange }: GuidedWizardProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isLastStep = currentStep === steps.length - 1;
+
+  function goToStep(index: number) {
+    setCurrentStep(index);
+    onStepChange?.(index);
+  }
 
   // Move to next step — validate current step first if a validator is provided.
   const handleNext = async () => {
@@ -41,7 +48,7 @@ export function GuidedWizard({ steps, onComplete, onCancel, title }: GuidedWizar
       const valid = await step.onValidate();
       if (!valid) return;
     }
-    setCurrentStep((s) => s + 1);
+    goToStep(currentStep + 1);
   };
 
   // Fire onComplete from the final step — form data is owned by the consumer.
@@ -63,18 +70,18 @@ export function GuidedWizard({ steps, onComplete, onCancel, title }: GuidedWizar
     <div className="w-full">
       {/* Optional title */}
       {title && (
-        <h2 className="mb-6 text-xl font-semibold text-gray-900">{title}</h2>
+        <h2 className="mb-4 sm:mb-6 text-lg sm:text-xl font-semibold text-gray-900">{title}</h2>
       )}
 
       {/* ── Progress indicator ─────────────────────────────────────────────── */}
-      <div className="flex items-center mb-8">
+      <div className="flex items-center mb-6 sm:mb-8">
         {steps.map((step, index) => (
           <React.Fragment key={step.id}>
             {/* Step circle + label */}
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center shrink-0">
               <div
                 className={cn(
-                  "h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold",
+                  "h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold",
                   index < currentStep
                     ? "bg-purple-100 text-purple-600" // completed
                     : index === currentStep
@@ -83,14 +90,14 @@ export function GuidedWizard({ steps, onComplete, onCancel, title }: GuidedWizar
                 )}
               >
                 {index < currentStep ? (
-                  <Check className="h-4 w-4" />
+                  <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 ) : (
                   index + 1
                 )}
               </div>
               <span
                 className={cn(
-                  "mt-1 text-xs",
+                  "mt-1 text-[10px] sm:text-xs text-center whitespace-nowrap",
                   index === currentStep
                     ? "font-semibold text-purple-600"
                     : "text-gray-400"
@@ -104,7 +111,7 @@ export function GuidedWizard({ steps, onComplete, onCancel, title }: GuidedWizar
             {index < steps.length - 1 && (
               <div
                 className={cn(
-                  "flex-1 h-0.5 mb-5",
+                  "flex-1 h-0.5 mb-4 sm:mb-5 min-w-[16px]",
                   index < currentStep ? "bg-purple-600" : "bg-gray-200"
                 )}
               />
@@ -114,19 +121,20 @@ export function GuidedWizard({ steps, onComplete, onCancel, title }: GuidedWizar
       </div>
 
       {/* ── Step content ───────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 space-y-4">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-6 space-y-4 overflow-x-auto">
         {steps[currentStep].component}
       </div>
 
       {/* ── Navigation buttons ─────────────────────────────────────────────── */}
-      <div className="flex justify-between mt-6">
+      <div className="flex flex-col-reverse sm:flex-row justify-between gap-3 mt-6">
         {/* Left: Back button (hidden on step 0) */}
         <div>
           {currentStep > 0 && (
             <Button
               variant="outline"
-              onClick={() => setCurrentStep((s) => s - 1)}
+              onClick={() => goToStep(currentStep - 1)}
               type="button"
+              className="w-full sm:w-auto"
             >
               ← Back
             </Button>
@@ -136,14 +144,14 @@ export function GuidedWizard({ steps, onComplete, onCancel, title }: GuidedWizar
         {/* Right: Cancel + Next/Create */}
         <div className="flex gap-3">
           {onCancel && currentStep === 0 && (
-            <Button variant="ghost" onClick={onCancel} type="button">
+            <Button variant="ghost" onClick={onCancel} type="button" className="flex-1 sm:flex-none">
               Cancel
             </Button>
           )}
 
           {!isLastStep ? (
             <Button
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              className="bg-purple-600 hover:bg-purple-700 text-white flex-1 sm:flex-none"
               onClick={handleNext}
               type="button"
             >
@@ -151,7 +159,7 @@ export function GuidedWizard({ steps, onComplete, onCancel, title }: GuidedWizar
             </Button>
           ) : (
             <Button
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              className="bg-purple-600 hover:bg-purple-700 text-white flex-1 sm:flex-none"
               onClick={handleComplete}
               disabled={isSubmitting}
               type="button"

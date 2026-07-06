@@ -1,5 +1,5 @@
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { godownSchema } from '@/lib/schemas/masters'
 import type { NextRequest } from 'next/server'
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
   const { name, address, isMain } = parsed.data
 
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: TransactionClient) => {
     // T-01-08-03: If setting isMain, un-set all other main godowns atomically
     if (isMain) {
       await tx.godown.updateMany({

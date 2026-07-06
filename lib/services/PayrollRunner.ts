@@ -9,7 +9,7 @@
  * Email notification removed — replaced with console.log.
  */
 
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { writeLocalFile, buildPayslipFilename } from '@/lib/localFiles'
 import { Decimal } from 'decimal.js'
 
@@ -165,7 +165,7 @@ export async function runPayroll(
       const filePath = await writeLocalFile(filename, Buffer.from(buffer))
 
       // Upsert PaySlip (soft-safe re-run — never hard-delete financial records)
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: TransactionClient) => {
         const slipData = {
           companyId,
           payRunId,

@@ -1,5 +1,5 @@
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { ledgerSchema, customerSchema, supplierSchema } from '@/lib/schemas/masters'
 import type { NextRequest } from 'next/server'
@@ -55,6 +55,17 @@ export async function GET(request: NextRequest) {
         creditLimit: p.creditLimit?.toString() ?? null,
       }))
     )
+  }
+
+  if (type === 'bank') {
+    // Ledgers usable as a "default invoice bank account" — identified by having
+    // bank details populated, not by group name (no dedicated group-type flag exists).
+    const bankLedgers = await prisma.ledger.findMany({
+      where: { companyId, isActive: true, bankAccount: { not: null }, ifsc: { not: null } },
+      select: { id: true, name: true, bankName: true, bankAccount: true, ifsc: true },
+      orderBy: { name: 'asc' },
+    })
+    return NextResponse.json(bankLedgers)
   }
 
   // All ledgers — optionally filtered by account nature
@@ -152,7 +163,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Create ledger in transaction with audit log (non-negotiable rule 7)
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: TransactionClient) => {
     const ledger = await tx.ledger.create({
       data: {
         name: parsedData.name as string,

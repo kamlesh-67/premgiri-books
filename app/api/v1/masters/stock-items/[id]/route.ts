@@ -1,5 +1,5 @@
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse, NextRequest } from 'next/server'
 import { stockItemSchema } from '@/lib/schemas/masters'
 
@@ -43,7 +43,7 @@ export async function PATCH(
 
   if (body.isActive === false) {
     // Soft deactivate (non-negotiable rule 6: never hard-delete financial records)
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: TransactionClient) => {
       const item = await tx.stockItem.update({
         where: { id, companyId },
         data: { isActive: false },
@@ -76,7 +76,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Validation failed', issues: parsed.error.issues }, { status: 400 })
   }
 
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: TransactionClient) => {
     const item = await tx.stockItem.update({
       where: { id, companyId },
       data: {

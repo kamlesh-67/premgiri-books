@@ -175,6 +175,8 @@ export default function InvoiceForm({ voucherType: _voucherType, onSuccess, defa
   const [showNewCustomer, setShowNewCustomer] = useState(false);
   const [isWalkIn, setIsWalkIn] = useState(false);
   const [walkInName, setWalkInName] = useState("");
+  const [walkInMobile, setWalkInMobile] = useState("");
+  const [walkInAddress, setWalkInAddress] = useState("");
   const [defaultGodownId, setDefaultGodownId] = useState("");
 
   const form = useForm<SalesInvoiceInput>({
@@ -299,9 +301,17 @@ export default function InvoiceForm({ voucherType: _voucherType, onSuccess, defa
       }
       setValue("partyLedgerId", walkInLedger.id);
       const currentNarration = watch("narration") ?? "";
-      const namePrefix = walkInName.trim() ? `Walk-in: ${walkInName.trim()}. ` : "Walk-in sale. ";
-      if (!currentNarration.startsWith("Walk-in:")) {
+      const details = [
+        walkInName.trim() ? `Name: ${walkInName.trim()}` : null,
+        walkInMobile.trim() ? `Mobile: ${walkInMobile.trim()}` : null,
+      ].filter(Boolean).join(", ");
+      const namePrefix = details ? `Walk-in (${details}). ` : "Walk-in sale. ";
+      if (!currentNarration.startsWith("Walk-in")) {
         setValue("narration", namePrefix + currentNarration);
+      }
+      if (walkInAddress.trim()) {
+        setValue("billingAddress", walkInAddress.trim());
+        setValue("shippingAddress", walkInAddress.trim());
       }
     }
     handleSubmit((data) => {
@@ -345,12 +355,26 @@ export default function InvoiceForm({ voucherType: _voucherType, onSuccess, defa
             </div>
 
             {isWalkIn ? (
-              <Input
-                placeholder="Customer name (optional)"
-                value={walkInName}
-                onChange={(e) => setWalkInName(e.target.value)}
-                className="text-sm"
-              />
+              <div className="space-y-2">
+                <Input
+                  placeholder="Customer name (optional)"
+                  value={walkInName}
+                  onChange={(e) => setWalkInName(e.target.value)}
+                  className="text-sm"
+                />
+                <Input
+                  placeholder="Mobile number (optional)"
+                  value={walkInMobile}
+                  onChange={(e) => setWalkInMobile(e.target.value)}
+                  className="text-sm"
+                />
+                <Input
+                  placeholder="Address (optional)"
+                  value={walkInAddress}
+                  onChange={(e) => setWalkInAddress(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
             ) : (
               <>
                 <select

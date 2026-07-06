@@ -21,7 +21,7 @@
  *   - Audit log written inside $transaction alongside BankTransaction updates
  */
 
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { Decimal } from 'decimal.js'
 import { differenceInDays, addDays, subDays } from 'date-fns'
 
@@ -199,7 +199,7 @@ export async function runMatch(statementId: string, companyId: string, userId: s
   const matchedCount = updates.filter((u) => u.matchStatus !== 'UNMATCHED').length
   const totalCount = updates.length
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: TransactionClient) => {
     // Update each BankTransaction
     for (const update of updates) {
       await tx.bankTransaction.update({

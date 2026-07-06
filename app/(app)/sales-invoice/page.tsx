@@ -161,7 +161,7 @@ export default function SalesInvoiceList() {
     {
       key: "voucherNo",
       header: "Invoice #",
-      width: "140px",
+      width: "160px",
       cell: (r) => (
         <Link
           href={`/sales-invoice/${r.id}`}
@@ -174,12 +174,13 @@ export default function SalesInvoiceList() {
     {
       key: "date",
       header: "Date",
-      width: "110px",
+      width: "100px",
       cell: (r) => <span className="text-gray-700">{formatDate(r.date)}</span>,
     },
     {
       key: "party",
       header: "Customer",
+      className: "whitespace-normal",
       cell: (r) => <span className="text-gray-700">{r.partyLedger?.name ?? "—"}</span>,
     },
     {
@@ -248,13 +249,18 @@ export default function SalesInvoiceList() {
   ];
 
   return (
-    <div>
+    <div className="p-3 sm:p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Sales Invoices"
         subtitle="All outward GST invoices for the current financial year."
         actions={
           <>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => {
+              const url = new URL("/api/v1/sales-invoice/export", window.location.origin);
+              if (status !== "All") url.searchParams.set("status", status);
+              if (query) url.searchParams.set("q", query);
+              window.open(url.toString(), "_blank");
+            }}>
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
@@ -267,7 +273,7 @@ export default function SalesInvoiceList() {
       />
 
       {/* KPI Cards */}
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           title="Invoices (MTD)"
           value={String(kpis.mtdCount)}

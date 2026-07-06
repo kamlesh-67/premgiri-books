@@ -7,7 +7,7 @@
  * for users belonging to another company rather than 403, leaking nothing.
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { requirePermission } from '@/lib/utils/requirePermission'
 import { blockUser } from '@/lib/redis'
 import { NextResponse } from 'next/server'
@@ -85,7 +85,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     isActive: existing.isActive,
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx: TransactionClient) => {
     const record = await tx.user.update({
       where: { id: userId, companyId },
       data: parsed.data,
@@ -139,7 +139,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   })
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: TransactionClient) => {
     await tx.user.update({
       where: { id: userId },
       data: { isActive: false },

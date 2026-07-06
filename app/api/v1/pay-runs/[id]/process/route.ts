@@ -5,7 +5,7 @@
  * Runs the same logic as payrollRunFn inline. Blocked in production.
  */
 import { getSessionFromRequest } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
+import { prisma, type TransactionClient } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import Decimal from 'decimal.js'
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest, { params }: Params) {
         computedData: slip.computedData as object,
         pdfKey: r2Key,
       }
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: TransactionClient) => {
         const record = await tx.paySlip.upsert({
           where: { payRunId_employeeId: { payRunId, employeeId: slip.employeeId } },
           create: slipData,

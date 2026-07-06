@@ -7,46 +7,47 @@ datasource db {
 }
 
 model Company {
-  id                String             @id @default(cuid())
-  name              String
-  gstin             String?
-  pan               String?
-  stateCode         String
-  address           String?
-  fyStart           Int                @default(4)
-  logoUrl           String?
-  annualTurnover    Decimal?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  accountGroups     AccountGroup[]
-  attendanceRecords AttendanceRecord[]
-  auditLogs         AuditLog[]
-  bankStatements    BankStatement[]
-  bankTransactions  BankTransaction[]
-  billRefs          BillRef[]
-  costCentres       CostCentre[]
-  eInvoiceLogs      EInvoiceLog[]
-  employees         Employee[]
-  godowns           Godown[]
-  gstReturns        GstReturn[]
-  gstTransactions   GstTransaction[]
-  gstr2aImports     Gstr2aImport[]
-  ledgers           Ledger[]
-  notifications     Notification[]
-  orderSequences    OrderSequence[]
-  orders            Order[]
-  payRuns           PayRun[]
-  paySlips          PaySlip[]
-  roles             Role[]
-  salaryStructures  SalaryStructure[]
-  stockBatches      StockBatch[]
-  stockConsumptions StockConsumption[]
-  stockGroups       StockGroup[]
-  stockItems        StockItem[]
-  unitsOfMeasure    UnitOfMeasure[]
-  users             User[]
-  voucherSequences  VoucherSequence[]
-  vouchers          Voucher[]
+  id                  String             @id @default(cuid())
+  name                String
+  gstin               String?
+  pan                 String?
+  stateCode           String
+  address             String?
+  fyStart             Int                @default(4)
+  logoUrl             String?
+  annualTurnover      Decimal?
+  defaultBankLedgerId String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  accountGroups       AccountGroup[]
+  attendanceRecords   AttendanceRecord[]
+  auditLogs           AuditLog[]
+  bankStatements      BankStatement[]
+  bankTransactions    BankTransaction[]
+  billRefs            BillRef[]
+  costCentres         CostCentre[]
+  eInvoiceLogs        EInvoiceLog[]
+  employees           Employee[]
+  godowns             Godown[]
+  gstReturns          GstReturn[]
+  gstTransactions     GstTransaction[]
+  gstr2aImports       Gstr2aImport[]
+  ledgers             Ledger[]
+  notifications       Notification[]
+  orderSequences      OrderSequence[]
+  orders              Order[]
+  payRuns             PayRun[]
+  paySlips            PaySlip[]
+  roles               Role[]
+  salaryStructures    SalaryStructure[]
+  stockBatches        StockBatch[]
+  stockConsumptions   StockConsumption[]
+  stockGroups         StockGroup[]
+  stockItems          StockItem[]
+  unitsOfMeasure      UnitOfMeasure[]
+  users               User[]
+  voucherSequences    VoucherSequence[]
+  vouchers            Voucher[]
 
   @@map("companies")
 }
