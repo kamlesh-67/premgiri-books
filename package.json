@@ -6,7 +6,6 @@
     "predev": "node -e \"require('fs').rmSync('.next', { recursive: true, force: true })\"",
     "dev": "next dev",
     "build": "next build",
-    "build:electron": "nextron build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
@@ -18,8 +17,7 @@
     "test:phase-11-eval": "vitest run tests/integration/phase-11-eval.test.ts",
     "seed": "pnpm dlx prisma db seed",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "build:installer": "next build && tsc -p tsconfig.electron.json && electron-builder"
+    "test:e2e:ui": "playwright test --ui"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -113,12 +111,9 @@
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.21",
     "dotenv": "^17.4.2",
-    "electron": "^32.3.3",
-    "electron-builder": "^26.8.1",
     "eslint": "^9.32.0",
     "eslint-config-next": "^15.3.1",
     "jsdom": "^20.0.3",
-    "nextron": "^10.0.0",
     "pg": "^8.20.0",
     "playwright": "^1.59.1",
     "postcss": "^8.5.6",
@@ -131,5 +126,6 @@
     "vitest": "^3.2.4",
     "vitest-mock-extended": "^3.1.1"
   },
-  "pnpm": {}
+  "pnpm": {},
+  "packageManager": "pnpm@11.10.0+sha512.0b7f8b98060031904c017e3a41eb187a16d40eeb829b95c4f8cb03681761fc4ab53dd219115b9b447f4dce1a05a214764461e7d3703392a9f32f9511ce8c86c8"
 }

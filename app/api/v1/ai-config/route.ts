@@ -5,7 +5,7 @@
  * Security:
  *  - T-22-06: Route returns only boolean flags — actual key values never returned
  *  - T-22-07: OWNER-only route; 403 for non-owner roles
- *  - Actual key storage happens client-side via window.electronAPI.safeStorageSet (IPC)
+ *  - Actual key values are provided via environment variables (VOYAGE_API_KEY, ANTHROPIC_API_KEY); this route only tracks whether they're set
  */
 import { getSessionFromRequest } from '@/lib/session'
 import { authDb as prisma } from '@/lib/authDb'

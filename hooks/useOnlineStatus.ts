@@ -1,18 +1,24 @@
 import { useState, useEffect } from 'react'
 
 /**
- * useOnlineStatus — checks window.electronAPI.isOnline() on mount.
- * Returns true in browser dev mode (no Electron) as a safe default.
+ * useOnlineStatus — tracks browser online/offline state via navigator.onLine.
  * AI widgets use this to gate AI calls and show degraded UI when offline.
  */
 export function useOnlineStatus(): boolean {
   const [isOnline, setIsOnline] = useState<boolean>(true)
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.electronAPI?.isOnline) {
-      window.electronAPI.isOnline().then((result) => {
-        setIsOnline(result)
-      })
+    setIsOnline(navigator.onLine)
+
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
     }
   }, [])
 

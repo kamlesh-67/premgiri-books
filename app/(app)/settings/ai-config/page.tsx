@@ -41,13 +41,6 @@ export default function AiConfigPage() {
   async function handleSave() {
     setIsSaving(true)
     try {
-      if (voyageKey.length > 0) {
-        await window.electronAPI?.safeStorageSet('VOYAGE_API_KEY', voyageKey)
-      }
-      if (anthropicKey.length > 0) {
-        await window.electronAPI?.safeStorageSet('ANTHROPIC_API_KEY', anthropicKey)
-      }
-
       const res = await fetch('/api/v1/ai-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -82,8 +75,9 @@ export default function AiConfigPage() {
       <SectionCard title="API Keys">
         <div className="space-y-4">
           <p className="text-sm text-gray-500">
-            Enter API keys to enable Smart Insights and semantic search. Keys are encrypted and
-            stored securely on this machine. Leave a field blank to keep the existing key.
+            Set VOYAGE_API_KEY and ANTHROPIC_API_KEY as environment variables on the server to
+            enable Smart Insights and semantic search. This form only tracks whether each key is
+            configured.
           </p>
 
           <div className="space-y-2">
