@@ -82,9 +82,16 @@ async function main(): Promise<void> {
         data: { totalAmount: roundedTotal, cgstAmount, sgstAmount, igstAmount, roundOff },
       })
       for (const br of voucher.billRefs) {
+        // Preserve partial-payment progress: shift outstandingAmount by the same
+        // delta as totalAmount, rather than resetting it to the new total outright
+        // (which would silently undo any prior settlement on this bill).
+        const oldTotal = new Decimal(br.totalAmount.toString())
+        const oldOutstanding = new Decimal(br.outstandingAmount.toString())
+        const delta = roundedTotal.minus(oldTotal)
+        const newOutstanding = oldOutstanding.plus(delta)
         await tx.billRef.update({
           where: { id: br.id },
-          data: { totalAmount: roundedTotal, outstandingAmount: roundedTotal },
+          data: { totalAmount: roundedTotal, outstandingAmount: newOutstanding },
         })
       }
     })
