@@ -1,3 +1,24 @@
+# Production database
+prod.db
+prod.db-*
+prod.db.bak*
+prod.db-journal
+prod.db-shm
+prod.db-wal
+**/prod.db
+**/prod.db-*
+**/prod.db.bak*
+**/prod.db%
+**/prod.db-journal
+**/prod.db-shm
+**/prod.db-wal
+# SQLite temporary/lock files
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Windows copy/backup files
+prod.db%
 dev.db
 # Environment files — secrets stay local
 .env
